@@ -185,21 +185,41 @@ function initScalabilityChart() {
     new Chart(ctx, {
         type: 'line',
         data: {
-            labels: ['10k', '50k', '100k', '200k', '300k'],
+            labels: ['0', '1k', '5k', '10k', '50k', '100k', '200k', '300k'],
             datasets: [{
-                label: 'Validation Similarity (%)',
-                data: [94.2, 95.8, 96.5, 97.1, 97.3],
-                borderColor: 'rgba(37, 99, 235, 1)',
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                tension: 0.4,
-                fill: true
+                label: 'Text-to-Text Transfer (Baseline)',
+                data: [43, 43, 43, 43, 43, 43, 43, 43],
+                borderColor: 'rgba(239, 68, 68, 1)',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                borderDash: [5, 5],
+                tension: 0,
+                fill: false,
+                pointRadius: 0
             }, {
-                label: 'Training Similarity (%)',
-                data: [92.5, 94.1, 95.2, 96.1, 95.9],
+                label: 'Random Matrix (Untrained)',
+                data: [0.21, null, null, null, null, null, null, null],
+                borderColor: 'rgba(156, 163, 175, 1)',
+                backgroundColor: 'rgba(156, 163, 175, 0.1)',
+                tension: 0,
+                fill: false,
+                pointRadius: 6,
+                pointStyle: 'circle'
+            }, {
+                label: 'AECP Training (Round-trip)',
+                data: [null, 99.63, 98.29, 98.08, 96.0, 96.8, 97.2, 97.35],
                 borderColor: 'rgba(16, 185, 129, 1)',
                 backgroundColor: 'rgba(16, 185, 129, 0.1)',
                 tension: 0.4,
-                fill: true
+                fill: true,
+                pointRadius: 6
+            }, {
+                label: 'AECP Validation (Round-trip)',
+                data: [null, 99.53, 98.19, 97.98, 95.8, 96.5, 97.1, 97.34],
+                borderColor: 'rgba(37, 99, 235, 1)',
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 6
             }]
         },
         options: {
@@ -212,15 +232,15 @@ function initScalabilityChart() {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return context.dataset.label + ': ' + context.parsed.y + '%';
+                            if (context.parsed.y === null) return null;
+                            return context.dataset.label + ': ' + context.parsed.y.toFixed(2) + '%';
                         }
                     }
                 }
             },
             scales: {
                 y: {
-                    beginAtZero: false,
-                    min: 90,
+                    beginAtZero: true,
                     max: 100,
                     ticks: {
                         callback: function(value) {
@@ -233,9 +253,16 @@ function initScalabilityChart() {
                     }
                 },
                 x: {
+                    beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'Vocabulary Size'
+                        text: 'Training Vocabulary Size'
+                    },
+                    ticks: {
+                        callback: function(value, index, ticks) {
+                            const labels = ['0', '1k', '5k', '10k', '50k', '100k', '200k', '300k'];
+                            return labels[index] || '';
+                        }
                     }
                 }
             }

@@ -13,10 +13,10 @@ function initCalibrationChart() {
     new Chart(ctx, {
         type: 'line',
         data: {
-            labels: ['Training', 'Validation', 'Test (Unseen)'],
+            labels: ['Training (Round-trip)', 'Validation (Round-trip)', 'Test (Unseen)'],
             datasets: [{
                 label: 'Semantic Similarity (%)',
-                data: [95.86, 97.34, 97.35],
+                data: [97.35, 97.34, 97.35], // Training round-trip: 97.35%, Validation: 97.34%, Unseen vocab: 97.35%
                 borderColor: 'rgba(37, 99, 235, 1)',
                 backgroundColor: 'rgba(37, 99, 235, 0.1)',
                 tension: 0.4,

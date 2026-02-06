@@ -137,10 +137,16 @@ def run_protocol_calibration(
     print("CALIBRATION COMPLETE")
     print(f"{'='*70}")
     print(f"\nQuality Metrics:")
-    print(f"  Training similarity:    {transfer_matrix.training_similarity:.4f}")
-    print(f"  Validation similarity:  {transfer_matrix.validation_similarity:.4f}")
-    print(f"  Worst-case similarity:  {transfer_matrix.worst_case_similarity:.4f}")
-    print(f"  Valid until:            {transfer_matrix.valid_until}")
+    print(f"  Training similarity (round-trip):    {transfer_matrix.training_similarity:.4f}")
+    print(f"  Validation similarity (round-trip):  {transfer_matrix.validation_similarity:.4f}")
+    print(f"  Worst-case similarity:                {transfer_matrix.worst_case_similarity:.4f}")
+    print(f"  Valid until:                          {transfer_matrix.valid_until}")
+    
+    # Verify training >= validation (with small tolerance for sampling variance)
+    if transfer_matrix.training_similarity < transfer_matrix.validation_similarity - 0.01:
+        print(f"\n⚠️  NOTE: Training similarity ({transfer_matrix.training_similarity:.4f}) < Validation ({transfer_matrix.validation_similarity:.4f})")
+        print(f"     This can happen due to sampling variance or vocabulary differences.")
+        print(f"     Both metrics use round-trip evaluation for fair comparison.")
     
     return transfer_matrix
 
@@ -334,12 +340,14 @@ This enhanced evaluation tests the Agent Embedding Communication Protocol (AECP)
 ### Training Phase
 - **Dataset**: 240,000 vocabulary items (80% of total)
 - **Purpose**: Compute transfer matrices W_AB and W_BA
-- **Training Similarity**: {results['calibration'].get('training_similarity', 'N/A')}
+- **Training Similarity (Round-trip)**: {results['calibration'].get('training_similarity', 'N/A')}
+  - *Note: Round-trip similarity (A→B→A) measures how well embeddings preserve information when transferred and back*
 
 ### Validation Phase  
 - **Dataset**: 30,000 vocabulary items (10%, held-out during training)
 - **Purpose**: Validate matrix quality without contamination
-- **Validation Similarity**: {results['calibration'].get('validation_similarity', 'N/A')}
+- **Validation Similarity (Round-trip)**: {results['calibration'].get('validation_similarity', 'N/A')}
+  - *Note: Both training and validation use round-trip for fair comparison*
 - **Worst-Case**: {results['calibration'].get('worst_case_similarity', 'N/A')}
 
 ---

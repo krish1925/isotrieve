@@ -27,7 +27,7 @@
     <section class="perf-hero">
         <div class="container">
             <h1>Performance Benchmarks</h1>
-            <p class="subtitle">Real-world metrics and cost analysis</p>
+            <p class="subtitle">Real-world metrics and cost analysis from our proof-of-concept testing.</p>
         </div>
     </section>
 
@@ -37,9 +37,15 @@
             <div class="metrics-grid">
                 <div class="metric-card highlight">
                     <div class="metric-icon"><i class="fas fa-tachometer-alt"></i></div>
-                    <div class="metric-value">97.34%</div>
-                    <div class="metric-label">Semantic Fidelity</div>
+                    <div class="metric-value">97.35%</div>
+                    <div class="metric-label">Vocab Fidelity</div>
                     <div class="metric-detail">On 300k unseen vocabulary</div>
+                </div>
+                <div class="metric-card highlight">
+                    <div class="metric-icon"><i class="fas fa-tachometer-alt"></i></div>
+                    <div class="metric-value">86.42%</div>
+                    <div class="metric-label">Corpus Fidelity</div>
+                    <div class="metric-detail">On 10k unseen sentences</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-icon"><i class="fas fa-clock"></i></div>
@@ -64,7 +70,7 @@
             <!-- Semantic Similarity Chart -->
             <div class="chart-section">
                 <h2>Semantic Similarity Comparison</h2>
-                <p>AECP preserves 2x more semantic information than text serialization</p>
+                <p>AECP preserves 2x more semantic information than text serialization.</p>
                 <div class="chart-container">
                     <canvas id="similarityChart"></canvas>
                 </div>
@@ -73,7 +79,7 @@
             <!-- Latency Chart -->
             <div class="chart-section">
                 <h2>Transfer Latency</h2>
-                <p>AECP is 150x faster than re-embedding text</p>
+                <p>AECP is 150x faster than re-embedding text.</p>
                 <div class="chart-container">
                     <canvas id="latencyChart"></canvas>
                 </div>
@@ -82,8 +88,8 @@
             <!-- Cost Analysis -->
             <div class="chart-section">
                 <h2>Cost Analysis</h2>
-                <p>Smart routing between cheap and expensive models dramatically reduces costs</p>
-                
+                <p>Smart routing between cheap and expensive models dramatically reduces costs.</p>
+
                 <div class="cost-calculator">
                     <h3>Interactive Cost Calculator</h3>
                     <div class="calculator-inputs">
@@ -131,43 +137,52 @@
 
             <!-- Scalability Chart -->
             <div class="chart-section">
-                <h2>Scalability</h2>
-                <p>Performance remains consistent with vocabulary size</p>
+                <h2>Training Progression: From Random to Trained</h2>
+                <p>Shows how AECP improves from random matrix (worse than text) to trained performance (2x better than text).</p>
                 <div class="chart-container">
                     <canvas id="scalabilityChart"></canvas>
+                </div>
+                <div class="chart-note" style="margin-top: 1rem; padding: 1rem; background: var(--bg-light); border-radius: 8px; font-size: 0.875rem;">
+                    <strong>Key Insights:</strong>
+                    <ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
+                        <li>Random matrix (0.21%) performs much worse than text transfer (43%), showing training is essential</li>
+                        <li>With just 1k vocabulary, AECP reaches 99%+ similarity, far exceeding text baseline</li>
+                        <li>Performance remains consistently high (97%+) even with 300k vocabulary</li>
+                        <li>Chart starts from 0 vocabulary size to show the full progression</li>
+                    </ul>
                 </div>
             </div>
 
             <!-- Model Compatibility -->
             <div class="chart-section">
                 <h2>Model Compatibility Matrix</h2>
-                <p>Tested transfer quality between popular embedding models</p>
-                
+                <p>Tested transfer quality between popular embedding models.</p>
+
                 <div class="compatibility-grid">
                     <div class="compat-label">From / To</div>
                     <div class="compat-label">OpenAI Small</div>
                     <div class="compat-label">OpenAI Large</div>
                     <div class="compat-label">Voyage</div>
                     <div class="compat-label">Cohere</div>
-                    
+
                     <div class="compat-label">OpenAI Small</div>
                     <div class="compat-cell excellent">100%</div>
                     <div class="compat-cell excellent">96%</div>
                     <div class="compat-cell excellent">95%</div>
                     <div class="compat-cell good">92%</div>
-                    
+
                     <div class="compat-label">OpenAI Large</div>
                     <div class="compat-cell excellent">96%</div>
                     <div class="compat-cell excellent">100%</div>
                     <div class="compat-cell excellent">97%</div>
                     <div class="compat-cell excellent">94%</div>
-                    
+
                     <div class="compat-label">Voyage</div>
                     <div class="compat-cell excellent">95%</div>
                     <div class="compat-cell excellent">97%</div>
                     <div class="compat-cell excellent">100%</div>
                     <div class="compat-cell excellent">93%</div>
-                    
+
                     <div class="compat-label">Cohere</div>
                     <div class="compat-cell good">92%</div>
                     <div class="compat-cell excellent">94%</div>
@@ -175,16 +190,16 @@
                     <div class="compat-cell excellent">100%</div>
                 </div>
                 <div class="legend">
-                    <span class="legend-item"><span class="color-box excellent"></span> 93-100% Excellent</span>
-                    <span class="legend-item"><span class="color-box good"></span> 85-93% Good</span>
-                    <span class="legend-item"><span class="color-box fair"></span> 75-85% Fair</span>
+                    <span class="legend-item"><span class="color-box excellent"></span> 93–100% Excellent</span>
+                    <span class="legend-item"><span class="color-box good"></span> 85–93% Good</span>
+                    <span class="legend-item"><span class="color-box fair"></span> 75–85% Fair</span>
                 </div>
             </div>
 
             <!-- Real-World Use Cases -->
             <div class="use-cases">
                 <h2>Real-World Performance</h2>
-                
+
                 <div class="use-case-card">
                     <h3><i class="fas fa-shield-alt"></i> Privacy-Preserving Healthcare</h3>
                     <div class="use-case-stats">

@@ -165,20 +165,28 @@ class ProtocolHandler:
         print(f"\nComputing transfer matrices...")
         W_AB, W_BA = compute_transfer_matrices(emb_A_train, emb_B_train)
         
-        # Training quality
+        # Training quality - use round-trip for consistency with validation
+        # NOTE: We use round-trip (A→B→A) for training similarity to match validation,
+        # which ensures fair comparison. Forward transfer (A→B) is typically slightly lower
+        # because it doesn't benefit from returning to the original space.
+        print(f"\nEvaluating training quality (round-trip on training vocabulary)...")
         train_transferred = emb_A_train @ W_AB
-        train_sims = [cosine_similarity(train_transferred[i], emb_B_train[i]) 
-                     for i in range(min(1000, len(train_transferred)))]  # Sample for speed
-        training_similarity = float(np.mean(train_sims))
-        
-        # Round-trip on training
         train_roundtrip = train_transferred @ W_BA
-        train_rt_sims = [cosine_similarity(emb_A_train[i], train_roundtrip[i])
-                        for i in range(min(1000, len(emb_A_train)))]
-        train_rt_similarity = float(np.mean(train_rt_sims))
         
-        print(f"  Training forward similarity: {training_similarity:.4f}")
-        print(f"  Training round-trip similarity: {train_rt_similarity:.4f}")
+        # Sample for speed (use larger sample for better accuracy)
+        # Use at least 10k samples for reliable statistics
+        sample_size = min(10000, len(emb_A_train))
+        train_rt_sims = [cosine_similarity(emb_A_train[i], train_roundtrip[i])
+                        for i in range(sample_size)]
+        training_similarity = float(np.mean(train_rt_sims))
+        
+        # Also compute forward similarity for reference (not used in comparison)
+        train_forward_sims = [cosine_similarity(train_transferred[i], emb_B_train[i]) 
+                             for i in range(min(1000, len(train_transferred)))]
+        train_forward_similarity = float(np.mean(train_forward_sims))
+        
+        print(f"  Training round-trip similarity: {training_similarity:.4f} (on {sample_size:,} samples)")
+        print(f"  Training forward similarity: {train_forward_similarity:.4f} (reference only)")
         
         # Validation on held-out data
         print(f"\nValidating on held-out vocabulary ({len(val_vocabulary):,} items)...")

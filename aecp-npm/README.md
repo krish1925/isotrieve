@@ -42,6 +42,44 @@ const transferred = await agent1.transferTo(agent2, embedding);
 const similar = await agent2.findSimilar(transferred, knowledgeBase);
 ```
 
+### ✨ Auto-Negotiation (NEW)
+
+AECP now automatically detects if both agents support the protocol and falls back to text if needed:
+
+```typescript
+import { AECP, AECPNegotiator } from '@aecp/core';
+import { OpenAIAdapter } from '@aecp/adapters-openai';
+
+// Create your agents
+const agent1 = new AECP({ embedder: new OpenAIAdapter({ apiKey: '...' }) });
+const agent2 = someOtherAgent;  // Could be AECP or not
+
+// Automatically negotiate and send message
+const result = await AECPNegotiator.sendMessage(agent1, agent2, 'Hello!');
+
+// AECP automatically:
+// ✓ Detects if both support AECP → Uses AECP with 97% fidelity
+// ✓ Detects if only one supports AECP → Falls back to text
+// ✓ Shows clear warning when falling back
+// ✓ Returns result with method info
+
+if (result.method === 'aecp') {
+  console.log(`✓ Using AECP with ${(result.expectedSimilarity! * 100).toFixed(1)}% fidelity`);
+} else {
+  console.log(`⚠️  Using text: ${result.fallbackReason}`);
+}
+```
+
+**Example Output:**
+```
+# Both support AECP:
+🤝 Both agents support AECP. Calibrating...
+✓ AECP enabled with 97.3% semantic fidelity
+
+# Only one supports AECP:
+⚠️  AECP not available: Agent 2 does not support AECP. Falling back to text communication.
+```
+
 ## Features
 
 - **2x Better Semantic Preservation** vs text round-trip

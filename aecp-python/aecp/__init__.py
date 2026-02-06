@@ -42,6 +42,11 @@ from .plugin import (
     list_adapters,
     adapter,
 )
+from .negotiation import (
+    AECPNegotiator,
+    CommunicationMethod,
+    enable_aecp_for_agent,
+)
 
 __version__ = "1.0.0"
 __author__ = "AECP Contributors"
@@ -68,4 +73,8 @@ __all__ = [
     "create_adapter",
     "list_adapters",
     "adapter",
+    # Auto-negotiation
+    "AECPNegotiator",
+    "CommunicationMethod",
+    "enable_aecp_for_agent",
 ]

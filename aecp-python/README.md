@@ -35,6 +35,43 @@ transferred = agent1.transfer_to(agent2.agent_id, "machine learning")
 print(f"Transferred embedding shape: {transferred.embedding.shape}")
 ```
 
+### ✨ Auto-Negotiation (NEW)
+
+AECP now automatically detects if both agents support the protocol and falls back to text if needed:
+
+```python
+from aecp import AECP, AECPNegotiator
+from aecp.adapters import OpenAIAdapter
+
+# Create your agents
+agent1 = AECP(OpenAIAdapter(api_key="sk-..."))
+agent2 = some_other_agent  # Could be AECP or not
+
+# Automatically negotiate and send message
+result = AECPNegotiator.send_message(agent1, agent2, "Hello!")
+
+# AECP automatically:
+# ✓ Detects if both support AECP → Uses AECP with 97% fidelity
+# ✓ Detects if only one supports AECP → Falls back to text
+# ✓ Shows clear warning when falling back
+# ✓ Returns result with method info
+
+if result['method'] == 'aecp':
+    print(f"✓ Using AECP with {result['expected_similarity']:.1%} fidelity")
+else:
+    print(f"⚠️  Using text: {result['fallback_reason']}")
+```
+
+**Example Output:**
+```
+# Both support AECP:
+🤝 Both agents support AECP. Calibrating...
+✓ AECP enabled with 97.3% semantic fidelity
+
+# Only one supports AECP:
+⚠️  AECP not available: Agent 2 does not support AECP. Falling back to text communication.
+```
+
 ## 💡 Common Use Cases
 
 ### Cost Optimization

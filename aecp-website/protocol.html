@@ -24,233 +24,291 @@
         </div>
     </nav>
 
-    <section class="protocol-hero">
+    <section class="hero">
         <div class="container">
-            <h1>How AECP Works</h1>
-            <p class="subtitle">Understanding the Agent Embedding Communication Protocol</p>
+            <h1 class="hero-title">How AECP Works</h1>
+            <p class="hero-subtitle">Understanding the Agent Embedding Communication Protocol — from handshake to semantic transfer.</p>
         </div>
     </section>
 
-    <section class="protocol-content">
+    <section class="section">
         <div class="container">
-            <!-- Phase 1 -->
-            <div class="protocol-phase">
-                <div class="phase-header">
-                    <span class="phase-number">1</span>
-                    <h2>Handshake & Capability Exchange</h2>
-                </div>
-                <div class="phase-content">
-                    <p>Agents introduce themselves and exchange embedding model information:</p>
-                    <ul>
-                        <li>Model name and version</li>
-                        <li>Embedding dimensions</li>
-                        <li>Quality thresholds</li>
-                        <li>Protocol version</li>
-                    </ul>
-                    <div class="code-example">
-                        <pre><code>{
+            <div class="content-wrapper">
+                <div class="content-main">
+                    <!-- Phase 1 -->
+                    <div class="protocol-phase">
+                        <div class="phase-header">
+                            <span class="phase-number">1</span>
+                            <h2>Handshake & Capability Exchange</h2>
+                        </div>
+                        <div class="phase-content">
+                            <p>Agents introduce themselves and exchange embedding model information:</p>
+                            <ul>
+                                <li>Model name and version</li>
+                                <li>Embedding dimensions</li>
+                                <li>Quality thresholds</li>
+                                <li>Protocol version</li>
+                            </ul>
+                            <div class="code-example">
+                                <pre><code>{
   "agent_id": "agent_a",
   "embedding_model": "text-embedding-3-small",
   "dimensions": 1536,
   "min_quality_threshold": 0.75
 }</code></pre>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Phase 2 -->
-            <div class="protocol-phase">
-                <div class="phase-header">
-                    <span class="phase-number">2</span>
-                    <h2>Calibration</h2>
-                </div>
-                <div class="phase-content">
-                    <p>Agents learn to translate between embedding spaces using shared vocabulary:</p>
-                    
-                    <div class="calibration-visual">
-                        <canvas id="calibrationChart"></canvas>
-                    </div>
-
-                    <h3>Training/Validation Split</h3>
-                    <ul>
-                        <li><strong>80% Training:</strong> Used to compute transfer matrices</li>
-                        <li><strong>10% Validation:</strong> Held-out for quality checking</li>
-                        <li><strong>10% Test:</strong> Completely unseen data</li>
-                    </ul>
-
-                    <h3>Transfer Matrix Computation</h3>
-                    <p>Uses least squares regression to find optimal linear transformation:</p>
-                    <div class="math-formula">
-                        <code>W<sub>AB</sub> = argmin ||E<sub>A</sub> · W - E<sub>B</sub>||²</code>
-                    </div>
-                    <p>Where E<sub>A</sub> and E<sub>B</sub> are embedding matrices from agents A and B.</p>
-                </div>
-            </div>
-
-            <!-- Phase 3 -->
-            <div class="protocol-phase">
-                <div class="phase-header">
-                    <span class="phase-number">3</span>
-                    <h2>Semantic Transfer</h2>
-                </div>
-                <div class="phase-content">
-                    <p>Once calibrated, embeddings can be transferred instantly:</p>
-                    
-                    <div class="transfer-demo">
-                        <div class="transfer-step">
-                            <div class="agent-box">Agent A<br><small>384d</small></div>
-                            <div class="arrow">
-                                <i class="fas fa-arrow-right"></i>
-                                <span>W<sub>AB</sub></span>
                             </div>
-                            <div class="agent-box">Agent B<br><small>768d</small></div>
                         </div>
-                        <p class="transfer-info">
-                            <i class="fas fa-bolt"></i> &lt;1ms latency
-                            <i class="fas fa-check"></i> 97% similarity
-                        </p>
                     </div>
 
-                    <h3>Quality Metrics</h3>
-                    <ul>
-                        <li><strong>Forward Similarity:</strong> How well A→B transfer preserves semantics</li>
-                        <li><strong>Round-trip Similarity:</strong> How well A→B→A preserves original</li>
-                        <li><strong>Worst-case:</strong> Minimum similarity observed</li>
-                    </ul>
-                </div>
-            </div>
+                    <!-- Phase 2 -->
+                    <div class="protocol-phase">
+                        <div class="phase-header">
+                            <span class="phase-number">2</span>
+                            <h2>Calibration</h2>
+                        </div>
+                        <div class="phase-content">
+                            <p>Agents learn to translate between embedding spaces using shared vocabulary:</p>
 
-            <!-- Phase 4 -->
-            <div class="protocol-phase">
-                <div class="phase-header">
-                    <span class="phase-number">4</span>
-                    <h2>Monitoring & Recalibration</h2>
-                </div>
-                <div class="phase-content">
-                    <p>Continuous quality monitoring ensures reliable communication:</p>
-                    
-                    <ul>
-                        <li><strong>Automatic Expiration:</strong> Matrices expire after 7 days (configurable)</li>
-                        <li><strong>Quality Threshold:</strong> Alert if similarity drops below 75%</li>
-                        <li><strong>Transfer Logging:</strong> Track all transfers for debugging</li>
-                        <li><strong>Recalibration:</strong> Re-compute matrices when needed</li>
-                    </ul>
+                            <div class="calibration-visual">
+                                <canvas id="calibrationChart"></canvas>
+                            </div>
 
-                    <div class="monitoring-chart">
-                        <canvas id="qualityChart"></canvas>
+                            <h3>Training/Validation Split</h3>
+                            <ul>
+                                <li><strong>80% Training:</strong> Used to compute transfer matrices</li>
+                                <li><strong>10% Validation:</strong> Held-out for quality checking</li>
+                                <li><strong>10% Test:</strong> Completely unseen data</li>
+                            </ul>
+
+                            <h3>Transfer Matrix Computation</h3>
+                            <p>Uses least squares regression to find optimal linear transformation:</p>
+                            <div class="math-formula">
+                                <code>W<sub>AB</sub> = argmin ||E<sub>A</sub> · W - E<sub>B</sub>||²</code>
+                            </div>
+                            <p>Where E<sub>A</sub> and E<sub>B</sub> are embedding matrices from agents A and B.</p>
+                        </div>
+                    </div>
+
+                    <!-- Phase 3 -->
+                    <div class="protocol-phase">
+                        <div class="phase-header">
+                            <span class="phase-number">3</span>
+                            <h2>Semantic Transfer</h2>
+                        </div>
+                        <div class="phase-content">
+                            <p>Once calibrated, embeddings can be transferred instantly:</p>
+
+                            <div class="transfer-demo">
+                                <div class="transfer-step">
+                                    <div class="agent-box">Agent A<br><small>384d</small></div>
+                                    <div class="arrow">
+                                        <i class="fas fa-arrow-right"></i>
+                                        <span>W<sub>AB</sub></span>
+                                    </div>
+                                    <div class="agent-box">Agent B<br><small>768d</small></div>
+                                </div>
+                                <p class="transfer-info">
+                                    <span><i class="fas fa-bolt"></i> &lt;1ms latency</span>
+                                    <span><i class="fas fa-check"></i> 97% vocab / 86% corpus</span>
+                                </p>
+                            </div>
+
+                            <h3>Quality Metrics</h3>
+                            <ul>
+                                <li><strong>Forward Similarity:</strong> How well A→B transfer preserves semantics</li>
+                                <li><strong>Round-trip Similarity:</strong> How well A→B→A preserves original</li>
+                                <li><strong>Worst-case:</strong> Minimum similarity observed</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Phase 4 -->
+                    <div class="protocol-phase">
+                        <div class="phase-header">
+                            <span class="phase-number">4</span>
+                            <h2>Monitoring & Recalibration</h2>
+                        </div>
+                        <div class="phase-content">
+                            <p>Continuous quality monitoring ensures reliable communication:</p>
+                            <ul>
+                                <li><strong>Automatic Expiration:</strong> Matrices expire after 7 days (configurable)</li>
+                                <li><strong>Quality Threshold:</strong> Alert if similarity drops below 75%</li>
+                                <li><strong>Transfer Logging:</strong> Track all transfers for debugging</li>
+                                <li><strong>Recalibration:</strong> Re-compute matrices when needed</li>
+                            </ul>
+                            <div class="monitoring-chart">
+                                <canvas id="qualityChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Technical Details -->
+                    <div class="technical-details">
+                        <h2>Technical Deep Dive</h2>
+
+                        <div class="detail-section">
+                            <h3><i class="fas fa-calculator"></i> Matrix Computation</h3>
+                            <p>AECP uses numpy's least squares solver (lstsq) which employs LAPACK's DGELSD:</p>
+                            <ul>
+                                <li>Computes SVD for numerical stability</li>
+                                <li>Handles over-determined systems (n_samples > dimensions)</li>
+                                <li>Regularization available for ill-conditioned matrices</li>
+                                <li>O(n · d²) complexity where n=samples, d=dimensions</li>
+                            </ul>
+                        </div>
+
+                        <div class="detail-section">
+                            <h3><i class="fas fa-shield-alt"></i> Quality Guarantees</h3>
+                            <p>Validated on 300,000 vocabulary items with zero overfitting:</p>
+                            <ul>
+                                <li>Training similarity (round-trip): 97.35% (on training vocabulary)</li>
+                                <li>Validation similarity (round-trip): 97.34% (on held-out vocabulary)</li>
+                                <li>Unseen vocabulary: 97.35% (completely unseen words)</li>
+                                <li>Unseen corpus: 86.42% (complex sentences)</li>
+                                <li>Worst-case: 82.43%</li>
+                            </ul>
+                            <p><strong>Key Finding:</strong> Training and validation both use round-trip evaluation for fair comparison. No degradation on unseen data (0.01% difference from validation).</p>
+                            <p><strong>Note:</strong> The gap between vocabulary (~97%) and corpus (~86%) reflects the natural complexity penalty when transferring complex multi-word sentences vs single vocabulary items.</p>
+                        </div>
+
+                        <div class="detail-section">
+                            <h3><i class="fas fa-memory"></i> Resource Requirements</h3>
+                            <table class="resource-table">
+                                <thead>
+                                    <tr>
+                                        <th>Operation</th>
+                                        <th>Time</th>
+                                        <th>Memory</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Calibration (10k vocab)</td>
+                                        <td>~30 seconds</td>
+                                        <td>~200 MB</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Calibration (300k vocab)</td>
+                                        <td>~5 minutes</td>
+                                        <td>~2 GB</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Single transfer</td>
+                                        <td>&lt;1 ms</td>
+                                        <td>&lt;1 MB</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Matrix storage</td>
+                                        <td>-</td>
+                                        <td>d₁ × d₂ × 8 bytes</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Comparison -->
+                    <div class="comparison-section">
+                        <h2>AECP vs. Text Serialization</h2>
+                        <div class="comparison-table-wrapper">
+                            <table class="comparison-table">
+                                <thead>
+                                    <tr>
+                                        <th>Metric</th>
+                                        <th>Text Serialization</th>
+                                        <th>AECP</th>
+                                        <th>Improvement</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Vocab Similarity</td>
+                                        <td>43%</td>
+                                        <td>97%</td>
+                                        <td class="positive">+126% (2.3x better)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Corpus Similarity</td>
+                                        <td>43%</td>
+                                        <td>86%</td>
+                                        <td class="positive">+100% (2x better)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Information Loss</td>
+                                        <td>95%</td>
+                                        <td>3%</td>
+                                        <td class="positive">-97% (32x better)</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Transfer Latency</td>
+                                        <td>150ms</td>
+                                        <td>&lt;1ms</td>
+                                        <td class="positive">150x faster</td>
+                                    </tr>
+                                    <tr>
+                                        <td>API Calls</td>
+                                        <td>2 per transfer</td>
+                                        <td>0 per transfer</td>
+                                        <td class="positive">100% reduction</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Cost per Transfer</td>
+                                        <td>$0.0004</td>
+                                        <td>$0.0000</td>
+                                        <td class="positive">~100% savings</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Technical Details -->
-            <div class="technical-details">
-                <h2>Technical Deep Dive</h2>
-                
-                <div class="detail-section">
-                    <h3><i class="fas fa-calculator"></i> Matrix Computation</h3>
-                    <p>AECP uses numpy's least squares solver (lstsq) which employs LAPACK's DGELSD:</p>
-                    <ul>
-                        <li>Computes SVD for numerical stability</li>
-                        <li>Handles over-determined systems (n_samples > dimensions)</li>
-                        <li>Regularization available for ill-conditioned matrices</li>
-                        <li>O(n · d²) complexity where n=samples, d=dimensions</li>
-                    </ul>
-                </div>
+                <div class="content-sidebar">
+                    <div class="code-sidebar">
+                        <div class="code-sidebar-header">
+                            <span class="code-sidebar-title">Protocol Example</span>
+                            <div class="code-lang-tabs">
+                                <button class="code-lang-tab active" data-lang="python">Python</button>
+                                <button class="code-lang-tab" data-lang="typescript">TypeScript</button>
+                            </div>
+                        </div>
+                        <div class="code-sidebar-content">
+                            <div class="code-sidebar-block active" data-lang="python">
+                                <pre><code># Handshake
+agent1 = AECP(OpenAIAdapter())
+agent2 = AECP(VoyageAdapter())
 
-                <div class="detail-section">
-                    <h3><i class="fas fa-shield-alt"></i> Quality Guarantees</h3>
-                    <p>Validated on 300,000 vocabulary items with zero overfitting:</p>
-                    <ul>
-                        <li>Training similarity: 95.86%</li>
-                        <li>Validation similarity: 97.34%</li>
-                        <li>Test (unseen) similarity: 97.35%</li>
-                        <li>Worst-case: 82.43%</li>
-                    </ul>
-                    <p><strong>Key Finding:</strong> No degradation on unseen data (0.01% difference from validation)</p>
-                </div>
+# Calibrate
+result = agent1.calibrate_with(agent2)
+print(f"Quality: {result.validation_similarity:.2%}")
 
-                <div class="detail-section">
-                    <h3><i class="fas fa-memory"></i> Resource Requirements</h3>
-                    <table class="resource-table">
-                        <thead>
-                            <tr>
-                                <th>Operation</th>
-                                <th>Time</th>
-                                <th>Memory</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Calibration (10k vocab)</td>
-                                <td>~30 seconds</td>
-                                <td>~200 MB</td>
-                            </tr>
-                            <tr>
-                                <td>Calibration (300k vocab)</td>
-                                <td>~5 minutes</td>
-                                <td>~2 GB</td>
-                            </tr>
-                            <tr>
-                                <td>Single transfer</td>
-                                <td>&lt;1 ms</td>
-                                <td>&lt;1 MB</td>
-                            </tr>
-                            <tr>
-                                <td>Matrix storage</td>
-                                <td>-</td>
-                                <td>d₁ × d₂ × 8 bytes</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+# Transfer
+transfer = agent1.transfer_to(
+    agent2.agent_id,
+    "machine learning"
+)</code></pre>
+                            </div>
+                            <div class="code-sidebar-block" data-lang="typescript">
+                                <pre><code>// Handshake
+const agent1 = new AECP({
+  embedder: new OpenAIAdapter()
+});
+const agent2 = new AECP({
+  embedder: new VoyageAdapter()
+});
 
-            <!-- Comparison -->
-            <div class="comparison-section">
-                <h2>AECP vs. Text Serialization</h2>
-                <div class="comparison-table-wrapper">
-                    <table class="comparison-table">
-                        <thead>
-                            <tr>
-                                <th>Metric</th>
-                                <th>Text Serialization</th>
-                                <th>AECP</th>
-                                <th>Improvement</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Semantic Similarity</td>
-                                <td>43%</td>
-                                <td>86%</td>
-                                <td class="positive">+100% (2x better)</td>
-                            </tr>
-                            <tr>
-                                <td>Information Loss</td>
-                                <td>95%</td>
-                                <td>3%</td>
-                                <td class="positive">-97% (32x better)</td>
-                            </tr>
-                            <tr>
-                                <td>Transfer Latency</td>
-                                <td>150ms</td>
-                                <td>&lt;1ms</td>
-                                <td class="positive">150x faster</td>
-                            </tr>
-                            <tr>
-                                <td>API Calls</td>
-                                <td>2 per transfer</td>
-                                <td>0 per transfer</td>
-                                <td class="positive">100% reduction</td>
-                            </tr>
-                            <tr>
-                                <td>Cost per Transfer</td>
-                                <td>$0.0004</td>
-                                <td>$0.0000</td>
-                                <td class="positive">~100% savings</td>
-                            </tr>
-                        </tbody>
-                    </table>
+// Calibrate
+const result = await agent1.calibrateWith(agent2);
+console.log(`Quality: ${result.qualityMetrics.meanSimilarity}`);
+
+// Transfer
+const transfer = await agent1.transferTo(
+  agent2.agentId,
+  "machine learning"
+);</code></pre>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -263,6 +321,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="js/main.js"></script>
     <script src="js/protocol-charts.js"></script>
 </body>
 </html>

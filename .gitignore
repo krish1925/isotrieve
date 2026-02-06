@@ -22,6 +22,9 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+*.pyc
+*.pyo
+*.pyd
 
 # Project specific
 localcodebaseinfo
@@ -40,3 +43,24 @@ results/
 .idea/
 *.swp
 *.swo
+.cursor/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.pnpm-debug.log*
+
+# Build outputs
+*.log
+*.tsbuildinfo
+*.map
+dist/
+build/
+out/
+
+# Cleanup folder
+aecp-website-vue-cleanup/
+cleanup/

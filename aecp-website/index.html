@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="AECP reduces information loss in agent-to-agent communication from 57% to 14%. 86% information preserved vs 43% with text transfers.">
     <title>AECP - Agent Embedding Communication Protocol</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="navbar">
         <div class="container">
             <div class="nav-brand">
@@ -17,146 +15,130 @@
                 <span>AECP</span>
             </div>
             <ul class="nav-links">
-                <li><a href="#home">Home</a></li>
-                <li><a href="#protocol">Protocol</a></li>
-                <li><a href="#performance">Performance</a></li>
-                <li><a href="#playground">Playground</a></li>
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="protocol.html">Protocol</a></li>
+                <li><a href="performance.html">Performance</a></li>
+                <li><a href="playground.html">Playground</a></li>
                 <li><a href="docs.html">Docs</a></li>
-                <li><a href="https://github.com/yourusername/aecp" target="_blank">
-                    <i class="fab fa-github"></i>
-                </a></li>
             </ul>
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section id="home" class="hero">
+    <section class="hero">
         <div class="container">
-            <div class="hero-content">
-                <h1 class="hero-title">Agent Embedding Communication Protocol</h1>
-                <p class="hero-subtitle">Reduce information loss in agent-to-agent communication from 57% to 14%</p>
-                
-                <div class="hero-stats">
-                    <div class="stat-card">
-                        <div class="stat-value">86%</div>
-                        <div class="stat-label">Meaning Preserved</div>
-                        <div class="stat-detail">vs 43% with text transfers</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">73%</div>
-                        <div class="stat-label">On Unseen Data</div>
-                        <div class="stat-detail">Still 70% better than current</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">100%</div>
-                        <div class="stat-label">More Efficient</div>
-                        <div class="stat-detail">No re-embedding needed</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">83%</div>
-                        <div class="stat-label">Cost Savings</div>
-                        <div class="stat-detail">Smart model routing</div>
-                    </div>
+            <h1 class="hero-title">Agent Embedding Communication Protocol</h1>
+            <p class="hero-subtitle">
+                Reduce information loss in agent-to-agent communication from 57% to 14%
+            </p>
+
+            <div class="hero-stats">
+                <div class="stat-card">
+                    <div class="stat-value">97%</div>
+                    <div class="stat-label">Vocab Fidelity</div>
+                    <div class="stat-detail">On 300k unseen vocabulary</div>
                 </div>
-
-                <div class="hero-actions">
-                    <a href="#playground" class="btn btn-primary">Try Playground</a>
-                    <a href="docs.html" class="btn btn-secondary">Read Docs</a>
+                <div class="stat-card">
+                    <div class="stat-value">86%</div>
+                    <div class="stat-label">Corpus Fidelity</div>
+                    <div class="stat-detail">On 10k unseen sentences</div>
                 </div>
-
-                <div class="code-example">
-                    <div class="code-tabs">
-                        <button class="code-tab active" data-lang="python">Python</button>
-                        <button class="code-tab" data-lang="typescript">TypeScript</button>
-                    </div>
-                    <pre class="code-block active" data-lang="python"><code>from aecp import AECP
-from aecp.adapters import OpenAIAdapter, VoyageAdapter
-
-# Two agents using different models
-agent1 = AECP(OpenAIAdapter(api_key="sk-..."))
-agent2 = AECP(VoyageAdapter(api_key="pa-..."))
-
-# Set them up to understand each other (one time)
-agent1.calibrate_with(agent2)
-
-# Now they can share meaning directly!
-transfer = agent1.transfer_to(agent2.agent_id, "machine learning")
-# 86% of meaning preserved vs 43% with text ✨</code></pre>
-                    <pre class="code-block" data-lang="typescript"><code>import { AECP } from '@aecp/core';
-import { OpenAIAdapter } from '@aecp/adapters-openai';
-import { VoyageAdapter } from '@aecp/adapters-voyage';
-
-// Two agents using different models
-const agent1 = new AECP({ embedder: new OpenAIAdapter({ apiKey: "sk-..." }) });
-const agent2 = new AECP({ embedder: new VoyageAdapter({ apiKey: "pa-..." }) });
-
-// Set them up to understand each other (one time)
-await agent1.calibrateWith(agent2);
-
-// Now they can share meaning directly!
-const transfer = await agent1.transferTo(agent2.agentId, "machine learning");
-// 86% of meaning preserved vs 43% with text ✨</code></pre>
+                <div class="stat-card">
+                    <div class="stat-value">&lt;1ms</div>
+                    <div class="stat-label">Transfer Latency</div>
+                    <div class="stat-detail">No re-embedding needed</div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-value">2x</div>
+                    <div class="stat-label">Better Quality</div>
+                    <div class="stat-detail">Semantic preservation</div>
+                </div>
+            </div>
+
+            <div class="hero-actions">
+                <a href="playground.html" class="btn btn-primary">Try Playground</a>
+                <a href="docs.html" class="btn btn-secondary">Read Docs</a>
             </div>
         </div>
     </section>
 
-    <!-- Problem Section -->
     <section class="problem-section">
         <div class="container">
             <h2 class="section-title">The Problem</h2>
             <div class="problem-grid">
                 <div class="problem-card">
-                    <i class="fas fa-comments fa-3x"></i>
                     <h3>Information Loss in Agent Communication</h3>
-                    <p>When AI agents communicate today (like in MCP or other agent frameworks), they use text-to-text transfers. Approximately <strong>57% of information is lost</strong> in this process.</p>
+                    <p>
+                        When AI agents communicate today (like in MCP or other agent frameworks),
+                        they use text-to-text transfers. Approximately <strong>57% of information is lost</strong>
+                        in this process.
+                    </p>
                     <p class="problem-note">Only 43% of information survives the round trip</p>
                 </div>
                 <div class="problem-card">
-                    <i class="fas fa-exchange-alt fa-3x"></i>
                     <h3>Incompatible Embedding Spaces</h3>
-                    <p>Different embedding models create vectors in different spaces. An OpenAI embedding can't be directly used with a Voyage model - they need to re-embed from text each time.</p>
+                    <p>
+                        Different embedding models create vectors in different spaces. An OpenAI embedding
+                        can't be directly used with a Voyage model - they need to re-embed from text each time.
+                    </p>
                     <p class="problem-note">Requires re-processing on every transfer</p>
                 </div>
                 <div class="problem-card">
-                    <i class="fas fa-chart-line fa-3x"></i>
                     <h3>Performance Impact</h3>
-                    <p>Re-embedding text adds latency (150ms+) and cost. Agents waste the understanding they already computed.</p>
+                    <p>
+                        Re-embedding text adds latency (150ms+) and cost. Agents waste the understanding
+                        they already computed.
+                    </p>
                     <p class="problem-note">150ms+ delay per conversation</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Solution Section -->
     <section class="solution-section">
         <div class="container">
             <h2 class="section-title">Our Solution</h2>
             <div class="solution-content">
                 <div class="solution-text">
                     <h3>Direct Embedding Transfer</h3>
-                    <p>AECP enables agents to transfer embeddings directly between different models, without converting back to text. This preserves significantly more information.</p>
-                    
-                    <ul class="feature-list">
-                        <li><i class="fas fa-check"></i> <strong>86% information preserved</strong> in round-trip tests (vs 43% with text transfers)</li>
-                        <li><i class="fas fa-check"></i> <strong>73% preserved</strong> on unseen validation data (vs 43% baseline)</li>
-                        <li><i class="fas fa-check"></i> <strong>&lt;1ms transfer latency</strong> (vs 150ms+ with re-embedding)</li>
-                        <li><i class="fas fa-check"></i> Works with OpenAI, Voyage, Cohere, HuggingFace, and other embedding models</li>
-                        <li><i class="fas fa-check"></i> One-time calibration, then instant transfers</li>
-                    </ul>
+                    <p>
+                        AECP enables agents to transfer embeddings directly between different models,
+                        without converting back to text. This preserves significantly more information.
+                    </p>
 
-                    <p>This represents approximately a 100% improvement in information preservation (43% → 86%). Even on completely unseen data, 73% is preserved - still 70% better than the 43% baseline.</p>
+                    <ul class="feature-list">
+                        <li>
+                            <i class="fas fa-check"></i>
+                            <strong>97% fidelity</strong> on unseen vocabulary (vs 43% with text transfers)
+                        </li>
+                        <li>
+                            <i class="fas fa-check"></i>
+                            <strong>86% fidelity</strong> on unseen corpus sentences (vs 43% baseline)
+                        </li>
+                        <li>
+                            <i class="fas fa-check"></i>
+                            <strong>&lt;1ms transfer latency</strong> (vs 150ms+ with re-embedding)
+                        </li>
+                        <li>
+                            <i class="fas fa-check"></i>
+                            Works with OpenAI, Voyage, Cohere, HuggingFace, and other embedding models
+                        </li>
+                        <li>
+                            <i class="fas fa-check"></i>
+                            One-time calibration, then instant transfers
+                        </li>
+                    </ul>
+                    <p>
+                        This represents approximately a 2x improvement in information preservation
+                        (43% → 86% on sentences, 97% on vocabulary). Tested on 300k unseen vocabulary
+                        and 10k unseen sentences with zero training data contamination.
+                    </p>
 
                     <a href="protocol.html" class="btn btn-primary">See How It Works</a>
-                </div>
-                <div class="solution-visual">
-                    <canvas id="transferVisualization"></canvas>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Quick Links -->
     <section class="quick-links">
         <div class="container">
             <div class="links-grid">
@@ -168,7 +150,7 @@ const transfer = await agent1.transferTo(agent2.agentId, "machine learning");
                 <a href="performance.html" class="link-card">
                     <i class="fas fa-chart-bar"></i>
                     <h3>Performance</h3>
-                    <p>Benchmarks & metrics</p>
+                    <p>Benchmarks &amp; metrics</p>
                 </a>
                 <a href="playground.html" class="link-card">
                     <i class="fas fa-play"></i>
@@ -184,39 +166,10 @@ const transfer = await agent1.transferTo(agent2.agentId, "machine learning");
         </div>
     </section>
 
-    <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>AECP</h4>
-                    <p>Agent Embedding Communication Protocol</p>
-                    <p>MIT License © 2026</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Resources</h4>
-                    <ul>
-                        <li><a href="docs.html">Documentation</a></li>
-                        <li><a href="#playground">Playground</a></li>
-                        <li><a href="https://github.com/yourusername/aecp">GitHub</a></li>
-                        <li><a href="https://pypi.org/project/aecp">PyPI</a></li>
-                        <li><a href="https://npmjs.com/package/@aecp/core">npm</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Community</h4>
-                    <ul>
-                        <li><a href="https://github.com/yourusername/aecp/issues">Issues</a></li>
-                        <li><a href="https://github.com/yourusername/aecp/discussions">Discussions</a></li>
-                        <li><a href="https://twitter.com/aecp">Twitter</a></li>
-                    </ul>
-                </div>
-            </div>
+            <p>&copy; 2026 AECP. MIT License.</p>
         </div>
     </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="js/main.js"></script>
-    <script src="js/visualization.js"></script>
 </body>
 </html>
