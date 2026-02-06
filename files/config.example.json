@@ -1,0 +1,23 @@
+# Example Configuration for Autonomous Coding Agent
+# Copy this to config.json and fill in your API key
+
+{
+  "ai_backend": "gemini",
+  "api_key": "YOUR_API_KEY_HERE",
+  "model": "gemini-1.5-flash",
+  "run_interval_seconds": 60,
+  "workspace_dir": "./workspace",
+  "system_prompt_file": "./system_prompt.txt",
+  "conversation_history_file": "./conversation_history.json",
+  "max_conversation_history": 20,
+  "allowed_file_extensions": [
+    ".py", ".js", ".ts", ".json", ".yaml", ".yml", 
+    ".md", ".txt", ".html", ".css", ".sh"
+  ],
+  "blocked_paths": [
+    "/etc", "/sys", "/proc", "/.ssh"
+  ],
+  "max_file_size_kb": 500,
+  "enable_code_execution": true,
+  "safe_execution_only": true
+}

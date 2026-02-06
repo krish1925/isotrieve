@@ -1,0 +1,35 @@
+{
+    "name": "@aecp/demo-cli",
+    "version": "1.0.0",
+    "description": "Zero-friction CLI demo for AECP",
+    "main": "dist/index.js",
+    "bin": {
+        "aecp-demo": "dist/index.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "dev": "ts-node src/index.ts"
+    },
+    "keywords": [
+        "aecp",
+        "agent",
+        "demo",
+        "cli"
+    ],
+    "author": "AECP Team",
+    "license": "MIT",
+    "dependencies": {
+        "@aecp/core": "^1.0.0",
+        "commander": "^11.0.0",
+        "chalk": "^4.1.2",
+        "ora": "^5.4.1",
+        "cli-table3": "^0.6.3",
+        "@xenova/transformers": "^2.14.0"
+    },
+    "devDependencies": {
+        "typescript": "^5.0.0",
+        "ts-node": "^10.9.1",
+        "@types/node": "^20.0.0"
+    }
+}
