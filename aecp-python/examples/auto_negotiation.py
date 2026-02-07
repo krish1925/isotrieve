@@ -17,7 +17,7 @@ def main():
     print("="*70)
     
     # Scenario 1: Both agents support AECP
-    print("\n\n📋 Scenario 1: Both agents support AECP")
+    print("\n\n Scenario 1: Both agents support AECP")
     print("-" * 70)
     
     agent_a = AECP(MockAdapter(dimensions=384), agent_id="agent_a")
@@ -31,12 +31,12 @@ def main():
         # Send a message using AECP
         message = "Hello, how are you?"
         result = AECPNegotiator.send_message(agent_a, agent_b, message, method=method)
-        print(f"\n📤 Sent via AECP: '{message}'")
+        print(f"\n Sent via AECP: '{message}'")
         print(f"   Transfer ID: {result['transfer_id']}")
         print(f"   Expected similarity: {result['expected_similarity']:.1%}")
     
     # Scenario 2: Only one agent supports AECP
-    print("\n\n📋 Scenario 2: Only one agent supports AECP")
+    print("\n\n Scenario 2: Only one agent supports AECP")
     print("-" * 70)
     
     agent_aecp = AECP(MockAdapter(dimensions=384), agent_id="agent_aecp")
@@ -51,10 +51,10 @@ def main():
         # Send a message using text
         message = "Hello, I don't support AECP"
         result = AECPNegotiator.send_message(agent_aecp, agent_plain, message, method=method)
-        print(f"\n📤 Sent via text: '{result['message']}'")
+        print(f"\n Sent via text: '{result['message']}'")
     
     # Scenario 3: Neither agent supports AECP
-    print("\n\n📋 Scenario 3: Neither agent supports AECP")
+    print("\n\n Scenario 3: Neither agent supports AECP")
     print("-" * 70)
     
     agent1_plain = {"name": "Agent1", "type": "non-aecp"}
@@ -67,7 +67,7 @@ def main():
         print(f"   Reason: {method.fallback_reason}")
     
     # Scenario 4: Demonstrate automatic re-negotiation
-    print("\n\n📋 Scenario 4: Automatic re-negotiation on each message")
+    print("\n\n Scenario 4: Automatic re-negotiation on each message")
     print("-" * 70)
     
     agent_x = AECP(MockAdapter(dimensions=512), agent_id="agent_x")

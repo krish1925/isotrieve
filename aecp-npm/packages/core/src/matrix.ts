@@ -93,28 +93,6 @@ export function transpose(matrix: number[][]): number[][] {
 }
 
 /**
- * Solve least squares: find X that minimizes ||AX - B||^2
- * Uses normal equations with ridge regularization: X = (A^T A + λI)^-1 A^T B
- * Ridge regularization (λ > 0) ensures numerical stability and prevents overfitting
- */
-export function leastSquares(A: number[][], B: number[][], lambda: number = 1e-6): number[][] {
-  const AT = transpose(A);
-  const ATA = matrixMultiply(AT, A);
-  const ATB = matrixMultiply(AT, B);
-
-  // Add ridge regularization: ATA + λI
-  // This ensures the matrix is positive definite and invertible
-  const n = ATA.length;
-  for (let i = 0; i < n; i++) {
-    ATA[i][i] += lambda;
-  }
-
-  // Solve (ATA + λI) * X = ATB using Gaussian elimination
-  const X = solveLinearSystem(ATA, ATB);
-  return X;
-}
-
-/**
  * Solve linear system AX = B using Gaussian elimination with partial pivoting
  */
 function solveLinearSystem(A: number[][], B: number[][]): number[][] {
@@ -167,6 +145,37 @@ function solveLinearSystem(A: number[][], B: number[][]): number[][] {
   }
 
   return X;
+}
+
+/**
+ * Solve least squares: find X that minimizes ||AX - B||^2
+ * Uses normal equations with ridge regularization: X = (A^T A + λI)^-1 A^T B
+ * Ridge regularization (λ > 0) ensures numerical stability and prevents overfitting
+ */
+export function leastSquares(A: number[][], B: number[][], lambda: number = 1e-4): number[][] {
+  const AT = transpose(A);
+  const ATA = matrixMultiply(AT, A);
+  const ATB = matrixMultiply(AT, B);
+
+  // Add ridge regularization: ATA + λI
+  const n = ATA.length;
+  const n_samples = A.length;
+  const scaledLambda = lambda * (n_samples / 1000);
+  
+  for (let i = 0; i < n; i++) {
+    ATA[i][i] += Math.max(scaledLambda, 1e-10);
+  }
+
+  // Solve (ATA + λI) * X = ATB using Gaussian elimination
+  try {
+    return solveLinearSystem(ATA, ATB);
+  } catch (e) {
+    // If singular, try with more regularization
+    if (lambda < 1.0) {
+      return leastSquares(A, B, lambda * 10);
+    }
+    throw e;
+  }
 }
 
 /**

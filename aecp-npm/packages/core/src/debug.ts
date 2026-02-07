@@ -277,10 +277,10 @@ export class DebugMonitor {
       const s = this.stats;
       const line =
         `[AECP Monitor] ⏱ ${elapsedStr} | ` +
-        `📊 ${s.totalTransfers} transfers | ` +
-        `💰 $${s.totalCost.toFixed(6)} spent | ` +
-        `💚 ${s.totalErrors} errors | ` +
-        `🔄 ${s.totalFallbacks} fallbacks`;
+        ` ${s.totalTransfers} transfers | ` +
+        ` $${s.totalCost.toFixed(6)} spent | ` +
+        ` ${s.totalErrors} errors | ` +
+        ` ${s.totalFallbacks} fallbacks`;
       console.log(line);
       return line;
     }
@@ -337,7 +337,7 @@ export class DebugMonitor {
     const timeSavedMs = Math.max(0, timeTextMs - s.totalTimeMs);
 
     const lines: string[] = [];
-    lines.push('\n📊 AECP Cost Report');
+    lines.push('\n AECP Cost Report');
     lines.push('='.repeat(50));
     lines.push(`  Total operations:        ${totalOps.toLocaleString()}`);
     lines.push(`  Total tokens used:       ${s.totalTokens.toLocaleString()}`);
@@ -359,7 +359,7 @@ export class DebugMonitor {
 
   qualityReport(): string {
     const lines: string[] = [];
-    lines.push('\n🎯 AECP Quality Report');
+    lines.push('\n AECP Quality Report');
     lines.push('='.repeat(50));
 
     if (this.pairQuality.size === 0) {
@@ -374,11 +374,11 @@ export class DebugMonitor {
         const median = sorted[Math.floor(sorted.length / 2)];
 
         let assessment: string;
-        if (mean >= 0.95) assessment = '🟢 Excellent';
-        else if (mean >= 0.90) assessment = '🟢 Very Good';
-        else if (mean >= 0.80) assessment = '🟡 Good';
-        else if (mean >= 0.70) assessment = '🟠 Acceptable';
-        else assessment = '🔴 Poor - Consider recalibration';
+        if (mean >= 0.95) assessment = ' Excellent';
+        else if (mean >= 0.90) assessment = ' Very Good';
+        else if (mean >= 0.80) assessment = ' Good';
+        else if (mean >= 0.70) assessment = ' Acceptable';
+        else assessment = ' Poor - Consider recalibration';
 
         lines.push(`\n  ${pair}:`);
         lines.push(`    Samples:    ${scores.length}`);
@@ -434,13 +434,13 @@ export class DebugMonitor {
 
   private printEvent(event: DebugEvent): void {
     const icons: Record<string, string> = {
-      handshake: '🤝', calibration_start: '🔧', calibration_end: '✅',
-      transfer: '📤', receive: '📥', embed: '🔢', embed_batch: '🔢',
-      negotiation: '🤝', fallback: '📝', error: '❌', warning: '⚠️',
-      circuit_break: '🔴', retry: '🔄', recovery: '🟢',
+      handshake: '', calibration_start: '', calibration_end: '',
+      transfer: '', receive: '', embed: '', embed_batch: '',
+      negotiation: '', fallback: '', error: '', warning: '⚠️',
+      circuit_break: '', retry: '', recovery: '',
     };
 
-    const icon = icons[event.eventType] || '📌';
+    const icon = icons[event.eventType] || '';
     const time = new Date(event.timestamp).toISOString().substr(11, 12);
     const parts = [`[${time}]`, icon, event.eventType.toUpperCase()];
 

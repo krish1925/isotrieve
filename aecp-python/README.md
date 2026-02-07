@@ -8,7 +8,7 @@ Enable AI agents with different embedding models to communicate with **97% seman
 
 When agents communicate through text serialization, they lose 95% of semantic information. AECP preserves the rich vector representations through direct embedding space transfer.
 
-## 🚀 Quick Start
+##  Quick Start
 
 ```bash
 pip install aecp
@@ -35,7 +35,7 @@ transferred = agent1.transfer_to(agent2.agent_id, "machine learning")
 print(f"Transferred embedding shape: {transferred.embedding.shape}")
 ```
 
-### ✨ Auto-Negotiation (NEW)
+###  Auto-Negotiation (NEW)
 
 AECP now automatically detects if both agents support the protocol and falls back to text if needed:
 
@@ -65,14 +65,14 @@ else:
 **Example Output:**
 ```
 # Both support AECP:
-🤝 Both agents support AECP. Calibrating...
+ Both agents support AECP. Calibrating...
 ✓ AECP enabled with 97.3% semantic fidelity
 
 # Only one supports AECP:
 ⚠️  AECP not available: Agent 2 does not support AECP. Falling back to text communication.
 ```
 
-## 💡 Common Use Cases
+##  Common Use Cases
 
 ### Cost Optimization
 
@@ -147,7 +147,7 @@ context = handoff.transfer(context, to_agent='general')
 # Context preserved across models!
 ```
 
-## 🎯 Why AECP?
+##  Why AECP?
 
 | Metric | Text Serialization | AECP | Improvement |
 |--------|-------------------|------|-------------|
@@ -157,7 +157,7 @@ context = handoff.transfer(context, to_agent='general')
 
 **Validated on 300k vocabulary items with zero overfitting.**
 
-## 📦 Installation
+##  Installation
 
 ### Basic installation
 
@@ -184,7 +184,7 @@ pip install aecp[huggingface]
 pip install aecp[all]
 ```
 
-## 🔌 Supported Providers
+##  Supported Providers
 
 | Provider | Models | Dimensions |
 |----------|--------|------------|
@@ -193,7 +193,7 @@ pip install aecp[all]
 | **Cohere** | embed-english-v3.0, embed-multilingual-v3.0 | 384-1024 |
 | **HuggingFace** | all-MiniLM-L6-v2, all-mpnet-base-v2, + any model | 384-768+ |
 
-## 📊 Benchmarks
+##  Benchmarks
 
 ```python
 from aecp import AECP
@@ -216,7 +216,7 @@ print(f"Worst-case similarity: {result.worst_case_similarity:.4f}")
 # Worst-case similarity: 0.8243
 ```
 
-## 🧪 Development
+##  Development
 
 ```bash
 # Clone repo
@@ -237,7 +237,7 @@ black aecp tests
 isort aecp tests
 ```
 
-## 📖 API Reference
+##  API Reference
 
 ### Core Classes
 
@@ -305,26 +305,26 @@ from aecp.patterns import (
 )
 ```
 
-## 🔒 Security Considerations
+##  Security Considerations
 
 - **API Keys**: Store in environment variables, not code
 - **Calibration Data**: Use non-sensitive vocabulary for calibration
 - **Privacy Bridge**: Original text never leaves local infrastructure
 - **Input Validation**: All inputs are validated and sanitized
 
-## 🤝 Contributing
+##  Contributing
 
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## 📄 License
+##  License
 
 MIT License - see [LICENSE](LICENSE)
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 Built with assistance from Claude (Anthropic). Algorithm design, validation methodology, and benchmarking validated on 300k vocabulary items.
 
-## 📞 Support
+##  Support
 
 - [GitHub Issues](https://github.com/yourusername/aecp/issues)
 - [Documentation](https://aecp.dev)

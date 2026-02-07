@@ -7,10 +7,10 @@ architectural insight: AECP only needs to control the *embedding* layer,
 while the LLM can remain coupled to any provider/framework.
 
 Scenario mapping:
-    ❌ Won't work — embedding tied to LLM:
+     Won't work — embedding tied to LLM:
         agent = Agent('openai:gpt-4')  # Can't access embeddings separately
 
-    ✅ Will work — decoupled architecture:
+     Will work — decoupled architecture:
         agent = AECPAgent(
             llm_provider='openai:gpt-4',
             embedder=OpenAIAdapter(model='text-embedding-3-small'),

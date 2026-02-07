@@ -145,7 +145,7 @@ class CostOptimizer:
                 self._calibrated = True
                 self._calibration_quality = result.validation_similarity
                 if verbose:
-                    print(f"\n💰 Cost optimizer ready! "
+                    print(f"\n Cost optimizer ready! "
                           f"Quality: {result.validation_similarity:.1%}")
                     print(f"   Cheap model:     ${self.cheap_cost_per_token * 1_000_000:.2f}/1M tokens")
                     print(f"   Expensive model: ${self.expensive_cost_per_token * 1_000_000:.2f}/1M tokens")
@@ -392,9 +392,9 @@ class CostOptimizer:
         lines = []
         lines.append("")
         lines.append("╔══════════════════════════════════════════════════╗")
-        lines.append("║          💰 Cost Optimizer Dashboard            ║")
+        lines.append("║           Cost Optimizer Dashboard            ║")
         lines.append("╠══════════════════════════════════════════════════╣")
-        lines.append(f"║  Session: {elapsed:.0f}s | Calibrated: {'✅' if self._calibrated else '❌':>16s}  ║")
+        lines.append(f"║  Session: {elapsed:.0f}s | Calibrated: {'' if self._calibrated else '':>16s}  ║")
         lines.append("╠══════════════════════════════════════════════════╣")
 
         lines.append("║  OPERATIONS                                      ║")

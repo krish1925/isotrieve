@@ -9,7 +9,7 @@ The AECP package uses a comprehensive testing strategy with two types of tests:
 
 ## Test Results
 
-**Current Status:** ✅ All 45 tests passing
+**Current Status:**  All 45 tests passing
 
 ### Unit Tests (`matrix.test.ts`, `protocol.test.ts`)
 - **Matrix Operations**: 32/32 passing
@@ -71,10 +71,10 @@ npx jest -t "calibrates two agents"
 
 Unit tests use a **MockEmbedder** that generates pseudo-random but deterministic embeddings. This provides:
 
-- ✅ Fast execution (no API calls)
-- ✅ Deterministic results
-- ✅ No API costs
-- ✅ Tests core logic and API surface
+-  Fast execution (no API calls)
+-  Deterministic results
+-  No API costs
+-  Tests core logic and API surface
 
 **Important Note**: Mock embeddings use a pseudo-random generator, which means:
 - Quality thresholds are set very low (0.15-0.3 instead of 0.75)
@@ -94,10 +94,10 @@ const result = matrixMultiply(A, B);
 ```
 
 This approach:
-- ✅ Tests pure mathematical operations
-- ✅ Uses known inputs/outputs
-- ✅ Fast and deterministic
-- ✅ No singular matrix issues
+-  Tests pure mathematical operations
+-  Uses known inputs/outputs
+-  Fast and deterministic
+-  No singular matrix issues
 
 ### Ridge Regularization
 
@@ -157,13 +157,13 @@ npm test -- integration.test.ts
 ### Integration Test Coverage
 
 Integration tests verify:
-- ✅ Real embedding model compatibility
-- ✅ High-quality transfers (0.8-0.95 similarity)
-- ✅ Cross-provider transfers
-- ✅ Domain-specific vocabulary
-- ✅ Quality monitoring
-- ✅ Batch operations
-- ✅ Performance at scale
+-  Real embedding model compatibility
+-  High-quality transfers (0.8-0.95 similarity)
+-  Cross-provider transfers
+-  Domain-specific vocabulary
+-  Quality monitoring
+-  Batch operations
+-  Performance at scale
 
 Expected quality metrics with real models:
 - **Same provider (OpenAI small → large)**: 0.90-0.95 similarity
@@ -173,18 +173,18 @@ Expected quality metrics with real models:
 ## Why This Testing Strategy?
 
 ### Traditional Approach (Not Used)
-❌ Try to make mock embeddings realistic enough for high quality thresholds
+ Try to make mock embeddings realistic enough for high quality thresholds
 - Problem: Mock embeddings will never match real embedding distributions
 - Problem: Tests become fragile and implementation-dependent
 - Problem: Doesn't actually test what matters (real model compatibility)
 
-### Our Approach (Used) ✅
-✅ **Unit tests**: Test API surface, logic flow, and mathematical correctness
+### Our Approach (Used) 
+ **Unit tests**: Test API surface, logic flow, and mathematical correctness
 - Use simple matrices and low thresholds
 - Fast, deterministic, always pass
 - Verify code structure works
 
-✅ **Integration tests**: Test real-world quality and compatibility
+ **Integration tests**: Test real-world quality and compatibility
 - Use actual embedding models
 - High quality thresholds (0.75+)
 - Verify production readiness
@@ -342,4 +342,4 @@ Common issues:
 
 **Last Updated**: 2026-02-04  
 **Test Framework**: Jest 29.5.0 with ts-jest  
-**Status**: ✅ All unit tests passing (45/45)
+**Status**:  All unit tests passing (45/45)

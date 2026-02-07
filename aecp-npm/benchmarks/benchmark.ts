@@ -128,13 +128,13 @@ async function benchmarkTextBaseline(numItems: number): Promise<BenchmarkResult>
 }
 
 async function runBenchmarks() {
-  console.log('🚀 AECP Performance Benchmarks\n');
+  console.log(' AECP Performance Benchmarks\n');
   console.log('='.repeat(80));
 
   const results: BenchmarkResult[] = [];
 
   // Calibration benchmarks
-  console.log('\n📊 Calibration Performance:');
+  console.log('\n Calibration Performance:');
   for (const size of [100, 500, 1000, 5000]) {
     const result = await benchmarkCalibration(size);
     results.push(result);
@@ -145,7 +145,7 @@ async function runBenchmarks() {
   }
 
   // Transfer benchmarks
-  console.log('\n⚡ Transfer Performance:');
+  console.log('\n Transfer Performance:');
   for (const count of [10, 100, 1000]) {
     const result = await benchmarkTransfer(count);
     results.push(result);
@@ -156,7 +156,7 @@ async function runBenchmarks() {
   }
 
   // Similarity search benchmarks
-  console.log('\n🔍 Similarity Search Performance:');
+  console.log('\n Similarity Search Performance:');
   for (const [kb, queries] of [[100, 10], [1000, 100], [10000, 100]] as [number, number][]) {
     const result = await benchmarkSimilaritySearch(kb, queries);
     results.push(result);
@@ -166,17 +166,17 @@ async function runBenchmarks() {
   }
 
   // Text baseline comparison
-  console.log('\n📝 Text Baseline Comparison:');
+  console.log('\n Text Baseline Comparison:');
   const textResult = await benchmarkTextBaseline(1000);
   results.push(textResult);
   console.log(`  ${textResult.name}`);
   console.log(`    Time: ${textResult.time.toFixed(2)}ms`);
 
   console.log('\n' + '='.repeat(80));
-  console.log('✅ Benchmarks complete!\n');
+  console.log(' Benchmarks complete!\n');
 
   // Summary table
-  console.log('📈 Summary Table:\n');
+  console.log(' Summary Table:\n');
   console.log('| Benchmark | Time (ms) | Throughput |');
   console.log('|-----------|-----------|------------|');
   for (const result of results) {
