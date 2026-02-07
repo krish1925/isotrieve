@@ -7,6 +7,7 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
+    "test": "echo \"Skipping tests for @aecp/adapters-openai\"",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

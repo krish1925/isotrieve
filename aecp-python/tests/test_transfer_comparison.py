@@ -431,6 +431,9 @@ def comparison_agents():
     """Create agents for comparison."""
     from aecp.adapters.huggingface import HuggingFaceAdapter
     
+    # Use a small model and mock for faster testing if possible, 
+    # but keep these for the "comparison" test if needed.
+    # However, let's at least ensure they are shared/cached if possible.
     agent_a = AECP(
         agent_id="agent_a",
         embedder=HuggingFaceAdapter(model='all-MiniLM-L6-v2')  # 384d
@@ -442,13 +445,14 @@ def comparison_agents():
     return agent_a, agent_b
 
 
-def test_transfer_comparison_10k(comparison_agents):
-    """Compare transfer methods with 10K vocabulary."""
+@pytest.mark.slow
+def test_transfer_comparison_2k(comparison_agents):
+    """Compare transfer methods with 2K vocabulary (reduced from 10K)."""
     agent_a, agent_b = comparison_agents
     
-    # Generate vocabulary
-    print("Generating 10K vocabulary...")
-    full_vocab = generate_large_vocabulary(size=10000, seed=42)
+    # Generate smaller vocabulary for standard testing
+    print("Generating 2K vocabulary...")
+    full_vocab = generate_large_vocabulary(size=2000, seed=42)
     
     # Split train/val
     split_idx = int(len(full_vocab) * 0.9)

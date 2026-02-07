@@ -45,12 +45,12 @@ aecp-website/
 
 ## Features
 
-- ✅ Vue 3 with Composition API
-- ✅ Vue Router for navigation
-- ✅ Consistent formatting across all components
-- ✅ Responsive design
-- ✅ Code examples with language toggle
-- ✅ Clean, simple styling
+-  Vue 3 with Composition API
+-  Vue Router for navigation
+-  Consistent formatting across all components
+-  Responsive design
+-  Code examples with language toggle
+-  Clean, simple styling
 
 ## Development
 

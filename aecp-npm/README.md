@@ -42,7 +42,7 @@ const transferred = await agent1.transferTo(agent2, embedding);
 const similar = await agent2.findSimilar(transferred, knowledgeBase);
 ```
 
-### ✨ Auto-Negotiation (NEW)
+###  Auto-Negotiation (NEW)
 
 AECP now automatically detects if both agents support the protocol and falls back to text if needed:
 
@@ -73,7 +73,7 @@ if (result.method === 'aecp') {
 **Example Output:**
 ```
 # Both support AECP:
-🤝 Both agents support AECP. Calibrating...
+ Both agents support AECP. Calibrating...
 ✓ AECP enabled with 97.3% semantic fidelity
 
 # Only one supports AECP:

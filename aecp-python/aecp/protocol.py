@@ -417,7 +417,7 @@ class ProtocolHandler:
                 print(f"\nComputing transfer matrices...")
 
             W_AB, W_BA = compute_transfer_matrices(
-                emb_A_train, emb_B_train, method="lstsq"
+                emb_A_train, emb_B_train, method="ridge"
             )
 
             # Evaluate on training data

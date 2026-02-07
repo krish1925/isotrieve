@@ -229,7 +229,7 @@ class AECPNegotiator:
         if agent1_supports and agent2_supports:
             if auto_calibrate:
                 if verbose:
-                    print("\n🤝 Both agents support AECP. Calibrating...")
+                    print("\n Both agents support AECP. Calibrating...")
 
                 try:
                     calibration_result = agent1.calibrate_with(
@@ -278,7 +278,7 @@ class AECPNegotiator:
                     )
             else:
                 if verbose:
-                    print("🤝 Both agents support AECP (auto-calibrate disabled)")
+                    print(" Both agents support AECP (auto-calibrate disabled)")
 
                 return _make_result(
                     uses_aecp=False,
@@ -302,7 +302,7 @@ class AECPNegotiator:
 
             if verbose:
                 print(
-                    f"\n📝 {reason}. "
+                    f"\n {reason}. "
                     f"Using English text communication (default)."
                 )
                 if not agent1_supports and not agent2_supports:

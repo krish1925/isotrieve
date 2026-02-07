@@ -52,7 +52,7 @@ export interface CommunicationMethod {
  *
  * // Auto-negotiate - will fall back to English
  * const method = await AECPNegotiator.negotiate(agent1, agent2);
- * // Output: "📝 Agent 2 does not support AECP. Using English text communication (default)."
+ * // Output: " Agent 2 does not support AECP. Using English text communication (default)."
  *
  * // Both with AECP
  * const agent2AECP = new AECP({ embedder: mockEmbedder2 });
@@ -162,7 +162,7 @@ export class AECPNegotiator {
     if (agent1Supports && agent2Supports) {
       if (autoCalibrate) {
         if (verbose) {
-          console.log('\n🤝 Both agents support AECP. Calibrating...');
+          console.log('\n Both agents support AECP. Calibrating...');
         }
 
         try {
@@ -215,7 +215,7 @@ export class AECPNegotiator {
         }
       } else {
         if (verbose) {
-          console.log('🤝 Both agents support AECP (auto-calibrate disabled)');
+          console.log(' Both agents support AECP (auto-calibrate disabled)');
         }
 
         return makeResult({
@@ -237,7 +237,7 @@ export class AECPNegotiator {
 
       if (verbose) {
         console.log(
-          `\n📝 ${reason}. Using English text communication (default).`,
+          `\n ${reason}. Using English text communication (default).`,
         );
         if (!agent1Supports && !agent2Supports) {
           console.log(

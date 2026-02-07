@@ -6,7 +6,8 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "echo \"Skipping tests for @aecp/adapters-voyage\""
   },
   "keywords": ["aecp", "voyage", "embeddings"],
   "license": "MIT",

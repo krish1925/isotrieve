@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const li = document.createElement('li');
                 const a = document.createElement('a');
                 a.href = `#${heading.id}`;
-                a.textContent = heading.textContent.replace('🔗', '').trim();
+                a.textContent = heading.textContent.replace('', '').trim();
                 a.className = heading.tagName === 'H4' ? 'toc-sub' : '';
                 li.appendChild(a);
                 ul.appendChild(li);

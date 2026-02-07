@@ -20,15 +20,6 @@ def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
         
     Returns:
         Cosine similarity score in range [-1, 1]
-        
-    Raises:
-        ValueError: If vectors have different sizes after flattening
-        
-    Example:
-        >>> vec1 = np.array([1, 0, 0])
-        >>> vec2 = np.array([1, 0, 0])
-        >>> cosine_similarity(vec1, vec2)
-        1.0
     """
     vec1 = np.asarray(vec1).flatten()
     vec2 = np.asarray(vec2).flatten()
@@ -45,7 +36,7 @@ def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
     norm2 = np.linalg.norm(vec2)
     
     # Handle zero vectors gracefully
-    if norm1 == 0 or norm2 == 0:
+    if norm1 < 1e-12 or norm2 < 1e-12:
         return 0.0
     
     dot_product = np.dot(vec1, vec2)
@@ -58,13 +49,13 @@ def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
 def compute_transfer_matrices(
     embeddings_source: np.ndarray,
     embeddings_target: np.ndarray,
-    method: str = "lstsq",
-    regularization: float = 1e-6
+    method: str = "ridge",
+    regularization: float = 1e-4
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute transfer matrices between two embedding spaces.
     
-    Uses least squares regression to find linear transformations that
+    Uses ridge regression to find linear transformations that
     map embeddings from one space to another.
     
     Args:
@@ -75,21 +66,10 @@ def compute_transfer_matrices(
         
     Returns:
         Tuple of (W_source_to_target, W_target_to_source)
-        
-    Raises:
-        ValueError: If input shapes are incompatible
-        RuntimeError: If matrix computation fails
-        
-    Example:
-        >>> source = np.random.randn(1000, 384)
-        >>> target = np.random.randn(1000, 768)
-        >>> W_st, W_ts = compute_transfer_matrices(source, target)
-        >>> W_st.shape
-        (384, 768)
     """
     # Input validation
-    embeddings_source = np.asarray(embeddings_source)
-    embeddings_target = np.asarray(embeddings_target)
+    embeddings_source = np.asarray(embeddings_source, dtype=np.float64)
+    embeddings_target = np.asarray(embeddings_target, dtype=np.float64)
     
     if embeddings_source.ndim != 2 or embeddings_target.ndim != 2:
         raise ValueError("Embeddings must be 2-dimensional arrays")
@@ -107,71 +87,44 @@ def compute_transfer_matrices(
     dim_source = embeddings_source.shape[1]
     dim_target = embeddings_target.shape[1]
     
-    # Check for sufficient samples
-    min_samples = max(dim_source, dim_target)
-    if n_samples < min_samples:
-        warnings.warn(
-            f"Number of samples ({n_samples}) is less than max dimension "
-            f"({min_samples}). Results may be unstable."
-        )
-    
-    # Check for degenerate inputs
-    source_rank = np.linalg.matrix_rank(embeddings_source)
-    if source_rank < min(n_samples, dim_source) * 0.9:
-        warnings.warn(
-            f"Source embeddings appear to be rank-deficient "
-            f"(rank {source_rank} vs expected {min(n_samples, dim_source)}). "
-            f"Consider using more diverse vocabulary."
-        )
-    
     if method == "lstsq":
-        # Least squares solution: finds W that minimizes ||source @ W - target||^2
         try:
-            W_source_to_target, residuals_st, rank_st, s_st = np.linalg.lstsq(
+            # Add tiny regularization to prevent blowup even in lstsq
+            W_source_to_target = np.linalg.lstsq(
                 embeddings_source, 
                 embeddings_target, 
-                rcond=None
-            )
+                rcond=1e-10
+            )[0]
             
-            W_target_to_source, residuals_ts, rank_ts, s_ts = np.linalg.lstsq(
+            W_target_to_source = np.linalg.lstsq(
                 embeddings_target,
                 embeddings_source,
-                rcond=None
-            )
+                rcond=1e-10
+            )[0]
         except np.linalg.LinAlgError as e:
             raise RuntimeError(f"Matrix computation failed: {e}")
             
     elif method == "ridge":
-        # Ridge regression with regularization for stability
         try:
             # W = (X^T X + λI)^(-1) X^T Y
+            # Compute X^T X
             XtX_source = embeddings_source.T @ embeddings_source
-            XtX_target = embeddings_target.T @ embeddings_target
+            XtY_source = embeddings_source.T @ embeddings_target
             
             # Add regularization
-            reg_source = regularization * np.eye(dim_source)
-            reg_target = regularization * np.eye(dim_target)
+            reg_source = regularization * np.eye(dim_source) * (n_samples / 1000.0)
+            W_source_to_target = np.linalg.solve(XtX_source + reg_source, XtY_source)
             
-            W_source_to_target = np.linalg.solve(
-                XtX_source + reg_source,
-                embeddings_source.T @ embeddings_target
-            )
+            XtX_target = embeddings_target.T @ embeddings_target
+            XtY_target = embeddings_target.T @ embeddings_source
+            reg_target = regularization * np.eye(dim_target) * (n_samples / 1000.0)
+            W_target_to_source = np.linalg.solve(XtX_target + reg_target, XtY_target)
             
-            W_target_to_source = np.linalg.solve(
-                XtX_target + reg_target,
-                embeddings_target.T @ embeddings_source
-            )
-        except np.linalg.LinAlgError as e:
-            raise RuntimeError(f"Ridge regression failed: {e}")
-            
+        except np.linalg.LinAlgError:
+            # Fall back to lstsq if solve fails
+            return compute_transfer_matrices(embeddings_source, embeddings_target, method="lstsq")
     else:
-        raise ValueError(f"Unknown method: {method}. Use 'lstsq' or 'ridge'")
-    
-    # Validate output shapes
-    assert W_source_to_target.shape == (dim_source, dim_target), \
-        f"Unexpected shape: {W_source_to_target.shape}"
-    assert W_target_to_source.shape == (dim_target, dim_source), \
-        f"Unexpected shape: {W_target_to_source.shape}"
+        raise ValueError(f"Unknown method: {method}")
     
     return W_source_to_target, W_target_to_source
 
@@ -180,42 +133,21 @@ def transfer_embedding(
     embedding: np.ndarray,
     transfer_matrix: np.ndarray
 ) -> np.ndarray:
-    """
-    Transfer an embedding to a different space using a transfer matrix.
-    
-    Args:
-        embedding: Input embedding [dim_source] or [batch, dim_source]
-        transfer_matrix: Transfer matrix [dim_source, dim_target]
-        
-    Returns:
-        Transformed embedding [dim_target] or [batch, dim_target]
-        
-    Raises:
-        ValueError: If shapes are incompatible
-        
-    Example:
-        >>> embedding = np.random.randn(384)
-        >>> W = np.random.randn(384, 768)
-        >>> transferred = transfer_embedding(embedding, W)
-        >>> transferred.shape
-        (768,)
-    """
-    embedding = np.asarray(embedding)
-    transfer_matrix = np.asarray(transfer_matrix)
+    """Transfer an embedding to a different space."""
+    embedding = np.asarray(embedding, dtype=np.float64)
+    transfer_matrix = np.asarray(transfer_matrix, dtype=np.float64)
     
     if transfer_matrix.ndim != 2:
         raise ValueError("Transfer matrix must be 2-dimensional")
-    
-    # Handle both single vectors and batches
+        
     is_single = embedding.ndim == 1
     if is_single:
+        if embedding.shape[0] != transfer_matrix.shape[0]:
+            raise ValueError(f"Embedding size {embedding.shape[0]} does not match matrix input dimension {transfer_matrix.shape[0]}")
         embedding = embedding.reshape(1, -1)
-    
-    if embedding.shape[-1] != transfer_matrix.shape[0]:
-        raise ValueError(
-            f"Embedding dimension ({embedding.shape[-1]}) doesn't match "
-            f"transfer matrix input dimension ({transfer_matrix.shape[0]})"
-        )
+    else:
+        if embedding.shape[1] != transfer_matrix.shape[0]:
+            raise ValueError(f"Embedding dimension {embedding.shape[1]} does not match matrix input dimension {transfer_matrix.shape[0]}")
     
     result = embedding @ transfer_matrix
     
@@ -232,123 +164,79 @@ def evaluate_transfer_quality(
     W_backward: Optional[np.ndarray] = None,
     sample_size: Optional[int] = None
 ) -> Dict[str, float]:
-    """
-    Evaluate the quality of transfer matrices.
-    
-    Args:
-        embeddings_source: Source embeddings [n_samples, dim_source]
-        embeddings_target: Target embeddings [n_samples, dim_target]
-        W_forward: Forward transfer matrix [dim_source, dim_target]
-        W_backward: Optional backward transfer matrix for round-trip
-        sample_size: Optional limit on number of samples to evaluate
-        
-    Returns:
-        Dictionary of evaluation metrics including:
-        - forward_mean_similarity: Average cosine similarity after forward transfer
-        - forward_median_similarity: Median cosine similarity
-        - forward_std_similarity: Standard deviation
-        - forward_min_similarity: Worst-case similarity
-        - forward_max_similarity: Best-case similarity
-        - roundtrip_* (if W_backward provided): Same metrics for round-trip
-        
-    Example:
-        >>> source = np.random.randn(100, 384)
-        >>> target = np.random.randn(100, 768)
-        >>> W_st, W_ts = compute_transfer_matrices(source, target)
-        >>> metrics = evaluate_transfer_quality(source, target, W_st, W_ts)
-        >>> print(f"Mean similarity: {metrics['forward_mean_similarity']:.4f}")
-    """
-    embeddings_source = np.asarray(embeddings_source)
-    embeddings_target = np.asarray(embeddings_target)
+    """Evaluate transfer matrix quality."""
+    embeddings_source = np.asarray(embeddings_source, dtype=np.float64)
+    embeddings_target = np.asarray(embeddings_target, dtype=np.float64)
     
     n_samples = len(embeddings_source)
-    
-    # Optionally subsample for efficiency
     if sample_size is not None and sample_size < n_samples:
         indices = np.random.choice(n_samples, sample_size, replace=False)
         embeddings_source = embeddings_source[indices]
         embeddings_target = embeddings_target[indices]
         n_samples = sample_size
     
-    # Forward transfer evaluation
     transferred = embeddings_source @ W_forward
     
-    forward_similarities = []
+    f_sims = []
     for i in range(n_samples):
-        sim = cosine_similarity(transferred[i], embeddings_target[i])
-        forward_similarities.append(sim)
+        f_sims.append(cosine_similarity(transferred[i], embeddings_target[i]))
     
-    forward_similarities = np.array(forward_similarities)
+    f_sims = np.array(f_sims)
     
     results = {
-        "forward_mean_similarity": float(np.mean(forward_similarities)),
-        "forward_median_similarity": float(np.median(forward_similarities)),
-        "forward_std_similarity": float(np.std(forward_similarities)),
-        "forward_min_similarity": float(np.min(forward_similarities)),
-        "forward_max_similarity": float(np.max(forward_similarities)),
-        "forward_percentile_5": float(np.percentile(forward_similarities, 5)),
-        "forward_percentile_95": float(np.percentile(forward_similarities, 95)),
+        "forward_mean_similarity": float(np.mean(f_sims)),
+        "forward_min_similarity": float(np.min(f_sims)),
     }
     
-    # Round-trip evaluation if backward matrix provided
     if W_backward is not None:
         roundtrip = transferred @ W_backward
-        
-        roundtrip_similarities = []
+        r_sims = []
         for i in range(n_samples):
-            sim = cosine_similarity(embeddings_source[i], roundtrip[i])
-            roundtrip_similarities.append(sim)
-        
-        roundtrip_similarities = np.array(roundtrip_similarities)
-        
+            r_sims.append(cosine_similarity(embeddings_source[i], roundtrip[i]))
+        r_sims = np.array(r_sims)
         results.update({
-            "roundtrip_mean_similarity": float(np.mean(roundtrip_similarities)),
-            "roundtrip_median_similarity": float(np.median(roundtrip_similarities)),
-            "roundtrip_std_similarity": float(np.std(roundtrip_similarities)),
-            "roundtrip_min_similarity": float(np.min(roundtrip_similarities)),
-            "roundtrip_max_similarity": float(np.max(roundtrip_similarities)),
-            "roundtrip_percentile_5": float(np.percentile(roundtrip_similarities, 5)),
-            "roundtrip_percentile_95": float(np.percentile(roundtrip_similarities, 95)),
+            "roundtrip_mean_similarity": float(np.mean(r_sims)),
+            "roundtrip_min_similarity": float(np.min(r_sims)),
         })
     
     return results
 
 
-def compute_embedding_stats(embeddings: np.ndarray) -> Dict[str, float]:
-    """
-    Compute statistics about a set of embeddings.
-    
-    Useful for diagnosing calibration issues.
-    
-    Args:
-        embeddings: Embedding matrix [n_samples, dim]
-        
-    Returns:
-        Dictionary with statistics about the embeddings
-    """
-    embeddings = np.asarray(embeddings)
+def compute_embedding_stats(embeddings: np.ndarray) -> Dict:
+    """Compute statistics for a set of embeddings."""
+    embeddings = np.asarray(embeddings, dtype=np.float64)
+    n_samples, dimensions = embeddings.shape
     
     norms = np.linalg.norm(embeddings, axis=1)
     
-    # Compute pairwise similarities for a sample
-    n_samples = min(100, len(embeddings))
-    sample = embeddings[:n_samples]
+    # Pairwise similarity is expensive for large sets, sample if needed
+    if n_samples > 100:
+        indices = np.random.choice(n_samples, 100, replace=False)
+        subset = embeddings[indices]
+    else:
+        subset = embeddings
+        
+    # Normalized subset for similarity
+    subset_norms = np.linalg.norm(subset, axis=1, keepdims=True)
+    subset_norms[subset_norms < 1e-12] = 1.0
+    subset_normed = subset / subset_norms
     
-    pairwise_sims = []
-    for i in range(n_samples):
-        for j in range(i + 1, n_samples):
-            pairwise_sims.append(cosine_similarity(sample[i], sample[j]))
+    sim_matrix = subset_normed @ subset_normed.T
+    # Exclude diagonal
+    mask = ~np.eye(sim_matrix.shape[0], dtype=bool)
+    mean_pairwise = float(np.mean(sim_matrix[mask])) if n_samples > 1 else 1.0
     
-    pairwise_sims = np.array(pairwise_sims) if pairwise_sims else np.array([0.0])
-    
+    # Numerical rank
+    try:
+        rank = int(np.linalg.matrix_rank(embeddings, tol=1e-10))
+    except:
+        rank = 0
+        
     return {
-        "n_samples": len(embeddings),
-        "dimensions": embeddings.shape[1],
+        "n_samples": n_samples,
+        "dimensions": dimensions,
         "mean_norm": float(np.mean(norms)),
         "std_norm": float(np.std(norms)),
-        "min_norm": float(np.min(norms)),
-        "max_norm": float(np.max(norms)),
-        "mean_pairwise_similarity": float(np.mean(pairwise_sims)),
-        "std_pairwise_similarity": float(np.std(pairwise_sims)),
-        "matrix_rank": int(np.linalg.matrix_rank(embeddings)),
+        "mean_pairwise_similarity": mean_pairwise,
+        "matrix_rank": rank,
     }

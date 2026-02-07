@@ -51,7 +51,7 @@ async function main() {
   console.log('='.repeat(70));
 
   // Scenario 1: Both agents support AECP
-  console.log('\n\n📋 Scenario 1: Both agents support AECP');
+  console.log('\n\n Scenario 1: Both agents support AECP');
   console.log('-'.repeat(70));
 
   const agentA = new AECP({
@@ -76,13 +76,13 @@ async function main() {
     // Send a message using AECP
     const message = 'Hello, how are you?';
     const result = await AECPNegotiator.sendMessage(agentA, agentB, message, method1);
-    console.log(`\n📤 Sent via AECP: '${message}'`);
+    console.log(`\n Sent via AECP: '${message}'`);
     console.log(`   Transfer ID: ${result.transferId}`);
     console.log(`   Expected similarity: ${(result.expectedSimilarity! * 100).toFixed(1)}%`);
   }
 
   // Scenario 2: Only one agent supports AECP
-  console.log('\n\n📋 Scenario 2: Only one agent supports AECP');
+  console.log('\n\n Scenario 2: Only one agent supports AECP');
   console.log('-'.repeat(70));
 
   const agentAECP = new AECP({
@@ -103,11 +103,11 @@ async function main() {
     // Send a message using text
     const message = "Hello, I don't support AECP";
     const result = await AECPNegotiator.sendMessage(agentAECP, agentPlain, message, method2);
-    console.log(`\n📤 Sent via text: '${result.message}'`);
+    console.log(`\n Sent via text: '${result.message}'`);
   }
 
   // Scenario 3: Neither agent supports AECP
-  console.log('\n\n📋 Scenario 3: Neither agent supports AECP');
+  console.log('\n\n Scenario 3: Neither agent supports AECP');
   console.log('-'.repeat(70));
 
   const agent1Plain = { name: 'Agent1', type: 'non-aecp' };
@@ -123,7 +123,7 @@ async function main() {
   }
 
   // Scenario 4: Demonstrate automatic re-negotiation
-  console.log('\n\n📋 Scenario 4: Automatic re-negotiation on each message');
+  console.log('\n\n Scenario 4: Automatic re-negotiation on each message');
   console.log('-'.repeat(70));
 
   const agentX = new AECP({

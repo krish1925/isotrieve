@@ -400,10 +400,10 @@ class DebugMonitor:
             line = (
                 f"[AECP Monitor] "
                 f"⏱ {elapsed_str} | "
-                f"📊 {s['total_transfers']} transfers | "
-                f"💰 ${s['total_cost']:.6f} spent | "
-                f"💚 {s['total_errors']} errors | "
-                f"🔄 {s['total_fallbacks']} fallbacks"
+                f" {s['total_transfers']} transfers | "
+                f" ${s['total_cost']:.6f} spent | "
+                f" {s['total_errors']} errors | "
+                f" {s['total_fallbacks']} fallbacks"
             )
             print(line)
             return line
@@ -509,7 +509,7 @@ class DebugMonitor:
             Formatted cost report string
         """
         lines = []
-        lines.append("\n📊 AECP Cost Report")
+        lines.append("\n AECP Cost Report")
         lines.append("=" * 50)
 
         s = self._stats
@@ -562,7 +562,7 @@ class DebugMonitor:
             Formatted quality report string
         """
         lines = []
-        lines.append("\n🎯 AECP Quality Report")
+        lines.append("\n AECP Quality Report")
         lines.append("=" * 50)
 
         if not self._pair_quality:
@@ -587,15 +587,15 @@ class DebugMonitor:
                     # Quality assessment
                     mean_q = float(np.mean(arr))
                     if mean_q >= 0.95:
-                        assessment = "🟢 Excellent"
+                        assessment = " Excellent"
                     elif mean_q >= 0.90:
-                        assessment = "🟢 Very Good"
+                        assessment = " Very Good"
                     elif mean_q >= 0.80:
-                        assessment = "🟡 Good"
+                        assessment = " Good"
                     elif mean_q >= 0.70:
-                        assessment = "🟠 Acceptable"
+                        assessment = " Acceptable"
                     else:
-                        assessment = "🔴 Poor - Consider recalibration"
+                        assessment = " Poor - Consider recalibration"
                     lines.append(f"    Assessment: {assessment}")
 
         output = "\n".join(lines)
@@ -697,23 +697,23 @@ class DebugMonitor:
     def _print_event(self, event: DebugEvent) -> None:
         """Print an event to console with formatting."""
         icons = {
-            EventType.HANDSHAKE: "🤝",
-            EventType.CALIBRATION_START: "🔧",
-            EventType.CALIBRATION_END: "✅",
-            EventType.TRANSFER: "📤",
-            EventType.RECEIVE: "📥",
-            EventType.EMBED: "🔢",
-            EventType.EMBED_BATCH: "🔢",
-            EventType.NEGOTIATION: "🤝",
-            EventType.FALLBACK: "📝",
-            EventType.ERROR: "❌",
+            EventType.HANDSHAKE: "",
+            EventType.CALIBRATION_START: "",
+            EventType.CALIBRATION_END: "",
+            EventType.TRANSFER: "",
+            EventType.RECEIVE: "",
+            EventType.EMBED: "",
+            EventType.EMBED_BATCH: "",
+            EventType.NEGOTIATION: "",
+            EventType.FALLBACK: "",
+            EventType.ERROR: "",
             EventType.WARNING: "⚠️",
-            EventType.CIRCUIT_BREAK: "🔴",
-            EventType.RETRY: "🔄",
-            EventType.RECOVERY: "🟢",
+            EventType.CIRCUIT_BREAK: "",
+            EventType.RETRY: "",
+            EventType.RECOVERY: "",
         }
 
-        icon = icons.get(event.event_type, "📌")
+        icon = icons.get(event.event_type, "")
         parts = [f"[{event.time_str}]", icon, event.event_type.value.upper()]
 
         if event.agent_id:
