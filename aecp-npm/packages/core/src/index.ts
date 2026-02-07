@@ -27,6 +27,7 @@ export { DEFAULT_VOCABULARY, generateExtendedVocabulary } from './vocabulary';
 
 // Plugin system
 export * from './plugin';
+export * from './communication';
 
 // Auto-negotiation
 export { AECPNegotiator, enableAECPForAgent } from './negotiation';

@@ -44,6 +44,7 @@ import numpy as np
 from ..protocol import AECP, CalibrationResult
 from ..types import EmbeddingProvider, SemanticTransfer
 from ..matrix import cosine_similarity
+from ..communication import AGENT_COMPRESSION_PROTOCOL
 
 logger = logging.getLogger("aecp.integrations.base")
 
@@ -73,6 +74,7 @@ class AECPAgent:
         embedder: EmbeddingProvider,
         llm_provider: Optional[str] = None,
         system_prompt: str = "",
+        use_compression: bool = False,
         agent_id: Optional[str] = None,
         **aecp_kwargs: Any,
     ):
@@ -84,11 +86,16 @@ class AECPAgent:
             llm_provider: LLM provider identifier (e.g. ``"openai:gpt-4"``).
                           Stored for reference; not used by this base class.
             system_prompt: System prompt for the LLM.
+            use_compression: Whether to use the beta compression protocol.
             agent_id: Unique agent identifier (auto-generated if omitted).
             **aecp_kwargs: Extra keyword arguments forwarded to ``AECP()``.
         """
         self.llm_provider = llm_provider
         self.system_prompt = system_prompt
+
+        if use_compression:
+            logger.warning("Using beta feature: Agent Compression Protocol. Output will be highly compressed.")
+            self.system_prompt += "\n\n" + AGENT_COMPRESSION_PROTOCOL
 
         # The AECP protocol handler owns the embedder
         self.aecp = AECP(embedder, agent_id=agent_id, **aecp_kwargs)

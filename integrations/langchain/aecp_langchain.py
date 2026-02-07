@@ -38,3 +38,14 @@ class AecpEmbeddings(Embeddings):
 
     def embed_query(self, text: str) -> List[float]:
         return self.embed_documents([text])[0]
+
+
+def get_compression_prompt() -> str:
+    """
+    Get the Agent Compression Protocol system prompt.
+    
+    Returns:
+        The prompt string to insert into your LangChain SystemMessage.
+    """
+    from aecp import AGENT_COMPRESSION_PROTOCOL
+    return AGENT_COMPRESSION_PROTOCOL

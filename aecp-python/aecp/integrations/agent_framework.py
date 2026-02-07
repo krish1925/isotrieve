@@ -84,6 +84,7 @@ class AECPEnabledAgent(AECPAgent):
         embedder: EmbeddingProvider,
         llm_provider: Optional[str] = None,
         system_prompt: str = "",
+        use_compression: bool = False,
         agent_id: Optional[str] = None,
         **aecp_kwargs: Any,
     ):
@@ -101,6 +102,7 @@ class AECPEnabledAgent(AECPAgent):
             embedder=embedder,
             llm_provider=llm_provider,
             system_prompt=system_prompt,
+            use_compression=use_compression,
             agent_id=agent_id,
             **aecp_kwargs,
         )
