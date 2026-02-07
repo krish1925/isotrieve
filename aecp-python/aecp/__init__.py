@@ -111,6 +111,8 @@ from .integrations.base import AECPAgent
 from .integrations.agent_framework import AECPEnabledAgent
 from .integrations.mcp import AECPMCPServer, AECPMCPClient
 
+from .communication import AGENT_COMPRESSION_PROTOCOL
+
 __version__ = "1.0.0"
 __author__ = "AECP Contributors"
 __license__ = "MIT"
@@ -170,4 +172,6 @@ __all__ = [
     "AECPEnabledAgent",
     "AECPMCPServer",
     "AECPMCPClient",
+    # Communication
+    "AGENT_COMPRESSION_PROTOCOL",
 ]
