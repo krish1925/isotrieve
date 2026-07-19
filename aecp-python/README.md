@@ -1,330 +1,126 @@
-# AECP - Agent Embedding Communication Protocol
+# aecp
 
-[![PyPI version](https://badge.fury.io/py/aecp.svg)](https://badge.fury.io/py/aecp)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+Migrate a vector database to a new embedding model without re-embedding the corpus. Fits a linear map from ~2K calibration texts; 87-91% retrieval retention measured on BEIR.
 
-Enable AI agents with different embedding models to communicate with **97% semantic fidelity preservation**.
-
-When agents communicate through text serialization, they lose 95% of semantic information. AECP preserves the rich vector representations through direct embedding space transfer.
-
-##  Quick Start
+## Install
 
 ```bash
 pip install aecp
 ```
 
-### Basic Usage
+Python >= 3.10. Core deps: numpy, scikit-learn, typer, rich.
+
+Optional: `pip install aecp[sentence-transformers]` for local models, `pip install aecp[qdrant]` for Qdrant store.
+
+## Quickstart
 
 ```python
-from aecp import AECP
-from aecp.adapters import OpenAIAdapter, VoyageAdapter
+import numpy as np
+from aecp import RidgeMapping
 
-# Initialize agents with different models
-agent1 = AECP(OpenAIAdapter(api_key="sk-..."))
-agent2 = AECP(VoyageAdapter(api_key="pa-..."))
+# Paired calibration embeddings (K texts embedded with both models)
+rng = np.random.default_rng(0)
+K, d_src, d_tgt = 500, 32, 48
+X = rng.normal(size=(K, d_src))
+Y = X @ rng.normal(size=(d_src, d_tgt))
 
-# One-time calibration
-agent1.calibrate_with(agent2)
+m = RidgeMapping(alpha="auto", seed=0)
+m.fit(X, Y)
+m.save("mapping.aecp")
 
-# Transfer embeddings between agents
-embedding = agent1.embed("machine learning")
-transferred = agent1.transfer_to(agent2.agent_id, "machine learning")
-
-# Agent 2 can now use the embedding in its native space
-print(f"Transferred embedding shape: {transferred.embedding.shape}")
+Z = m.transform(X[:10])  # (10, d_tgt), L2-normalized
 ```
 
-###  Auto-Negotiation (NEW)
-
-AECP now automatically detects if both agents support the protocol and falls back to text if needed:
-
-```python
-from aecp import AECP, AECPNegotiator
-from aecp.adapters import OpenAIAdapter
-
-# Create your agents
-agent1 = AECP(OpenAIAdapter(api_key="sk-..."))
-agent2 = some_other_agent  # Could be AECP or not
-
-# Automatically negotiate and send message
-result = AECPNegotiator.send_message(agent1, agent2, "Hello!")
-
-# AECP automatically:
-# ✓ Detects if both support AECP → Uses AECP with 97% fidelity
-# ✓ Detects if only one supports AECP → Falls back to text
-# ✓ Shows clear warning when falling back
-# ✓ Returns result with method info
-
-if result['method'] == 'aecp':
-    print(f"✓ Using AECP with {result['expected_similarity']:.1%} fidelity")
-else:
-    print(f"⚠️  Using text: {result['fallback_reason']}")
-```
-
-**Example Output:**
-```
-# Both support AECP:
- Both agents support AECP. Calibrating...
-✓ AECP enabled with 97.3% semantic fidelity
-
-# Only one supports AECP:
-⚠️  AECP not available: Agent 2 does not support AECP. Falling back to text communication.
-```
-
-##  Common Use Cases
-
-### Cost Optimization
-
-```python
-from aecp.patterns import CostOptimizer
-from aecp.adapters import OpenAIAdapter, VoyageAdapter
-
-# Use cheap model for most work, expensive only when needed
-optimizer = CostOptimizer(
-    cheap_adapter=OpenAIAdapter(model="text-embedding-3-small"),  # $0.02/1M tokens
-    expensive_adapter=VoyageAdapter(model="voyage-large-2"),       # $0.12/1M tokens
-)
-
-# Calibrate once
-optimizer.calibrate()
-
-# Automatically picks best model based on precision needs
-result = optimizer.embed("query", precision="low")      # Uses cheap model
-result = optimizer.embed("critical query", precision="high")  # Uses expensive model
-
-# Check savings
-print(optimizer.get_stats())
-# {'cheap_calls': 100, 'expensive_calls': 5, 'savings_percentage': 83.0}
-```
-
-### Privacy-Preserving Transfer
-
-```python
-from aecp.patterns import PrivacyBridge
-from aecp.adapters import HuggingFaceAdapter, OpenAIAdapter
-
-# Keep sensitive data local, share only semantics
-bridge = PrivacyBridge(
-    local_adapter=HuggingFaceAdapter(),   # Runs on your server
-    cloud_adapter=OpenAIAdapter(api_key="sk-...")  # Cloud API
-)
-
-# Calibrate with non-sensitive data
-bridge.calibrate()
-
-# Embed locally (data never leaves your infrastructure)
-local_embedding = bridge.embed_local("Patient SSN: 123-45-6789")
-
-# Transfer only semantic representation to cloud
-cloud_embedding = bridge.transfer_to_cloud(local_embedding)
-
-# Use cloud embedding for similarity search, etc.
-```
-
-### Multi-Agent Handoff
-
-```python
-from aecp.patterns import AgentHandoff
-from aecp.adapters import VoyageAdapter, OpenAIAdapter, CohereAdapter
-
-# Specialist agents with different models
-handoff = AgentHandoff({
-    'code': VoyageAdapter(model='voyage-code-2'),
-    'general': OpenAIAdapter(),
-    'multilingual': CohereAdapter(model='embed-multilingual-v3.0'),
-})
-
-# Calibrate all agent pairs
-handoff.calibrate_all()
-
-# Start task with code agent
-context = handoff.start("Debug this Python code", agent='code')
-
-# Seamless handoff to general agent
-context = handoff.transfer(context, to_agent='general')
-
-# Context preserved across models!
-```
-
-##  Why AECP?
-
-| Metric | Text Serialization | AECP | Improvement |
-|--------|-------------------|------|-------------|
-| Semantic Similarity | 43% | 86% | **2x better** |
-| Information Loss | 95% | 3% | **32x better** |
-| Transfer Latency | 150ms | <1ms | **150x faster** |
-
-**Validated on 300k vocabulary items with zero overfitting.**
-
-##  Installation
-
-### Basic installation
+## CLI
 
 ```bash
-pip install aecp
+aecp plan --source-model text-embedding-ada-002 \
+          --target-model text-embedding-3-large \
+          --corpus-size 1000000
+
+aecp calibrate --source-vectors X.npy --target-vectors Y.npy -o map.aecp
+aecp transform --mapping map.aecp --source-dir ./old_store --target-dir ./new_store
+aecp inspect map.aecp
 ```
 
-### With provider support
+## Serve mode (zero corpus writes)
 
-```bash
-# OpenAI
-pip install aecp[openai]
-
-# Voyage AI
-pip install aecp[voyage]
-
-# Cohere
-pip install aecp[cohere]
-
-# HuggingFace (local, no API key needed)
-pip install aecp[huggingface]
-
-# All providers
-pip install aecp[all]
-```
-
-##  Supported Providers
-
-| Provider | Models | Dimensions |
-|----------|--------|------------|
-| **OpenAI** | text-embedding-3-small, text-embedding-3-large, ada-002 | 1536-3072 |
-| **Voyage AI** | voyage-2, voyage-large-2, voyage-code-2 | 1024-1536 |
-| **Cohere** | embed-english-v3.0, embed-multilingual-v3.0 | 384-1024 |
-| **HuggingFace** | all-MiniLM-L6-v2, all-mpnet-base-v2, + any model | 384-768+ |
-
-##  Benchmarks
+Map new-model queries into legacy space. No re-embedding, instant rollback:
 
 ```python
-from aecp import AECP
-from aecp.adapters import HuggingFaceAdapter
+from aecp.serve import QueryAdapter
 
-# Create two agents with different models
-agent1 = AECP(HuggingFaceAdapter(model="all-MiniLM-L6-v2"))
-agent2 = AECP(HuggingFaceAdapter(model="all-mpnet-base-v2"))
-
-# Calibrate
-result = agent1.calibrate_with(agent2)
-
-print(f"Training similarity: {result.training_similarity:.4f}")
-print(f"Validation similarity: {result.validation_similarity:.4f}")
-print(f"Worst-case similarity: {result.worst_case_similarity:.4f}")
-
-# Output:
-# Training similarity: 0.9586
-# Validation similarity: 0.9734
-# Worst-case similarity: 0.8243
+qa = QueryAdapter.load("mapping.aecp")
+legacy_vec = qa.map_query(new_model_embed(query))
+results = qdrant.search(collection="docs", vector=legacy_vec)
 ```
 
-##  Development
+## Results
 
-```bash
-# Clone repo
-git clone https://github.com/yourusername/aecp.git
-cd aecp/aecp-python
+All numbers from `benchmarks/results/`, verified by `benchmarks/audit_configs.py`.
 
-# Install dev dependencies
-pip install -e ".[dev]"
+### Adapter comparison (SciFact, MiniLM->bge-large, K=4000, 3 seeds)
 
-# Run tests
-pytest
+| Adapter | nDCG@10 retention | Notes |
+|---------|------------------|-------|
+| Ridge | 0.866 +/- 0.008 | Default. Fast, stable. |
+| LowRank | 0.857 +/- 0.009 | Compressed matrix. ~1% worse. |
+| MLP | 0.719 +/- 0.008 | No tuning. Linear wins. |
 
-# Type checking
-mypy aecp
+### K-sweep (all adapters averaged, SciFact, 3 seeds)
 
-# Code formatting
-black aecp tests
-isort aecp tests
-```
+| K | nDCG@10 retention | Gate |
+|---|------------------|------|
+| 500 | 0.667 +/- 0.039 | WARN |
+| 1000 | 0.732 +/- 0.056 | WARN |
+| 2000 | 0.788 +/- 0.054 | PASS |
+| 4000 | 0.814 +/- 0.068 | PASS |
 
-##  API Reference
+### Same-dim pair (bge-large->e5-large, 1024->1024)
 
-### Core Classes
+| Metric | Value |
+|--------|-------|
+| Floor (raw cross-space) | 0.0 |
+| AECP (mapped) | 0.656 |
+| Ceiling (full re-embed) | 0.722 |
+| Retention | 0.908 |
 
-#### `AECP`
+Same dimension != same space. e5 models require "query: "/"passage: " prefixes; without them ceiling drops to 0.36.
 
-Main interface for the AECP protocol.
+## When NOT to use AECP
 
-```python
-from aecp import AECP
+- Maximum retrieval quality matters more than cost -> re-embed
+- Calibration domain mismatches corpus (e.g., code index calibrated on prose)
+- Quality gate returns FAIL -> do not migrate; re-embed
+- You need unsupervised migration (AECP requires paired calibration)
+- K < 2000 (quality degrades significantly below this)
 
-agent = AECP(
-    embedder,                    # EmbeddingProvider instance
-    agent_id="my_agent",         # Optional unique identifier
-    max_batch_size=1000,         # Max texts per batch
-    min_quality_threshold=0.75,  # Minimum transfer quality
-)
-```
+## Anti-patterns
 
-**Methods:**
-- `calibrate_with(other, vocabulary=None)` - Calibrate with another agent
-- `embed(text)` - Generate embedding for text
-- `transfer_to(agent_id, text)` - Transfer text to another agent's space
-- `transfer_embedding_to(agent_id, embedding)` - Transfer pre-computed embedding
+- Do not mix vectors from different models in one collection
+- Do not assume same dimensionality means compatibility
+- Do not skip the quality gate
+- Do not use MLP adapter (0.719 vs 0.866 for Ridge, same cost)
 
-#### `EmbeddingProvider`
+## How it works
 
-Abstract base class for embedding providers.
+1. Embed K texts with source and target models -> matrices X, Y
+2. Fit ridge map Y = [X | 1] W (handles unequal dims)
+3. Hold out 10% to estimate quality
+4. Transform corpus: V' = normalize(V @ W) (streaming batches)
+5. Write to new collection; keep old as rollback
 
-```python
-from aecp.types import EmbeddingProvider
+## Prior art
 
-class CustomAdapter(EmbeddingProvider):
-    def embed(self, text: str) -> List[float]:
-        ...
-    
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        ...
-    
-    def get_dimensions(self) -> int:
-        ...
-    
-    def get_model_id(self) -> str:
-        ...
-```
+Engineering, not research. Built on:
+- vec2vec (Jha et al., 2025)
+- Drift-Adapter (EMNLP 2025)
+- Platonic Representation Hypothesis (Huh et al., 2024)
 
-### Adapters
+## Security
 
-```python
-from aecp.adapters import (
-    OpenAIAdapter,      # OpenAI embeddings
-    VoyageAdapter,      # Voyage AI embeddings
-    CohereAdapter,      # Cohere embeddings
-    HuggingFaceAdapter, # Local HuggingFace models
-    MockAdapter,        # Testing (no API calls)
-)
-```
+Embedding translation enables inversion-style attacks. Treat mapped vectors with same sensitivity as source text.
 
-### Patterns
+## License
 
-```python
-from aecp.patterns import (
-    CostOptimizer,   # Minimize costs with smart routing
-    PrivacyBridge,   # Local data, cloud semantics
-    AgentHandoff,    # Multi-agent context transfer
-)
-```
-
-##  Security Considerations
-
-- **API Keys**: Store in environment variables, not code
-- **Calibration Data**: Use non-sensitive vocabulary for calibration
-- **Privacy Bridge**: Original text never leaves local infrastructure
-- **Input Validation**: All inputs are validated and sanitized
-
-##  Contributing
-
-Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-##  License
-
-MIT License - see [LICENSE](LICENSE)
-
-##  Acknowledgments
-
-Built with assistance from Claude (Anthropic). Algorithm design, validation methodology, and benchmarking validated on 300k vocabulary items.
-
-##  Support
-
-- [GitHub Issues](https://github.com/yourusername/aecp/issues)
-- [Documentation](https://aecp.dev)
+Apache-2.0

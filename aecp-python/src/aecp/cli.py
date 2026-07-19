@@ -1,0 +1,238 @@
+"""Typer CLI — Phase 1: calibrate / transform / inspect / plan on files."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Optional
+
+import numpy as np
+import typer
+from rich.console import Console
+from rich.table import Table
+
+from aecp import __version__
+from aecp.calibration.corpus import (
+    builtin_calibration_texts,
+    corpus_checksum,
+    sample_from_texts,
+)
+from aecp.calibration.planner import plan_calibration
+from aecp.mapping.base import read_aecp_header
+from aecp.mapping.linear import RidgeMapping
+from aecp.stores.base import VectorRecord
+from aecp.stores.numpy_files import NumpyFileStore
+
+app = typer.Typer(
+    name="aecp",
+    help="Embedding migration without re-embedding.",
+    no_args_is_help=True,
+)
+console = Console()
+
+
+def _print_json(data: object) -> None:
+    console.print_json(json.dumps(data, default=str))
+
+
+@app.callback()
+def main_callback() -> None:
+    """AECP — Embedding migration without re-embedding."""
+
+
+@app.command("version")
+def version_cmd() -> None:
+    """Print package version."""
+    console.print(__version__)
+
+
+@app.command("plan")
+def plan_cmd(
+    source_model: str = typer.Option(..., "--source-model"),
+    target_model: str = typer.Option(..., "--target-model"),
+    corpus_size: int = typer.Option(..., "--corpus-size"),
+    d_src: int = typer.Option(384, "--d-src"),
+    d_tgt: int = typer.Option(1024, "--d-tgt"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Estimate calibration vs full re-embed cost."""
+    plan = plan_calibration(
+        corpus_size=corpus_size,
+        source_model=source_model,
+        target_model=target_model,
+        d_src=d_src,
+        d_tgt=d_tgt,
+    )
+    if as_json:
+        _print_json(plan.__dict__)
+        return
+    table = Table(title="Calibration plan")
+    table.add_column("Item")
+    table.add_column("Value", justify="right")
+    table.add_row("Corpus size", f"{plan.corpus_size:,}")
+    table.add_row("Recommended K", f"{plan.recommended_k:,}")
+    table.add_row("Calibration embed calls", f"{plan.est_calibration_calls:,}")
+    table.add_row("Full re-embed calls", f"{plan.est_reembed_calls:,}")
+    table.add_row("Est. calibration cost", f"${plan.est_calibration_usd:.2f}")
+    table.add_row("Est. full re-embed cost", f"${plan.est_reembed_usd:.2f}")
+    console.print(table)
+    for note in plan.notes:
+        console.print(f"  • {note}")
+    console.print(
+        "\nNext: [bold]aecp calibrate[/bold] with --sample-from-texts "
+        "or local models, then run a quality gate before migrating."
+    )
+
+
+@app.command("calibrate")
+def calibrate_cmd(
+    source_vectors: Optional[Path] = typer.Option(
+        None, "--source-vectors", help="NPY of source embeddings (K, d_src)"
+    ),
+    target_vectors: Optional[Path] = typer.Option(
+        None, "--target-vectors", help="NPY of target embeddings (K, d_tgt)"
+    ),
+    source_model: Optional[str] = typer.Option(
+        None, "--source-model", help="sentence-transformers model id"
+    ),
+    target_model: Optional[str] = typer.Option(
+        None, "--target-model", help="sentence-transformers model id"
+    ),
+    texts_file: Optional[Path] = typer.Option(
+        None, "--texts", help="Text file (one text per line) for in-domain calib"
+    ),
+    k: int = typer.Option(2000, "--k"),
+    seed: int = typer.Option(0, "--seed"),
+    output: Path = typer.Option(..., "-o", "--output"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Fit a RidgeMapping and write a ``.aecp`` file.
+
+    Provide either precomputed ``--source-vectors/--target-vectors`` NPYs,
+    or ``--source-model/--target-model`` plus optional ``--texts``.
+    """
+    texts: list[str] | None = None
+    if texts_file is not None:
+        texts = [
+            ln.strip()
+            for ln in texts_file.read_text(encoding="utf-8").splitlines()
+            if ln.strip()
+        ]
+        texts = sample_from_texts(texts, min(k, len(texts)), seed=seed)
+    elif source_vectors is None:
+        texts = builtin_calibration_texts(k, seed=seed)
+        console.print(
+            "[yellow]Using built-in demo texts (not aecp-calib-v1). "
+            "Prefer --texts from your corpus.[/yellow]"
+        )
+
+    if source_vectors is not None and target_vectors is not None:
+        X = np.load(source_vectors)
+        Y = np.load(target_vectors)
+        src_id = source_model or "source"
+        tgt_id = target_model or "target"
+    elif source_model and target_model and texts is not None:
+        from aecp.providers.factory import create_embedder
+
+        src = create_embedder(source_model)
+        tgt = create_embedder(target_model)
+        console.print(f"Embedding {len(texts)} texts with {source_model} …")
+        X = src.embed(texts)
+        console.print(f"Embedding {len(texts)} texts with {target_model} …")
+        Y = tgt.embed(texts)
+        src_id, tgt_id = source_model, target_model
+    else:
+        console.print(
+            "[red]Provide --source-vectors/--target-vectors OR "
+            "--source-model/--target-model[/red]"
+        )
+        raise typer.Exit(2)
+
+    mapping = RidgeMapping(alpha="auto", seed=seed)
+    mapping.fit(X, Y)
+    meta: dict = {
+        "source_model_id": src_id,
+        "target_model_id": tgt_id,
+        "calibration_k": int(X.shape[0]),
+        "seed": seed,
+    }
+    if texts is not None:
+        meta["calibration_checksum"] = corpus_checksum(texts)
+        meta["calibration_corpus_id"] = "user-texts" if texts_file else "builtin-demo"
+    mapping.set_meta(**meta)
+    mapping.save(output)
+    report = mapping.validation_report()
+
+    if as_json:
+        _print_json({"output": str(output), "validation": report.to_dict(), "meta": meta})
+        return
+
+    table = Table(title=f"Calibrated → {output}")
+    table.add_column("Metric")
+    table.add_column("Value", justify="right")
+    table.add_row("Holdout cosine mean", f"{report.holdout_cosine_mean:.4f}")
+    table.add_row("Holdout cosine p5", f"{report.holdout_cosine_p5:.4f}")
+    table.add_row("Top-1 retention", f"{report.top1_retention:.4f}")
+    table.add_row("Top-10 retention", f"{report.top10_retention:.4f}")
+    table.add_row("Train / holdout", f"{report.n_train} / {report.n_holdout}")
+    table.add_row("Alpha", f"{report.alpha}")
+    console.print(table)
+    console.print(
+        "Cosine alone is misleading — prefer top-k retention. "
+        "Next: transform a file store, or run a quality gate on a fresh sample."
+    )
+
+
+@app.command("transform")
+def transform_cmd(
+    mapping_path: Path = typer.Option(..., "--mapping"),
+    source_dir: Path = typer.Option(..., "--source-dir", help="NumpyFileStore dir"),
+    target_dir: Path = typer.Option(
+        ..., "--target-dir", help="New output dir (never overwrite in place)"
+    ),
+    batch_size: int = typer.Option(2048, "--batch-size"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Stream-transform a NumpyFileStore into a new directory."""
+    from aecp.mapping.registry import load_mapping
+
+    mapping = load_mapping(mapping_path)
+    src = NumpyFileStore(source_dir)
+    dst = NumpyFileStore(target_dir, create=True)
+
+    def gen():
+        for batch in src.iter_vectors(batch_size=batch_size):
+            vecs = np.stack([r.vector for r in batch], axis=0)
+            mapped = mapping.transform(vecs)
+            yield [
+                VectorRecord(
+                    id=batch[i].id,
+                    vector=mapped[i],
+                    text=batch[i].text,
+                    payload=batch[i].payload,
+                )
+                for i in range(len(batch))
+            ]
+
+    n = dst.write_vectors(gen(), batch_size=batch_size)
+    if as_json:
+        _print_json({"written": n, "target_dir": str(target_dir)})
+        return
+    console.print(f"Wrote {n:,} vectors → {target_dir}")
+
+
+@app.command("inspect")
+def inspect_cmd(
+    mapping_path: Path = typer.Argument(..., help="Path to .aecp file"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Pretty-print the header of a ``.aecp`` mapping file."""
+    header = read_aecp_header(mapping_path)
+    if as_json:
+        _print_json(header)
+        return
+    console.print_json(json.dumps(header, indent=2, default=str))
+
+
+if __name__ == "__main__":
+    app()

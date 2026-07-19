@@ -1,0 +1,16 @@
+# Quality gate thresholds — updated as Phase 2 data arrives.
+# Until `provisional: false`, do not cite these as product claims.
+#
+# Derivation notes (filled after K-sweep + cross-pair runs):
+# - pass_retention: corpus/fresh-sample top-1 proxy after optimism adjustment
+# - max_optimism_gap: if fit-holdout top-1 exceeds fresh-sample top-1 by more
+#   than this, verdict is demoted to WARN (holdout overstates quality)
+
+pass_retention: 0.75
+warn_retention: 0.55
+pass_cosine_mean: 0.60
+max_optimism_gap: 0.20
+provisional: true
+rationale: >
+  Placeholder until K-sweep and cross-pair SciFact matrix justify thresholds
+  via observed nDCG retention correspondence. Optimism gap handling is active.

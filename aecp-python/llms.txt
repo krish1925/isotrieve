@@ -1,0 +1,70 @@
+# aecp
+
+> Migrate a vector database to a new embedding model without re-embedding the corpus. Fits a linear map from ~2K calibration texts; 87-91% retrieval retention measured on BEIR.
+
+## Install
+
+pip install aecp
+
+Python >= 3.10. Optional extras: [sentence-transformers], [qdrant], [pgvector], [openai], [voyage], [cohere], [gemini], [mlp].
+
+## API
+
+### RidgeMapping (primary)
+
+from aecp import RidgeMapping
+m = RidgeMapping(alpha="auto", seed=0)
+m.fit(X_cal, Y_cal)  # X_cal: (K, d_src), Y_cal: (K, d_tgt)
+Z = m.transform(source_vectors)  # (N, d_tgt)
+m.save("mapping.aecp")
+
+### QueryAdapter (serve mode)
+
+from aecp.serve import QueryAdapter
+qa = QueryAdapter.load("mapping.aecp")
+legacy_vec = qa.map_query(new_model_vector)
+
+### QualityGate
+
+from aecp.quality.gate import QualityGate
+gate = QualityGate()
+report = gate.evaluate(m, X_holdout, Y_holdout)
+# report.verdict: PASS / WARN / FAIL
+# report.predicted_retention: float
+# report.prediction_interval: (lower, upper)
+
+### Other adapters
+
+from aecp.mapping.linear import LowRankAffineMapping, OrthogonalProcrustesMapping
+# OrthogonalProcrustesMapping: d_src must equal d_tgt
+# LowRankAffineMapping: compressed matrix, ~1% worse than Ridge
+
+## Benchmarks
+
+Adapter comparison (SciFact, MiniLM->bge-large, K=4000, 3 seeds):
+- Ridge: 0.866 +/- 0.008 retention
+- LowRank: 0.857 +/- 0.009 retention
+- MLP: 0.719 +/- 0.008 retention (no tuning)
+
+K-sweep (all adapters averaged):
+- K=500: 0.667 retention (WARN)
+- K=1000: 0.732 retention (WARN)
+- K=2000: 0.788 retention (PASS)
+- K=4000: 0.814 retention (PASS)
+
+Same-dim pair (bge-large->e5-large, 1024->1024):
+- Floor: 0.0, AECP: 0.656, Ceiling: 0.722, Retention: 0.908
+
+## Limits
+
+- Requires paired calibration data (same texts embedded with both models)
+- Quality depends on model pair and domain match
+- K < 2000: significant quality degradation
+- MLP adapter: unoptimized, worse than linear
+- Gate model: trained on local model pairs only, not validated on API pairs
+
+## Links
+
+- Repository: https://github.com/krish1925/AECP
+- Issues: https://github.com/krish1925/AECP/issues
+- License: Apache-2.0

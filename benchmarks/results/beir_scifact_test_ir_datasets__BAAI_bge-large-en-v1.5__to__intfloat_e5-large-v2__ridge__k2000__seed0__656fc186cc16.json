@@ -1,0 +1,71 @@
+{
+  "timestamp": "2026-07-19T23:19:20.774653+00:00",
+  "commit": "d60526e3283e96c1a0ad169e0ceda6e701976297",
+  "dataset": "beir/scifact/test@ir_datasets",
+  "source_model": "BAAI/bge-large-en-v1.5",
+  "target_model": "intfloat/e5-large-v2",
+  "adapter": "ridge",
+  "calibration_mode": "in_domain",
+  "protocol": "fixed_calibration_per_seed",
+  "k_cal": 2000,
+  "seed": 0,
+  "n_docs": 5183,
+  "n_queries": 300,
+  "d_src": 1024,
+  "d_tgt": 1024,
+  "timings_s": {
+    "embed": 706.3785649169877,
+    "fit": 0.6893644590018084,
+    "transform": 0.039121416994021274
+  },
+  "transform_vectors_per_s": 132484.97621627792,
+  "validation": {
+    "holdout_cosine_mean": 0.93582603134048,
+    "holdout_cosine_median": 0.9370097359318648,
+    "holdout_cosine_p5": 0.9111603449728689,
+    "top1_retention": 1.0,
+    "top10_retention": 1.0,
+    "n_train": 1800,
+    "n_holdout": 200,
+    "seed": 0,
+    "alpha": 0.31622776601683794,
+    "notes": []
+  },
+  "floor": {
+    "nDCG@10": 0.0,
+    "Recall@10": 0.0,
+    "Recall@100": 0.0,
+    "n_eval": 300
+  },
+  "aecp": {
+    "nDCG@10": 0.655998112065694,
+    "Recall@10": 0.8131666666666666,
+    "Recall@100": 0.925,
+    "n_eval": 300
+  },
+  "ceiling": {
+    "nDCG@10": 0.7221519907613544,
+    "Recall@10": 0.8438333333333332,
+    "Recall@100": 0.9626666666666667,
+    "n_eval": 300
+  },
+  "retention": {
+    "nDCG@10": 0.908393413655323,
+    "Recall@10": 0.963657910329844,
+    "Recall@100": 0.9608725761772854
+  },
+  "calibration_calls": 4000,
+  "reembed_calls": 5183,
+  "query_legacy": {
+    "nDCG@10": 0.6126239990747196,
+    "Recall@10": 0.7347222222222222,
+    "Recall@100": 0.92,
+    "n_eval": 300
+  },
+  "query_legacy_retention": {
+    "nDCG@10": 0.8483311088415598,
+    "Recall@10": 0.8706958983474884,
+    "Recall@100": 0.9556786703601109
+  },
+  "config_hash": "656fc186cc16"
+}

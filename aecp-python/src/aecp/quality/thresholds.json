@@ -1,0 +1,11 @@
+{
+  "pass_retention": 0.75,
+  "warn_retention": 0.55,
+  "pass_cosine_mean": 0.60,
+  "max_optimism_gap": 0.20,
+  "provisional": false,
+  "rationale": "Derived from K-sweep benchmark (SciFact, MiniLM→bge-large, all adapters, 3 seeds). K=4000 achieves 0.814±0.068 (PASS). K=2000 achieves 0.788±0.054 (PASS). K=1000 achieves 0.732±0.056 (WARN). K=500 achieves 0.667±0.039 (WARN). Below 0.55 is FAIL.",
+  "benchmark_date": "2026-07-19",
+  "benchmark_pair": "sentence-transformers/all-MiniLM-L6-v2 → BAAI/bge-large-en-v1.5",
+  "benchmark_dataset": "SciFact test (300 queries with qrels)"
+}

@@ -1,0 +1,60 @@
+{
+  "timestamp": "2026-07-19T22:10:50.992107+00:00",
+  "commit": "d60526e3283e96c1a0ad169e0ceda6e701976297",
+  "dataset": "beir/scifact/test@ir_datasets",
+  "source_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "target_model": "BAAI/bge-large-en-v1.5",
+  "adapter": "ridge",
+  "calibration_mode": "in_domain",
+  "k_cal": 500,
+  "seed": 2,
+  "n_docs": 5000,
+  "n_queries": 300,
+  "d_src": 384,
+  "d_tgt": 1024,
+  "timings_s": {
+    "embed": 0.0,
+    "fit": 0.08810504099528771,
+    "transform": 0.017404208992957138
+  },
+  "transform_vectors_per_s": 287286.8282622509,
+  "validation": {
+    "holdout_cosine_mean": 0.8544756539982614,
+    "holdout_cosine_median": 0.8580586227447218,
+    "holdout_cosine_p5": 0.8059723632635419,
+    "top1_retention": 1.0,
+    "top10_retention": 1.0,
+    "n_train": 450,
+    "n_holdout": 50,
+    "seed": 2,
+    "alpha": 1.0,
+    "notes": []
+  },
+  "floor": {
+    "nDCG@10": 0.0,
+    "Recall@10": 0.0,
+    "Recall@100": 0.0,
+    "n_eval": 300,
+    "note": "dims differ; floor set to 0 (cross-space raw retrieval impossible)"
+  },
+  "aecp": {
+    "nDCG@10": 0.508344016664657,
+    "Recall@10": 0.6783888888888889,
+    "Recall@100": 0.8911666666666668,
+    "n_eval": 300
+  },
+  "ceiling": {
+    "nDCG@10": 0.7252650606597285,
+    "Recall@10": 0.8450555555555556,
+    "Recall@100": 0.9575,
+    "n_eval": 300
+  },
+  "retention": {
+    "nDCG@10": 0.7009079083476709,
+    "Recall@10": 0.8027743080665308,
+    "Recall@100": 0.9307223672758922
+  },
+  "calibration_calls": 1000,
+  "reembed_calls": 5000,
+  "config_hash": "7256e5fbd2fd"
+}

@@ -1,3 +1,0 @@
-"""
-AECP Test Suite
-"""

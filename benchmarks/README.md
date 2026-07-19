@@ -1,37 +1,25 @@
-# AECP Benchmarks
+# Benchmarks
 
-This directory contains reproducible benchmarks to validate the semantic fidelity and performance of AECP.
+Credibility engine for AECP. Results live in [`results/`](results/) as one JSON
+per run. The README results table must be generated from those files — never
+hand-edited.
 
-##  Run the Benchmark
+## Phase 1 local pair
 
-Prerequisites:
 ```bash
-pip install -r ../requirements.txt
+# from repo root (needs network once for SciFact + model weights)
+pip install -e "aecp-python/[benchmarks]"
+python benchmarks/run_benchmark.py \
+  --source-model sentence-transformers/all-MiniLM-L6-v2 \
+  --target-model BAAI/bge-large-en-v1.5 \
+  --k 4000 \
+  --seeds 0 1 2
 ```
 
-Run the suite:
+## Smoke (not for CLAIMS)
+
 ```bash
-python run_benchmark.py
+python benchmarks/run_benchmark.py --smoke
 ```
 
-## Methodology
-
-### Metrics
-
-1.  **Semantic Fidelity**: Measured as the cosine similarity between:
-    *   $\mathbf{v}_{transferred}$: The vector translated from Agent A.
-    *   $\mathbf{v}_{ground\_truth}$: The vector Agent B would have produced from the raw text.
-    *   Target: **>95%**
-
-2.  **Latency**: Time to prepare the data for the receiver.
-    *   **Text Handoff**: Time for Receiver to Encode text.
-    *   **AECP**: Time for Source to Multiply Matrix.
-
-### Baselines (Typical Results)
-
-| Source Model | Target Model | Fidelity | Speedup |
-| :--- | :--- | :--- | :--- |
-| `all-MiniLM-L6-v2` | `all-mpnet-base-v2` | 97.2% | 150x |
-| `voyage-code-2` | `text-embedding-3-small` | 94.8% | 200x |
-
-> Note: Speedup depends on the model size. Larger models (like OpenAI's) have much higher encoding latency, resulting in massive AECP speedups (since matrix multiplication cost is constant relative to model inference complexity).
+Writes a JSON labeled as smoke/synthetic; do not cite in CLAIMS.md.

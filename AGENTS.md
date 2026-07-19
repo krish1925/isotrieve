@@ -1,0 +1,63 @@
+# AGENTS.md
+
+## What this library does
+
+`aecp` migrates a vector database to a new embedding model without re-embedding the corpus. Fits a linear map from ~2K calibration texts, then transforms stored vectors locally. 87-91% retrieval retention measured on BEIR benchmarks.
+
+## Install
+
+```bash
+pip install aecp
+```
+
+## Quickstart (6 lines)
+
+```python
+from aecp import RidgeMapping
+import numpy as np
+m = RidgeMapping(alpha="auto", seed=0)
+m.fit(X_cal, Y_cal)  # X_cal: (K, d_src), Y_cal: (K, d_tgt)
+m.save("mapping.aecp")
+Z = m.transform(source_vectors)
+```
+
+## CLI commands
+
+```bash
+aecp plan --source-model <old> --target-model <new> --corpus-size <N>
+aecp calibrate --source-vectors X.npy --target-vectors Y.npy -o map.aecp
+aecp transform --mapping map.aecp --source-dir ./old --target-dir ./new
+aecp inspect map.aecp --json
+```
+
+## Serve mode (zero corpus writes)
+
+```python
+from aecp.serve import QueryAdapter
+qa = QueryAdapter.load("mapping.aecp")
+legacy_vec = qa.map_query(new_model_query_vector)
+```
+
+## When NOT to use
+
+- Maximum quality matters more than cost -> re-embed
+- K < 2000 (quality degrades)
+- Calibration domain mismatches corpus
+- Quality gate returns FAIL
+
+## Anti-patterns (do not)
+
+- Do not mix vectors from different models in one collection
+- Do not assume same dimensionality means compatibility
+- Do not skip the quality gate
+- Do not use MLP adapter (0.719 vs 0.866 retention for Ridge)
+
+## Error messages
+
+Dimension mismatch: "dims differ (1536->3072): fit an aecp mapping or re-embed"
+Quality gate fail: "predicted retention below threshold; re-embed instead"
+
+## Benchmarks
+
+All numbers in `benchmarks/results/`, verified by `benchmarks/audit_configs.py`.
+Gate model: `src/aecp/quality/gate_model_v1.json` (trained on local model pairs only).
