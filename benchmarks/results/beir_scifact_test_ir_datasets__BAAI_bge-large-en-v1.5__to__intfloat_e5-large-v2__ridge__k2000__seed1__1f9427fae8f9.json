@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-21T23:50:03.879445+00:00",
+  "timestamp": "2026-07-21T23:50:05.712754+00:00",
   "commit": "a6bbe00105a129e99ff412706e824f4b7dd4bc83",
   "dataset": "beir/scifact/test@ir_datasets",
   "source_model": "BAAI/bge-large-en-v1.5",
@@ -8,26 +8,26 @@
   "calibration_mode": "in_domain",
   "protocol": "fixed_calibration_per_seed",
   "k_cal": 2000,
-  "seed": 0,
+  "seed": 1,
   "n_docs": 5183,
   "n_queries": 300,
   "d_src": 1024,
   "d_tgt": 1024,
   "timings_s": {
     "embed": 0.0,
-    "fit": 1.6998370840010466,
-    "transform": 0.027734833005524706
+    "fit": 1.6707835420020274,
+    "transform": 0.027977000005193986
   },
-  "transform_vectors_per_s": 186876.9139142666,
+  "transform_vectors_per_s": 185259.32012144855,
   "validation": {
-    "holdout_cosine_mean": 0.9358260313404938,
-    "holdout_cosine_median": 0.9370097359319283,
-    "holdout_cosine_p5": 0.9111603449730907,
+    "holdout_cosine_mean": 0.9364000298202655,
+    "holdout_cosine_median": 0.9366671609848466,
+    "holdout_cosine_p5": 0.9192707644525397,
     "top1_retention": 1.0,
     "top10_retention": 1.0,
     "n_train": 1800,
     "n_holdout": 200,
-    "seed": 0,
+    "seed": 1,
     "alpha": 0.31622776601683794,
     "notes": []
   },
@@ -38,9 +38,9 @@
     "n_eval": 300
   },
   "aecp": {
-    "nDCG@10": 0.655998112065694,
-    "Recall@10": 0.8131666666666666,
-    "Recall@100": 0.925,
+    "nDCG@10": 0.6715004722397157,
+    "Recall@10": 0.8048333333333333,
+    "Recall@100": 0.9383333333333334,
     "n_eval": 300
   },
   "ceiling": {
@@ -50,22 +50,22 @@
     "n_eval": 300
   },
   "retention": {
-    "nDCG@10": 0.908393413655323,
-    "Recall@10": 0.963657910329844,
-    "Recall@100": 0.9608725761772854
+    "nDCG@10": 0.9298603075673342,
+    "Recall@10": 0.953782342484693,
+    "Recall@100": 0.9747229916897507
   },
   "calibration_calls": 4000,
   "reembed_calls": 5183,
   "query_legacy": {
-    "nDCG@10": 0.6313350106240866,
-    "Recall@10": 0.7563888888888889,
-    "Recall@100": 0.93,
+    "nDCG@10": 0.6225862856244074,
+    "Recall@10": 0.7438888888888888,
+    "Recall@100": 0.92,
     "n_eval": 300
   },
   "query_legacy_retention": {
-    "nDCG@10": 0.8742411828824002,
-    "Recall@10": 0.8963723747448813,
-    "Recall@100": 0.9660664819944599
+    "nDCG@10": 0.8621263855660409,
+    "Recall@10": 0.8815590229771546,
+    "Recall@100": 0.9556786703601109
   },
-  "config_hash": "656fc186cc16"
+  "config_hash": "1f9427fae8f9"
 }

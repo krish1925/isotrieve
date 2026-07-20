@@ -119,31 +119,31 @@ legacy_vec = qa.map_query(new_model_embed(query))
 
 Every quantitative claim in this README or docs references a committed artifact in `benchmarks/results/` and a row in `aecp-python/CLAIMS.md`. No exceptions. If a number isn't in CLAIMS.md, it isn't a claim.
 
-### Adapter comparison (SciFact, MiniLM→bge-large, K=3840, 3 seeds)
+### Adapter comparison (SciFact, MiniLM→bge-large, K=4000, 3 seeds)
 
 | Adapter | nDCG@10 retention | Notes |
 |---------|------------------|-------|
 | Ridge | 0.871 ± 0.006 | Default. Fast, stable. |
-| LowRank | 0.862 ± 0.010 | Compressed matrix. ~1% worse. |
-| MLP | 0.729 ± 0.008 | No tuning. Linear wins. |
+| LowRank | 0.857 ± 0.009 | Compressed matrix. ~1% worse. |
+| MLP | 0.727 ± 0.007 | No tuning. Linear wins. |
 
 ### K-sweep (all adapters averaged, SciFact, 3 seeds)
 
 | K | nDCG@10 retention | Gate |
 |---|------------------|------|
-| 500 | 0.667 ± 0.039 | WARN |
-| 1000 | 0.732 ± 0.056 | WARN |
-| 2000 | 0.788 ± 0.054 | PASS |
-| 4000 | 0.817 ± 0.064 | PASS |
+| 500 | 0.671 ± 0.041 | WARN |
+| 1000 | 0.735 ± 0.058 | WARN |
+| 2000 | 0.785 ± 0.052 | PASS |
+| 4000 | 0.832 ± 0.061 | PASS |
 
 ### Same-dim pair (bge-large→e5-large, 1024→1024)
 
 | Metric | Value |
 |--------|-------|
 | Floor (raw cross-space) | 0.0 |
-| AECP (mapped) | 0.656 |
+| AECP (mapped) | 0.667 |
 | Ceiling (full re-embed) | 0.722 |
-| Retention | 0.908 |
+| Retention | 0.923 ± 0.010 |
 
 Same dimension ≠ same space. e5 models require "query: "/"passage: " prefixes; without them ceiling drops to 0.36.
 
@@ -174,7 +174,7 @@ Same dimension ≠ same space. e5 models require "query: "/"passage: " prefixes;
 - Do not mix vectors from different models in one collection
 - Do not assume same dimensionality means compatibility
 - Do not skip the quality gate
-- Do not use MLP adapter (0.729 vs 0.871 for Ridge, same cost)
+- Do not use MLP adapter (0.727 vs 0.871 for Ridge, same cost)
 
 ## How it works
 
