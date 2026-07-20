@@ -1,0 +1,1 @@
+"""HTML gate report generator."""

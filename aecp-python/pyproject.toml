@@ -65,6 +65,8 @@ qdrant = ["qdrant-client>=1.7"]
 pgvector = ["psycopg[binary]>=3.1"]
 chroma = ["chromadb>=0.4"]
 langchain = ["langchain-core>=0.3"]
+llamaindex = ["llama-index-core>=0.10"]
+pinecone = ["pinecone-client>=2.0"]
 parquet = ["pyarrow>=14.0"]
 mlp = ["torch>=2.0"]
 benchmarks = [

@@ -1,0 +1,30 @@
+# aecp.toml — AECP configuration
+#
+# Gate thresholds, defaults, and feature flags.
+# All values here are safe defaults; override per-project as needed.
+
+[gate]
+# Minimum retention for PASS verdict (lower bound of 80% CI)
+pass_threshold = 0.75
+# Minimum retention for WARN (below PASS, above FAIL)
+warn_threshold = 0.55
+# Bootstrap resamples for confidence intervals
+bootstrap_resamples = 1000
+# Default format for gate output: "json", "md", or "html"
+default_format = "md"
+
+[gate.metrics]
+# Per-metric retention thresholds (used by aecp gate --check-metrics)
+recall_at_10 = 0.95
+mrr = 0.90
+
+[calibration]
+# Default calibration size
+default_k = 2000
+# Minimum K for a reliable mapping
+min_k = 2000
+
+[telemetry]
+# Wrapper telemetry: "off", "local", or "verbose"
+# Never sends data off-machine. Local = JSONL query counts only.
+mode = "off"

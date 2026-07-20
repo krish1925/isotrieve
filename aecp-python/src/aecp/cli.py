@@ -1,4 +1,4 @@
-"""Typer CLI — Phase 1: calibrate / transform / inspect / plan on files."""
+"""Typer CLI — calibrate / transform / inspect / plan / gate / doctor / report."""
 
 from __future__ import annotations
 
@@ -29,6 +29,15 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 console = Console()
+
+# Register additional commands
+from aecp.cli_gate import register_gate_command
+from aecp.cli_doctor import register_doctor_command
+from aecp.cli_report import register_report_command
+
+register_gate_command(app)
+register_doctor_command(app)
+register_report_command(app)
 
 
 def _print_json(data: object) -> None:
@@ -101,6 +110,13 @@ def calibrate_cmd(
     texts_file: Optional[Path] = typer.Option(
         None, "--texts", help="Text file (one text per line) for in-domain calib"
     ),
+    queries_only: bool = typer.Option(
+        False, "--queries-only",
+        help="Calibrate from query log + stored vectors (no source docs)"
+    ),
+    queries_file: Optional[Path] = typer.Option(
+        None, "--queries", help="NPY of query embeddings in source space (for --queries-only)"
+    ),
     k: int = typer.Option(2000, "--k"),
     seed: int = typer.Option(0, "--seed"),
     output: Path = typer.Option(..., "-o", "--output"),
@@ -110,28 +126,46 @@ def calibrate_cmd(
 
     Provide either precomputed ``--source-vectors/--target-vectors`` NPYs,
     or ``--source-model/--target-model`` plus optional ``--texts``.
+    Use ``--queries-only`` when source docs are unavailable.
     """
-    texts: list[str] | None = None
-    if texts_file is not None:
-        texts = [
-            ln.strip()
-            for ln in texts_file.read_text(encoding="utf-8").splitlines()
-            if ln.strip()
-        ]
-        texts = sample_from_texts(texts, min(k, len(texts)), seed=seed)
-    elif source_vectors is None:
-        texts = builtin_calibration_texts(k, seed=seed)
-        console.print(
-            "[yellow]Using built-in demo texts (not aecp-calib-v1). "
-            "Prefer --texts from your corpus.[/yellow]"
-        )
-
-    if source_vectors is not None and target_vectors is not None:
+    # Queries-only mode: fit mapping from query pairs + stored vectors
+    if queries_only:
+        if queries_file is None or target_vectors is None:
+            console.print(
+                "[red]--queries-only requires --queries (NPY) and --target-vectors (NPY)[/red]"
+            )
+            raise typer.Exit(2)
+        X = np.load(queries_file)
+        Y = np.load(target_vectors)
+        src_id = source_model or "query-source"
+        tgt_id = target_model or "query-target"
+        texts = None  # Skip text-based calibration
+    elif source_vectors is not None and target_vectors is not None:
         X = np.load(source_vectors)
         Y = np.load(target_vectors)
         src_id = source_model or "source"
         tgt_id = target_model or "target"
-    elif source_model and target_model and texts is not None:
+        texts = None  # Not needed for NPY-based calibration
+    else:
+        texts = None
+
+    # Text-based calibration (only if not queries-only and not NPY-based)
+    if texts is None and not queries_only and source_vectors is None:
+        if texts_file is not None:
+            raw = [
+                ln.strip()
+                for ln in texts_file.read_text(encoding="utf-8").splitlines()
+                if ln.strip()
+            ]
+            texts = sample_from_texts(raw, min(k, len(raw)), seed=seed)
+        else:
+            texts = builtin_calibration_texts(k, seed=seed)
+            console.print(
+                "[yellow]Using built-in demo texts (not aecp-calib-v1). "
+                "Prefer --texts from your corpus.[/yellow]"
+            )
+
+    if source_model and target_model and texts is not None:
         from aecp.providers.factory import create_embedder
 
         src = create_embedder(source_model)
@@ -141,10 +175,11 @@ def calibrate_cmd(
         console.print(f"Embedding {len(texts)} texts with {target_model} …")
         Y = tgt.embed(texts)
         src_id, tgt_id = source_model, target_model
-    else:
+
+    if "X" not in dir() or "Y" not in dir():
         console.print(
-            "[red]Provide --source-vectors/--target-vectors OR "
-            "--source-model/--target-model[/red]"
+            "[red]Provide --source-vectors/--target-vectors, "
+            "--source-model/--target-model, or --queries-only[/red]"
         )
         raise typer.Exit(2)
 

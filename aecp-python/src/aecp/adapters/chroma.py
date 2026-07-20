@@ -13,12 +13,11 @@ from __future__ import annotations
 
 import hashlib
 import time
-from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
 
 import numpy as np
 
-from aecp.adapters.base import MigrationReport, VectorStoreAdapter
+from aecp.adapters.base import MigrationReport
 from aecp.mapping.base import Mapping, l2_normalize
 
 
