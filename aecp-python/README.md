@@ -10,7 +10,12 @@ pip install aecp
 
 Python >= 3.10. Core deps: numpy, scikit-learn, typer, rich.
 
-Optional: `pip install aecp[sentence-transformers]` for local models, `pip install aecp[qdrant]` for Qdrant store.
+Optional extras:
+- `pip install aecp[chroma]` — ChromaDB adapter
+- `pip install aecp[langchain]` — LangChain embeddings shim
+- `pip install aecp[sentence-transformers]` — local model support
+- `pip install aecp[qdrant]` — Qdrant store adapter
+- `pip install aecp[all]` — everything above
 
 ## Quickstart
 
@@ -55,11 +60,106 @@ legacy_vec = qa.map_query(new_model_embed(query))
 results = qdrant.search(collection="docs", vector=legacy_vec)
 ```
 
+## Vector DB adapters (v0.2)
+
+### ChromaDB
+
+**Serve mode** — drop-in `EmbeddingFunction`:
+
+```python
+from aecp.adapters.chroma import AECPChromaFunction
+from aecp.mapping.base import Mapping
+
+mapping = Mapping.load("ada002_to_te3.aecp")
+ef = AECPChromaFunction(mapping, new_model_embedder=my_embed_fn)
+col = client.get_collection("docs", embedding_function=ef)
+results = col.query(query_texts=["..."], n_results=10)
+```
+
+**Offline migration** — transform stored vectors:
+
+```python
+from aecp.adapters.chroma import migrate_collection
+
+report = migrate_collection(
+    client, "docs", mapping,
+    new_collection="docs_v2",
+    batch_size=1000,
+)
+print(f"Migrated {report.rows_processed} rows, recall@10={report.sampled_recall_at_10:.3f}")
+```
+
+### LangChain
+
+Drop-in `Embeddings` shim:
+
+```python
+from aecp.adapters.langchain import AECPEmbeddings
+from langchain_openai import OpenAIEmbeddings
+
+mapping = Mapping.load("ada002_to_te3.aecp")
+base = OpenAIEmbeddings(model="text-embedding-3-small")
+ae = AECPEmbeddings(mapping, base)
+
+# Works with any LangChain vector store
+from langchain_chroma import Chroma
+db = Chroma.from_documents(docs, embedding=ae)
+results = db.similarity_search("query", k=10)
+```
+
+## Score recalibration (v0.2)
+
+Isotonic regression maps cross-space scores to ceiling-equivalent scores. Built into the mapping file; no extra steps:
+
+```python
+m = RidgeMapping(alpha="auto", seed=0).fit(X, Y)
+m.fit_recalibrator(X_heldout, Y_heldout)  # optional
+m.save("mapping.aecp")  # recalibrator saved alongside mapping
+
+# At serve time
+qa = QueryAdapter.load("mapping.aecp")
+calibrated_scores = qa.recalibrate_scores(raw_scores)
+```
+
+## Confidence scoring (v0.2)
+
+Per-query confidence flags with adaptive percentile-based margins:
+
+```python
+from aecp.reranking import ConfidenceScorer
+
+scorer = ConfidenceScorer(margin_high=0.955, margin_low=0.637)
+result = scorer.score(query_vector, top_scores)
+print(result.flag)  # "high", "medium", or "low"
+```
+
 ## Results
 
 All numbers from `benchmarks/results/`, verified by `benchmarks/audit_configs.py`.
 
-### Adapter comparison (SciFact, MiniLM->bge-large, K=4000, 3 seeds)
+### Score recalibration agreement (bge-large→e5-large, same-dim)
+
+| Threshold | Raw recall | + Recalibration | Δ |
+|-----------|-----------|-----------------|---|
+| τ ≤ 0.75 | 100% | 100% | 0 |
+| τ = 0.80 | 12% | 17% | +4.7% |
+
+### Score recalibration agreement (MiniLM→bge-large, rectangular)
+
+| Threshold | Raw recall | + Recalibration | Δ |
+|-----------|-----------|-----------------|---|
+| τ = 0.60 | 78% | 100% | +22% |
+| τ = 0.70 | 27% | 67% | +40% |
+| τ = 0.80 | 8% | 19% | +11% |
+
+### Confidence flags (predictive across both pairs)
+
+| Pair | High-conf R@10 | Low-conf R@10 | Gap |
+|------|---------------|---------------|-----|
+| bge→e5 | 0.955 | 0.637 | 0.318 |
+| MiniLM→bge | 0.875 | 0.651 | 0.224 |
+
+### Adapter comparison (SciFact, MiniLM→bge-large, K=4000, 3 seeds)
 
 | Adapter | nDCG@10 retention | Notes |
 |---------|------------------|-------|
@@ -76,7 +176,7 @@ All numbers from `benchmarks/results/`, verified by `benchmarks/audit_configs.py
 | 2000 | 0.788 +/- 0.054 | PASS |
 | 4000 | 0.814 +/- 0.068 | PASS |
 
-### Same-dim pair (bge-large->e5-large, 1024->1024)
+### Same-dim pair (bge-large→e5-large, 1024→1024)
 
 | Metric | Value |
 |--------|-------|
@@ -89,9 +189,9 @@ Same dimension != same space. e5 models require "query: "/"passage: " prefixes; 
 
 ## When NOT to use AECP
 
-- Maximum retrieval quality matters more than cost -> re-embed
+- Maximum retrieval quality matters more than cost → re-embed
 - Calibration domain mismatches corpus (e.g., code index calibrated on prose)
-- Quality gate returns FAIL -> do not migrate; re-embed
+- Quality gate returns FAIL → do not migrate; re-embed
 - You need unsupervised migration (AECP requires paired calibration)
 - K < 2000 (quality degrades significantly below this)
 
@@ -104,7 +204,7 @@ Same dimension != same space. e5 models require "query: "/"passage: " prefixes; 
 
 ## How it works
 
-1. Embed K texts with source and target models -> matrices X, Y
+1. Embed K texts with source and target models → matrices X, Y
 2. Fit ridge map Y = [X | 1] W (handles unequal dims)
 3. Hold out 10% to estimate quality
 4. Transform corpus: V' = normalize(V @ W) (streaming batches)

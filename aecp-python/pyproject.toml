@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aecp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Migrate a vector database to a new embedding model without re-embedding the corpus. Fits a linear map from ~2K calibration texts; 87-91% retrieval retention measured on BEIR."
 readme = "README.md"
 license = "Apache-2.0"
@@ -64,6 +64,7 @@ gemini = ["google-generativeai>=0.5"]
 qdrant = ["qdrant-client>=1.7"]
 pgvector = ["psycopg[binary]>=3.1"]
 chroma = ["chromadb>=0.4"]
+langchain = ["langchain-core>=0.3"]
 parquet = ["pyarrow>=14.0"]
 mlp = ["torch>=2.0"]
 benchmarks = [
@@ -79,7 +80,7 @@ dev = [
     "sentence-transformers>=2.2",
 ]
 all = [
-    "aecp[sentence-transformers,openai,voyage,cohere,gemini,qdrant,pgvector,chroma,parquet,mlp,dev]",
+    "aecp[sentence-transformers,openai,voyage,cohere,gemini,qdrant,pgvector,chroma,langchain,parquet,mlp,dev]",
 ]
 
 [project.scripts]

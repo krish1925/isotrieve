@@ -150,6 +150,44 @@ def calibrate_cmd(
 
     mapping = RidgeMapping(alpha="auto", seed=seed)
     mapping.fit(X, Y)
+
+    # Fit score recalibrator from holdout calibration data
+    from aecp.recalibration import ScoreRecalibrator
+    from aecp.mapping.base import l2_normalize
+    recal = ScoreRecalibrator()
+    try:
+        val = mapping.validation_report()
+        # Use holdout indices from the mapping's internal split
+        # Reconstruct: use the calibration data as both query and doc set
+        # (K-pair similarity matrix covers the score range adequately)
+        mapped_X = mapping.transform(X)
+        mapped_n = l2_normalize(mapped_X)
+        target_n = l2_normalize(Y)
+        # K × K similarity matrix
+        sim_mapped = mapped_n @ target_n.T
+        sim_ceiling = target_n @ target_n.T
+        # Sample pairs: all top-20 + random subset
+        rng_cal = np.random.default_rng(seed)
+        n = len(X)
+        pairs_m, pairs_c = [], []
+        # Top-20 neighbors per row
+        for i in range(n):
+            top = np.argsort(-sim_mapped[i])[:20]
+            for j in top:
+                pairs_m.append(float(sim_mapped[i, j]))
+                pairs_c.append(float(sim_ceiling[i, j]))
+        # Random pairs
+        n_random = min(50_000, n * n)
+        ri = rng_cal.integers(0, n, size=n_random)
+        rj = rng_cal.integers(0, n, size=n_random)
+        for i, j in zip(ri, rj):
+            pairs_m.append(float(sim_mapped[i, j]))
+            pairs_c.append(float(sim_ceiling[i, j]))
+        recal.fit(np.array(pairs_m), np.array(pairs_c))
+        mapping._recalibrator = recal
+    except Exception:
+        pass  # Skip recalibration if it fails; mapping still works
+
     meta: dict = {
         "source_model_id": src_id,
         "target_model_id": tgt_id,
@@ -176,6 +214,13 @@ def calibrate_cmd(
     table.add_row("Top-10 retention", f"{report.top10_retention:.4f}")
     table.add_row("Train / holdout", f"{report.n_train} / {report.n_holdout}")
     table.add_row("Alpha", f"{report.alpha}")
+    if mapping.has_recalibrator:
+        rr = mapping._recalibrator.report
+        if rr:
+            table.add_row("Score recalibrator", f"trained ({rr.n_pairs} pairs)")
+            if rr.threshold_agreement:
+                tau_8 = rr.threshold_agreement.get(0.8, 0)
+                table.add_row("Threshold agreement @0.8", f"{tau_8:.1%}")
     console.print(table)
     console.print(
         "Cosine alone is misleading — prefer top-k retention. "

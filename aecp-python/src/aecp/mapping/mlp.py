@@ -198,6 +198,23 @@ class ResidualMLPMapping(Mapping):
         )
         return self
 
+    def _validate_input(self, V: np.ndarray, expected_dim: int, direction: str) -> tuple[np.ndarray, bool]:
+        """Shared preprocessing: reshape, dimension check, finiteness."""
+        V = np.asarray(V, dtype=np.float32)
+        single = V.ndim == 1
+        if single:
+            V = V.reshape(1, -1)
+        if V.shape[1] != expected_dim:
+            dim_name = "source" if direction == "forward" else "target"
+            raise ValueError(
+                f"Dimension mismatch: expected {expected_dim} ({dim_name} model dim), got {V.shape[1]}. "
+                f"Vectors must be from the {'source' if direction == 'forward' else 'target'} embedding model. "
+                f"If dims differ between models, fit an aecp mapping first: "
+                f"RidgeMapping(alpha='auto').fit(X_cal, Y_cal)"
+            )
+        _check_finite("V", V)
+        return V, single
+
     def transform(self, V: np.ndarray) -> np.ndarray:
         try:
             import torch
@@ -205,16 +222,7 @@ class ResidualMLPMapping(Mapping):
             raise ImportError("ResidualMLPMapping requires torch")
 
         self._require_fitted()
-        assert self._model is not None
-        V = np.asarray(V, dtype=np.float32)
-        single = V.ndim == 1
-        if single:
-            V = V.reshape(1, -1)
-        if V.shape[1] != self._d_src:
-            raise ValueError(
-                f"Dimension mismatch: expected {self._d_src} (source model dim), got {V.shape[1]}."
-            )
-        _check_finite("V", V)
+        V, single = self._validate_input(V, self._d_src, "forward")
 
         self._model.eval()
         with torch.no_grad():
@@ -233,17 +241,13 @@ class ResidualMLPMapping(Mapping):
         self._require_fitted()
         inv_model = getattr(self, "_inv_model", None)
         if inv_model is None:
-            raise RuntimeError("Inverse mapping unavailable")
-
-        V = np.asarray(V, dtype=np.float32)
-        single = V.ndim == 1
-        if single:
-            V = V.reshape(1, -1)
-        if V.shape[1] != self._d_tgt:
-            raise ValueError(
-                f"Dimension mismatch: expected {self._d_tgt} (target model dim), got {V.shape[1]}."
+            raise RuntimeError(
+                "Inverse mapping not available. "
+                "Fit both directions for serve mode: "
+                "m.fit(X_cal, Y_cal) trains forward; inverse is computed automatically."
             )
-        _check_finite("V", V)
+
+        V, single = self._validate_input(V, self._d_tgt, "inverse")
 
         inv_model.eval()
         with torch.no_grad():

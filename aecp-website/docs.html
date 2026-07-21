@@ -6,890 +6,308 @@
     <title>Documentation - AECP</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/docs.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="container">
-            <div class="nav-brand">
-                <i class="fas fa-network-wired"></i>
-                <span>AECP</span>
-            </div>
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="brand"><span class="brand-dot"></span>AECP</a>
             <ul class="nav-links">
                 <li><a href="index.html">Home</a></li>
-                <li><a href="protocol.html">Protocol</a></li>
-                <li><a href="performance.html">Performance</a></li>
-                <li><a href="playground.html">Playground</a></li>
-                <li><a href="docs.html" class="active">Docs</a></li>
+                <li><a href="protocol.html">How It Works</a></li>
+                <li><a href="integrations.html">Integrations</a></li>
+                <li><a href="performance.html">Benchmarks</a></li>
+                <li><a href="docs.html" class="on">Docs</a></li>
             </ul>
+            <div class="nav-right">
+                <a href="https://github.com/krish1925/AECP" class="nav-gh" target="_blank">GitHub</a>
+                <button class="theme-btn" id="themeToggle" title="Toggle theme">&#9681;</button>
+            </div>
         </div>
     </nav>
 
-    <div class="docs-wrapper">
-        <aside class="docs-sidebar">
-            <div class="sidebar-content">
-                <div class="sidebar-search">
-                    <input type="text" placeholder="Search docs..." id="docsSearch">
-                </div>
-                <nav class="docs-nav">
-                    <div class="nav-section">
-                        <div class="nav-section-title">Getting Started</div>
-                        <a href="#overview" class="nav-link active">Overview</a>
-                        <a href="#installation" class="nav-link">Installation</a>
-                        <a href="#quick-start" class="nav-link">Quick Start</a>
-                        <a href="#core-concepts" class="nav-link">Core Concepts</a>
+    <div class="docs-layout">
+        <aside class="docs-side">
+            <div class="inner">
+                <div class="search"><input type="text" placeholder="Search docs..." id="docsSearch"></div>
+                <nav>
+                    <div class="sgroup"><div class="sgroup-t">Getting Started</div>
+                        <a href="#overview" class="on">Overview</a>
+                        <a href="#install">Installation</a>
+                        <a href="#quickstart">Quick Start</a>
+                        <a href="#cli">CLI</a>
                     </div>
-                    <div class="nav-section">
-                        <div class="nav-section-title">Python</div>
-                        <a href="#python-api" class="nav-link">API Reference</a>
-                        <a href="#python-adapters" class="nav-link">Adapters</a>
-                        <a href="#python-patterns" class="nav-link">Patterns</a>
-                        <a href="#python-examples" class="nav-link">Examples</a>
+                    <div class="sgroup"><div class="sgroup-t">Core API</div>
+                        <a href="#mapping">Mapping Classes</a>
+                        <a href="#serve">Serve Mode</a>
+                        <a href="#recal">Score Recalibration</a>
+                        <a href="#conf">Confidence Scoring</a>
+                        <a href="#gate">Quality Gate</a>
                     </div>
-                    <div class="nav-section">
-                        <div class="nav-section-title">TypeScript</div>
-                        <a href="#typescript-api" class="nav-link">API Reference</a>
-                        <a href="#typescript-adapters" class="nav-link">Adapters</a>
-                        <a href="#typescript-examples" class="nav-link">Examples</a>
+                    <div class="sgroup"><div class="sgroup-t">Adapters</div>
+                        <a href="#chroma">ChromaDB</a>
+                        <a href="#lc">LangChain</a>
+                        <a href="#qdrant">Qdrant</a>
                     </div>
-                    <div class="nav-section">
-                        <div class="nav-section-title">Advanced</div>
-                        <a href="#plugin-system" class="nav-link">Plugin System</a>
-                        <a href="#protocol-spec" class="nav-link">Protocol Specification</a>
-                        <a href="#best-practices" class="nav-link">Best Practices</a>
-                        <a href="#troubleshooting" class="nav-link">Troubleshooting</a>
-                    </div>
-                    <div class="nav-section">
-                        <div class="nav-section-title">Resources</div>
-                        <a href="#quick-reference" class="nav-link">Quick Reference</a>
-                        <a href="#benchmarks" class="nav-link">Benchmarks</a>
-                        <a href="#security" class="nav-link">Security</a>
+                    <div class="sgroup"><div class="sgroup-t">Reference</div>
+                        <a href="#format">.aecp Format</a>
+                        <a href="#not-use">When NOT to Use</a>
+                        <a href="#anti">Anti-patterns</a>
+                        <a href="#sec">Security</a>
                     </div>
                 </nav>
             </div>
         </aside>
 
         <main class="docs-main">
-            <div class="docs-content">
+            <div class="docs-body">
 
-                <!-- Overview -->
-                <section id="overview" class="docs-section">
+                <section id="overview" class="ds">
                     <h1>AECP Documentation</h1>
-                    <p class="lead">The Agent Embedding Communication Protocol enables agents with different embedding models to communicate semantic information directly, achieving <strong>2x better semantic preservation</strong> compared to text serialization.</p>
-
+                    <p class="lead">Migrate a vector database to a new embedding model without re-embedding. Fits a linear map from ~2K calibration texts; 87–91% retrieval retention on BEIR.</p>
                     <h2>What is AECP?</h2>
-                    <p>When AI agents communicate today (like in MCP or other agent frameworks), they use text-to-text transfers. Approximately <strong>57% of information is lost</strong> in this process. AECP reduces this to <strong>14% information loss</strong> (86% preserved vs 43% with text).</p>
-
+                    <p>Different embedding models produce vectors in incompatible geometric spaces. Raw cross-space nDCG@10 = 0.0. AECP fits a ridge regression mapping from paired calibration texts, then transforms stored vectors (offline) or maps queries on-the-fly (serve mode).</p>
                     <h2>Key Features</h2>
                     <ul>
-                        <li><strong>97% fidelity</strong> on unseen vocabulary (vs 43% with text transfers)</li>
-                        <li><strong>86% fidelity</strong> on unseen corpus sentences (vs 43% baseline)</li>
-                        <li><strong>&lt;1ms transfer latency</strong> (vs 150ms+ with re-embedding)</li>
-                        <li>Works with OpenAI, Voyage, Cohere, HuggingFace, and other embedding models</li>
-                        <li>One-time calibration, then instant transfers</li>
+                        <li><strong>87–91% retrieval retention</strong> on BEIR SciFact</li>
+                        <li><strong>Score recalibration</strong> — isotonic regression for reliable thresholds</li>
+                        <li><strong>Confidence flags</strong> — per-query high/medium/low</li>
+                        <li><strong>ChromaDB + LangChain adapters</strong></li>
+                        <li><strong>Quality gate</strong> — data-driven PASS/WARN/FAIL</li>
                     </ul>
                 </section>
 
-                <!-- Installation -->
-                <section id="installation" class="docs-section">
+                <section id="install" class="ds">
                     <h2>Installation</h2>
-
-                    <h3>Python</h3>
-                    <p>Install AECP from PyPI:</p>
-                    <pre class="code-block"><code># Basic installation (core only)
+<pre><code># Core only
 pip install aecp
 
-# With specific provider support
-pip install aecp[openai]      # OpenAI embeddings
-pip install aecp[voyage]      # Voyage AI embeddings
-pip install aecp[cohere]      # Cohere embeddings
-pip install aecp[huggingface] # HuggingFace models (local)
-
-# Install all providers
-pip install aecp[all]
-
-# Development installation
-git clone https://github.com/yourusername/aecp.git
-cd aecp/aecp-python
-pip install -e ".[dev]"</code></pre>
-
-                    <h4>Requirements</h4>
-                    <ul>
-                        <li>Python 3.8 or higher</li>
-                        <li>numpy &gt;= 1.20.0</li>
-                        <li>scikit-learn &gt;= 1.0.0</li>
-                    </ul>
-
-                    <div class="info-box">
-                        <p><strong>Note:</strong> Package publishing instructions will be available after initial release. For now, install from source or wait for PyPI publication.</p>
-                    </div>
-
-                    <h3>TypeScript / JavaScript</h3>
-                    <p>Install AECP from npm:</p>
-                    <pre class="code-block"><code># Core package (required)
-npm install @aecp/core
-
-# Install adapters as needed
-npm install @aecp/adapters-openai
-npm install @aecp/adapters-voyage
-npm install @aecp/adapters-cohere
-npm install @aecp/adapters-huggingface
-
-# Or install all at once
-npm install @aecp/core @aecp/adapters-openai @aecp/adapters-voyage
-
-# Development installation
-git clone https://github.com/yourusername/aecp.git
-cd aecp/aecp-npm
-npm install
-npm run build</code></pre>
-
-                    <h4>Requirements</h4>
-                    <ul>
-                        <li>Node.js 18 or higher</li>
-                        <li>TypeScript 5.3+ (for TypeScript projects)</li>
-                    </ul>
-
-                    <h3>Verifying Installation</h3>
-                    <p><strong>Python:</strong></p>
-                    <pre class="code-block"><code>python -c "import aecp; print(aecp.__version__)"</code></pre>
-
-                    <p><strong>TypeScript:</strong></p>
-                    <pre class="code-block"><code>node -e "console.log(require('@aecp/core'))"</code></pre>
+# With adapters
+pip install "aecp[chroma]"       # ChromaDB
+pip install "aecp[langchain]"    # LangChain
+pip install "aecp[qdrant]"       # Qdrant
+pip install "aecp[all]"          # Everything</code></pre>
+                    <p>Python &ge; 3.10, numpy &ge; 1.24, scikit-learn &ge; 1.3.</p>
+<pre><code>python -c "import aecp; print(aecp.__version__)"
+# 0.2.0</code></pre>
                 </section>
 
-                <!-- Quick Start -->
-                <section id="quick-start" class="docs-section">
+                <section id="quickstart" class="ds">
                     <h2>Quick Start</h2>
-                    <p>Get started with AECP in under 5 minutes. This guide walks you through creating your first agent communication.</p>
+                    <h3>1. Fit a mapping</h3>
+<pre><code>import numpy as np
+from aecp import RidgeMapping
 
-                    <h3>Python</h3>
-                    <p>Here's a complete example showing how to set up two agents and transfer embeddings between them:</p>
-                    <pre class="code-block"><code>from aecp import AECP
-from aecp.adapters import OpenAIAdapter, VoyageAdapter
+rng = np.random.default_rng(0)
+K, d_src, d_tgt = 500, 32, 48
+X = rng.normal(size=(K, d_src))
+Y = X @ rng.normal(size=(d_src, d_tgt))
 
-# Step 1: Create two agents with different embedding models
-agent1 = AECP(OpenAIAdapter(api_key="sk-your-openai-key"))
-agent2 = AECP(VoyageAdapter(api_key="pa-your-voyage-key"))
+m = RidgeMapping(alpha="auto", seed=0)
+m.fit(X, Y)
+m.save("mapping.aecp")
 
-# Step 2: Calibrate once (learns how to transfer between models)
-print("Calibrating agents...")
-calibration_result = agent1.calibrate_with(agent2)
-print(f"Calibration quality: {calibration_result.validation_similarity:.2%}")
+Z = m.transform(X[:10])  # (10, d_tgt), L2-normalized</code></pre>
+                    <h3>2. Serve mode (zero corpus writes)</h3>
+<pre><code>from aecp.serve import QueryAdapter
 
-# Step 3: Transfer embeddings between agents
-text = "machine learning and neural networks"
-transfer = agent1.transfer_to(agent2.agent_id, text)
+qa = QueryAdapter.load("mapping.aecp")
+legacy_vec = qa.map_query(new_model_embed(query))</code></pre>
+                    <h3>3. Offline migration</h3>
+<pre><code>from aecp.migrate import migrate_store
 
-print(f"Original embedding dimensions: {agent1.embed(text).shape}")
-print(f"Transferred embedding dimensions: {transfer.embedding.shape}")
-print(f"Expected similarity: {transfer.expected_similarity:.2%}")
-
-# Step 4: Use the transferred embedding in agent2's space
-# The embedding is now compatible with agent2's model</code></pre>
-
-                    <h4>Step-by-Step Explanation</h4>
-                    <ol>
-                        <li><strong>Create Agents:</strong> Initialize two AECP agents with different embedding providers.</li>
-                        <li><strong>Calibrate:</strong> Run calibration once to learn transfer matrices between the two models.</li>
-                        <li><strong>Transfer:</strong> Transfer embeddings from agent1's space to agent2's space.</li>
-                        <li><strong>Use:</strong> The transferred embedding can now be used with agent2's native operations.</li>
-                    </ol>
-
-                    <h3>TypeScript</h3>
-                    <p>The same example in TypeScript/JavaScript:</p>
-                    <pre class="code-block"><code>import { AECP } from '@aecp/core';
-import { OpenAIAdapter } from '@aecp/adapters-openai';
-import { VoyageAdapter } from '@aecp/adapters-voyage';
-
-async function quickStart() {
-  // Step 1: Create two agents with different embedding models
-  const agent1 = new AECP({
-    embedder: new OpenAIAdapter({
-      apiKey: process.env.OPENAI_API_KEY
-    })
-  });
-
-  const agent2 = new AECP({
-    embedder: new VoyageAdapter({
-      apiKey: process.env.VOYAGE_API_KEY
-    })
-  });
-
-  // Step 2: Calibrate once
-  console.log("Calibrating agents...");
-  const calibrationResult = await agent1.calibrateWith(agent2);
-  console.log(`Calibration quality: ${calibrationResult.qualityMetrics.meanSimilarity.toFixed(2)}`);
-
-  // Step 3: Transfer embeddings
-  const text = "machine learning and neural networks";
-  const transfer = await agent1.transferTo(agent2.agentId, text);
-
-  console.log(`Transferred embedding dimensions: ${transfer.embedding.length}`);
-  console.log(`Expected similarity: ${transfer.expectedSimilarity.toFixed(2)}`);
-}
-
-quickStart().catch(console.error);</code></pre>
-
-                    <h4>Environment Variables</h4>
-                    <p>Set your API keys as environment variables:</p>
-                    <pre class="code-block"><code># .env file or export in shell
-export OPENAI_API_KEY="sk-your-key"
-export VOYAGE_API_KEY="pa-your-key"
-export COHERE_API_KEY="your-key"</code></pre>
-
-                    <h3>Next Steps</h3>
-                    <ul>
-                        <li>Read about <a href="#core-concepts">Core Concepts</a> to understand how AECP works</li>
-                        <li>Check out <a href="#python-examples">Python Examples</a> for more use cases</li>
-                        <li>Explore <a href="#typescript-examples">TypeScript Examples</a> for JavaScript usage</li>
-                        <li>Learn about <a href="#python-patterns">High-Level Patterns</a> for common scenarios</li>
-                    </ul>
-                </section>
-
-                <!-- Core Concepts -->
-                <section id="core-concepts" class="docs-section">
-                    <h2>Core Concepts</h2>
-                    <p>Understanding these concepts will help you use AECP effectively.</p>
-
-                    <h3>What is Calibration?</h3>
-                    <p>Calibration is a one-time process where two agents learn how to transfer embeddings between their different embedding spaces. Think of it as learning a translation dictionary between two languages.</p>
-
-                    <p>The calibration process:</p>
-                    <ol>
-                        <li><strong>Shared Vocabulary:</strong> Both agents encode the same set of vocabulary items</li>
-                        <li><strong>Matrix Computation:</strong> AECP computes transfer matrices using least squares regression</li>
-                        <li><strong>Quality Validation:</strong> The matrices are tested on held-out data to ensure quality</li>
-                    </ol>
-
-                    <h4>Calibration Configuration</h4>
-                    <p><strong>Recommended settings:</strong></p>
-                    <ul>
-                        <li><strong>Vocabulary size:</strong> 500–1000 for quick setup, 5000+ for production</li>
-                        <li><strong>Validation size:</strong> 10% of vocabulary size</li>
-                        <li><strong>Quality threshold:</strong> 0.75 minimum, 0.85+ ideal</li>
-                    </ul>
-
-                    <h3>Transfer Quality</h3>
-                    <p>Quality is measured using cosine similarity between the original and round-trip transferred embedding. Higher scores mean better semantic preservation.</p>
-
-                    <table class="docs-table">
-                        <thead>
-                            <tr>
-                                <th>Score</th>
-                                <th>Quality</th>
-                                <th>Description</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>&gt; 0.90</td>
-                                <td><strong>Excellent</strong></td>
-                                <td>Near-perfect semantic preservation</td>
-                                <td>Use confidently in production</td>
-                            </tr>
-                            <tr>
-                                <td>0.80–0.90</td>
-                                <td><strong>Good</strong></td>
-                                <td>High-quality transfer</td>
-                                <td>Production-ready</td>
-                            </tr>
-                            <tr>
-                                <td>0.75–0.80</td>
-                                <td><strong>Acceptable</strong></td>
-                                <td>Moderate quality</td>
-                                <td>Monitor closely, consider recalibration</td>
-                            </tr>
-                            <tr>
-                                <td>&lt; 0.75</td>
-                                <td><strong>Poor</strong></td>
-                                <td>Low quality transfer</td>
-                                <td>Recalibration required</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <h3>Information Preservation</h3>
-                    <p>AECP significantly improves information preservation compared to text-based transfers:</p>
-                    <ul>
-                        <li><strong>Text transfers:</strong> Only 43% of information survives the round trip</li>
-                        <li><strong>AECP vocabulary:</strong> 97% fidelity on 300k unseen vocabulary items</li>
-                        <li><strong>AECP corpus:</strong> 86% fidelity on 10k unseen sentences</li>
-                    </ul>
-
-                    <h3>When to Recalibrate</h3>
-                    <p>Recalibration is needed when:</p>
-                    <ul>
-                        <li>Transfer matrix expires (default: 7 days)</li>
-                        <li>Quality drops below threshold</li>
-                        <li>Embedding models are updated</li>
-                        <li>Domain shift occurs (e.g., switching from general to medical text)</li>
-                    </ul>
-                </section>
-
-                <!-- Python API -->
-                <section id="python-api" class="docs-section">
-                    <h2>Python API Reference</h2>
-
-                    <h3>AECP Class</h3>
-                    <pre class="code-block"><code>from aecp import AECP
-
-agent = AECP(
-    embedder,                    # EmbeddingProvider instance
-    agent_id="my_agent",         # Optional unique identifier
-    max_batch_size=1000,         # Max texts per batch
-    min_quality_threshold=0.75,  # Minimum transfer quality
+migrate_store(
+    source_dir="./old_store",
+    target_dir="./new_store",
+    mapping=m,
 )</code></pre>
-
-                    <h4>Methods</h4>
-                    <dl class="api-docs">
-                        <dt><code>calibrate_with(other, vocabulary=None)</code></dt>
-                        <dd>Calibrate with another agent. Returns <code>CalibrationResult</code>.</dd>
-
-                        <dt><code>embed(text)</code></dt>
-                        <dd>Generate embedding for text. Returns numpy array.</dd>
-
-                        <dt><code>transfer_to(agent_id, text)</code></dt>
-                        <dd>Transfer text to another agent's space. Returns <code>SemanticTransfer</code>.</dd>
-
-                        <dt><code>transfer_embedding_to(agent_id, embedding)</code></dt>
-                        <dd>Transfer pre-computed embedding. Returns <code>SemanticTransfer</code>.</dd>
-
-                        <dt><code>requires_recalibration(agent_id)</code></dt>
-                        <dd>Check if recalibration is needed. Returns <code>bool</code>.</dd>
-                    </dl>
                 </section>
 
-                <!-- Python Adapters -->
-                <section id="python-adapters" class="docs-section">
-                    <h2>Python Adapters</h2>
+                <section id="cli" class="ds">
+                    <h2>CLI</h2>
+<pre><code># Plan migration
+aecp plan --source-model ada-002 --target-model te3-large --corpus-size 1000000
 
-                    <pre class="code-block"><code>from aecp.adapters import (
-    OpenAIAdapter,
-    VoyageAdapter,
-    CohereAdapter,
-    HuggingFaceAdapter,
-    MockAdapter  # For testing
-)
+# Fit mapping
+aecp calibrate --source-vectors X.npy --target-vectors Y.npy -o map.aecp
 
-# OpenAI
-adapter = OpenAIAdapter(api_key="sk-...", model="text-embedding-3-small")
+# Transform corpus
+aecp transform --mapping map.aecp --source-dir ./old --target-dir ./new
 
-# Voyage AI
-adapter = VoyageAdapter(api_key="pa-...", model="voyage-2")
+# Inspect
+aecp inspect map.aecp</code></pre>
+                </section>
 
-# Cohere
-adapter = CohereAdapter(api_key="...", model="embed-english-v3.0")
+                <section id="mapping" class="ds">
+                    <h2>Mapping Classes</h2>
+                    <h3>RidgeMapping (default)</h3>
+<pre><code>from aecp import RidgeMapping
 
-# HuggingFace (local, no API key needed)
-adapter = HuggingFaceAdapter(model="all-MiniLM-L6-v2")
+m = RidgeMapping(alpha="auto", seed=0)
+m.fit(X_cal, Y_cal)
+m.save("mapping.aecp")
 
-# Mock (for testing)
-adapter = MockAdapter(dimensions=384)</code></pre>
+Z = m.transform(corpus)           # (N, d_tgt)
+X_hat = m.inverse_transform(Z)    # back to source</code></pre>
+                    <ul>
+                        <li>Handles rectangular mappings (d_src != d_tgt)</li>
+                        <li>Bias column for affine term</li>
+                        <li>Independent inverse alpha (fitted separately)</li>
+                    </ul>
+                    <h3>OrthogonalProcrustesMapping</h3>
+<pre><code>from aecp.mapping.linear import OrthogonalProcrustesMapping
 
-                    <h3>Supported Models</h3>
-                    <table class="docs-table">
-                        <thead>
-                            <tr>
-                                <th>Provider</th>
-                                <th>Models</th>
-                                <th>Dimensions</th>
-                            </tr>
-                        </thead>
+m = OrthogonalProcrustesMapping(seed=0)
+m.fit(X_cal, Y_cal)  # Requires d_src == d_tgt</code></pre>
+                </section>
+
+                <section id="serve" class="ds">
+                    <h2>Serve Mode</h2>
+<pre><code>from aecp.serve import QueryAdapter
+
+qa = QueryAdapter.load("mapping.aecp")
+legacy_vec = qa.map_query(new_model_embed(query_text))
+legacy_vecs = qa.map_queries(new_model_embed_batch(query_texts))
+
+print(qa.d_src, qa.d_tgt)          # dimensions
+print(qa.has_recalibrator)          # True if fitted</code></pre>
+                </section>
+
+                <section id="recal" class="ds">
+                    <h2>Score Recalibration</h2>
+<pre><code>m = RidgeMapping(alpha="auto", seed=0).fit(X, Y)
+m.fit_recalibrator(X_heldout, Y_heldout)
+m.save("mapping.aecp")
+
+# At serve time
+qa = QueryAdapter.load("mapping.aecp")
+calibrated = qa.recalibrate_scores(raw_scores)</code></pre>
+                    <table>
+                        <thead><tr><th>Pair</th><th>MAE</th><th>Margin Compression</th></tr></thead>
                         <tbody>
-                            <tr>
-                                <td><strong>OpenAI</strong></td>
-                                <td>text-embedding-3-small, text-embedding-3-large, ada-002</td>
-                                <td>1536–3072</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Voyage AI</strong></td>
-                                <td>voyage-2, voyage-large-2, voyage-code-2</td>
-                                <td>1024–1536</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Cohere</strong></td>
-                                <td>embed-english-v3.0, embed-multilingual-v3.0</td>
-                                <td>384–1024</td>
-                            </tr>
-                            <tr>
-                                <td><strong>HuggingFace</strong></td>
-                                <td>all-MiniLM-L6-v2, all-mpnet-base-v2, + any model</td>
-                                <td>384–768+</td>
-                            </tr>
+                            <tr><td>bge->e5 (same-dim)</td><td>0.095</td><td>0.83x</td></tr>
+                            <tr><td>MiniLM->bge (rectangular)</td><td>0.364</td><td>0.85x</td></tr>
                         </tbody>
                     </table>
                 </section>
 
-                <!-- Python Patterns -->
-                <section id="python-patterns" class="docs-section">
-                    <h2>Python Patterns</h2>
+                <section id="conf" class="ds">
+                    <h2>Confidence Scoring</h2>
+<pre><code>from aecp.reranking import ConfidenceScorer
 
-                    <h3>Cost Optimizer</h3>
-                    <pre class="code-block"><code>from aecp.patterns import CostOptimizer
-from aecp.adapters import OpenAIAdapter, VoyageAdapter
+scorer = ConfidenceScorer(margin_high=0.955, margin_low=0.637)
+result = scorer.score(query_vector, top_scores)
 
-optimizer = CostOptimizer(
-    cheap_adapter=OpenAIAdapter(model="text-embedding-3-small"),
-    expensive_adapter=VoyageAdapter(model="voyage-large-2"),
+print(result.flag)         # "high", "medium", or "low"
+print(result.is_reliable)  # True if "high"</code></pre>
+                    <table>
+                        <thead><tr><th>Pair</th><th>High-conf R@10</th><th>Low-conf R@10</th><th>Gap</th></tr></thead>
+                        <tbody>
+                            <tr><td>bge->e5</td><td>0.955</td><td>0.637</td><td>0.318</td></tr>
+                            <tr><td>MiniLM->bge</td><td>0.875</td><td>0.651</td><td>0.224</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="gate" class="ds">
+                    <h2>Quality Gate</h2>
+<pre><code>from aecp.quality.gate import QualityGate
+
+gate = QualityGate()
+report = gate.evaluate(mapping, sample_source, sample_target)
+
+print(report.verdict)              # "PASS", "WARN", or "FAIL"
+print(report.predicted_retention)  # estimated retention</code></pre>
+                    <table>
+                        <thead><tr><th>Verdict</th><th>Predicted Retention</th><th>Typical K</th></tr></thead>
+                        <tbody>
+                            <tr><td><span class="badge ok">PASS</span></td><td>&ge; 0.75</td><td>K &ge; 2000</td></tr>
+                            <tr><td><span class="badge warn">WARN</span></td><td>0.55 – 0.75</td><td>K = 500–1000</td></tr>
+                            <tr><td><span class="badge no">FAIL</span></td><td>&lt; 0.55</td><td>Broken mapping</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="chroma" class="ds">
+                    <h2>ChromaDB Adapter</h2>
+<pre><code>from aecp.adapters.chroma import AECPChromaFunction
+
+ef = AECPChromaFunction(mapping, new_model_embedder=my_embed_fn)
+col = client.get_collection("docs", embedding_function=ef)
+results = col.query(query_texts=["..."], n_results=10)</code></pre>
+                    <h3>Offline Migration</h3>
+<pre><code>from aecp.adapters.chroma import migrate_collection
+
+report = migrate_collection(
+    client, "docs", mapping,
+    new_collection="docs_v2",
+    batch_size=1000,
 )
-
-optimizer.calibrate()
-
-# Use cheap model by default
-embedding = optimizer.embed("query", precision="low")
-
-# Use expensive model when needed
-embedding = optimizer.embed("critical query", precision="high")
-
-# Check savings
-stats = optimizer.get_stats()
-print(f"Savings: {stats['savings_percentage']}%")</code></pre>
-
-                    <h3>Privacy Bridge</h3>
-                    <pre class="code-block"><code>from aecp.patterns import PrivacyBridge
-from aecp.adapters import HuggingFaceAdapter, OpenAIAdapter
-
-bridge = PrivacyBridge(
-    local_adapter=HuggingFaceAdapter(),      # Runs locally
-    cloud_adapter=OpenAIAdapter(api_key="sk-..."),
-)
-
-bridge.calibrate()
-
-# Embed sensitive data locally (never leaves your server)
-local_emb = bridge.embed_local("Patient SSN: 123-45-6789")
-
-# Transfer only semantics to cloud
-cloud_emb = bridge.transfer_to_cloud(local_emb)</code></pre>
-
-                    <h3>Agent Handoff</h3>
-                    <pre class="code-block"><code>from aecp.patterns import AgentHandoff
-from aecp.adapters import VoyageAdapter, OpenAIAdapter, CohereAdapter
-
-handoff = AgentHandoff({
-    'code': VoyageAdapter(model='voyage-code-2'),
-    'general': OpenAIAdapter(),
-    'multilingual': CohereAdapter(model='embed-multilingual-v3.0'),
-})
-
-handoff.calibrate_all()
-
-# Start task with code agent
-context = handoff.start("Debug this Python code", agent='code')
-
-# Hand off to general agent (context preserved)
-context = handoff.transfer(context, to_agent='general')</code></pre>
+print(f"Migrated {report.rows_processed} rows")</code></pre>
                 </section>
 
-                <!-- Python Examples -->
-                <section id="python-examples" class="docs-section">
-                    <h2>Python Examples</h2>
+                <section id="lc" class="ds">
+                    <h2>LangChain Adapter</h2>
+<pre><code>from aecp.adapters.langchain import AECPEmbeddings
 
-                    <h3>Basic Transfer</h3>
-                    <pre class="code-block"><code>from aecp import AECP
-from aecp.adapters import MockAdapter
-
-# Create agents with different models
-agent1 = AECP(MockAdapter(dimensions=384))
-agent2 = AECP(MockAdapter(dimensions=768))
-
-# Calibrate
-result = agent1.calibrate_with(agent2)
-print(f"Calibration quality: {result.validation_similarity:.2%}")
-
-# Transfer
-transfer = agent1.transfer_to(agent2.agent_id, "Hello world")
-print(f"Transferred shape: {transfer.embedding.shape}")</code></pre>
-
-                    <h3>Custom Vocabulary</h3>
-                    <pre class="code-block"><code># Use your own vocabulary for calibration
-vocabulary = ["your", "custom", "vocabulary", "here"] * 100
-
-result = agent1.calibrate_with(agent2, vocabulary=vocabulary)</code></pre>
-
-                    <h3>Quality Monitoring</h3>
-                    <pre class="code-block"><code># Check if recalibration needed
-if agent1.requires_recalibration(agent2.agent_id):
-    print("Recalibrating...")
-    agent1.calibrate_with(agent2)
-
-# Get calibration stats
-stats = agent1.get_calibration_stats(agent2.agent_id)
-print(f"Validation similarity: {stats['validation_similarity']:.2%}")</code></pre>
-
-                    <h3>Batch Operations</h3>
-                    <pre class="code-block"><code># Batch embeddings for efficiency
-texts = ['text1', 'text2', 'text3']
-embeddings = agent1.embed_batch(texts)
-
-# Transfer in batch
-transfers = [agent1.transfer_embedding_to(agent2.agent_id, emb)
-             for emb in embeddings]</code></pre>
-
-                    <h3>Domain-Specific Calibration</h3>
-                    <pre class="code-block"><code># Use domain-specific vocabulary for better quality
-medical_vocab = [
-    'diagnosis', 'treatment', 'patient', 'symptoms',
-    'The patient shows signs of infection.',
-    'Treatment protocol requires antibiotics.',
-    # ... more domain terms
-]
-
-agent1.calibrate_with(agent2, vocabulary=medical_vocab)</code></pre>
+ae = AECPEmbeddings(mapping, base_embeddings)
+db = Chroma.from_documents(docs, embedding=ae)
+results = db.similarity_search("query", k=10)</code></pre>
+                    <ul>
+                        <li><code>ae.embed_documents(texts)</code></li>
+                        <li><code>ae.embed_query(text)</code></li>
+                        <li><code>ae.aembed_documents(texts)</code> (async)</li>
+                    </ul>
                 </section>
 
-                <!-- TypeScript API -->
-                <section id="typescript-api" class="docs-section">
-                    <h2>TypeScript API Reference</h2>
+                <section id="qdrant" class="ds">
+                    <h2>Qdrant Adapter</h2>
+<pre><code>from aecp.stores.qdrant_store import QdrantStore
 
-                    <h3>AECP Class</h3>
-                    <pre class="code-block"><code>import { AECP } from '@aecp/core';
-
-const agent = new AECP({
-  embedder: embedder,           // EmbeddingProvider instance
-  agentId: 'my_agent',          // Optional unique identifier
-  maxBatchSize: 1000,           // Max texts per batch
-  minQualityThreshold: 0.75,    // Minimum transfer quality
-});</code></pre>
-
-                    <h4>Methods</h4>
-                    <dl class="api-docs">
-                        <dt><code>calibrateWith(other, config?)</code></dt>
-                        <dd>Calibrate with another agent. Returns <code>Promise&lt;CalibrationResult&gt;</code>.</dd>
-
-                        <dt><code>embed(text)</code></dt>
-                        <dd>Generate embedding for text. Returns <code>Promise&lt;number[]&gt;</code>.</dd>
-
-                        <dt><code>transferTo(agentId, text)</code></dt>
-                        <dd>Transfer text to another agent's space. Returns <code>Promise&lt;SemanticTransfer&gt;</code>.</dd>
-
-                        <dt><code>transferEmbeddingTo(agentId, embedding)</code></dt>
-                        <dd>Transfer pre-computed embedding. Returns <code>Promise&lt;SemanticTransfer&gt;</code>.</dd>
-
-                        <dt><code>requiresRecalibration(agentId)</code></dt>
-                        <dd>Check if recalibration is needed. Returns <code>boolean</code>.</dd>
-                    </dl>
+store = QdrantStore.connect(url="http://localhost:6333")
+for batch in store.iter_vectors(batch_size=1024):
+    Z = m.transform(np.stack([r.vector for r in batch]))</code></pre>
                 </section>
 
-                <!-- TypeScript Adapters -->
-                <section id="typescript-adapters" class="docs-section">
-                    <h2>TypeScript Adapters</h2>
-
-                    <pre class="code-block"><code>import { OpenAIAdapter } from '@aecp/adapters-openai';
-import { VoyageAdapter } from '@aecp/adapters-voyage';
-import { CohereAdapter } from '@aecp/adapters-cohere';
-import { HuggingFaceAdapter } from '@aecp/adapters-huggingface';
-
-// OpenAI
-const openai = new OpenAIAdapter({ apiKey: "sk-...", model: "text-embedding-3-small" });
-
-// Voyage AI
-const voyage = new VoyageAdapter({ apiKey: "pa-...", model: "voyage-2" });
-
-// Cohere
-const cohere = new CohereAdapter({ apiKey: "...", model: "embed-english-v3.0" });
-
-// HuggingFace
-const hf = new HuggingFaceAdapter({ model: "all-MiniLM-L6-v2" });</code></pre>
-                </section>
-
-                <!-- TypeScript Examples -->
-                <section id="typescript-examples" class="docs-section">
-                    <h2>TypeScript Examples</h2>
-
-                    <h3>Basic Transfer</h3>
-                    <pre class="code-block"><code>import { AECP } from '@aecp/core';
-import { OpenAIAdapter } from '@aecp/adapters-openai';
-import { VoyageAdapter } from '@aecp/adapters-voyage';
-
-const agent1 = new AECP({
-  embedder: new OpenAIAdapter({ apiKey: process.env.OPENAI_API_KEY })
-});
-
-const agent2 = new AECP({
-  embedder: new VoyageAdapter({ apiKey: process.env.VOYAGE_API_KEY })
-});
-
-// Calibrate
-const result = await agent1.calibrateWith(agent2);
-console.log(`Quality: ${result.qualityMetrics.meanSimilarity}`);
-
-// Transfer
-const embedding = await agent1.embed("Hello world");
-const transfer = await agent1.transferTo(agent2.agentId, embedding);</code></pre>
-
-                    <h3>Custom Vocabulary</h3>
-                    <pre class="code-block"><code>const customVocab = ["your", "custom", "vocabulary"];
-
-await agent1.calibrateWith(agent2, {
-  customVocabulary: customVocab
-});</code></pre>
-
-                    <h3>Quality Monitoring</h3>
-                    <pre class="code-block"><code>// Check if recalibration needed
-if (agent1.requiresRecalibration(agent2.agentId)) {
-  console.log("Recalibrating...");
-  await agent1.calibrateWith(agent2);
+                <section id="format" class="ds">
+                    <h2>.aecp File Format</h2>
+<pre><code>{
+  "format_version": 1,
+  "mapping_type": "ridge",
+  "d_src": 1536,
+  "d_tgt": 3072,
+  "bias": true,
+  "has_inverse": true,
+  "matrix_shape": [1537, 3072]
 }
-
-// Get quality score
-const quality = agent1.getQualityScore(agent2.agentId);
-if (quality && quality &lt; 0.80) {
-  console.warn('Low quality, recalibrating...');
-  await agent1.calibrateWith(agent2);
-}</code></pre>
-
-                    <h3>Batch Operations</h3>
-                    <pre class="code-block"><code>// Batch embeddings
-const texts = ['text1', 'text2', 'text3'];
-const embeddings = await agent1.embedBatch(texts);
-
-// Transfer in batch
-const transfers = await Promise.all(
-  embeddings.map(emb => agent1.transferTo(agent2.agentId, emb))
-);</code></pre>
-
-                    <h3>Error Handling</h3>
-                    <pre class="code-block"><code>try {
-  const transfer = await agent1.transferTo(agent2.agentId, embedding);
-} catch (error) {
-  if (error.message.includes('No calibration found')) {
-    await agent1.calibrateWith(agent2);
-  } else if (error.message.includes('expired')) {
-    await agent1.calibrateWith(agent2);
-  } else {
-    throw error;
-  }
-}</code></pre>
+# Payload: float64 matrices (forward W, inverse W_inv)</code></pre>
                 </section>
 
-                <!-- Plugin System -->
-                <section id="plugin-system" class="docs-section">
-                    <h2>Plugin System</h2>
-                    <p>AECP includes a plugin system that allows you to create custom embedding adapters without modifying the core library.</p>
-
-                    <h3>Python</h3>
-                    <pre class="code-block"><code>from aecp import register_adapter, adapter
-from aecp.adapters.base import BaseAdapter
-
-class MyCustomAdapter(BaseAdapter):
-    def __init__(self, api_key: str, **kwargs):
-        super().__init__(**kwargs)
-        self.api_key = api_key
-        self._dimensions = 384
-
-    def _embed_impl(self, text: str) -> List[float]:
-        # Your implementation here
-        return [0.1] * self._dimensions
-
-    def get_dimensions(self) -> int:
-        return self._dimensions
-
-    def get_model_id(self) -> str:
-        return "my-provider:v1"
-
-# Register it
-register_adapter("my-provider", MyCustomAdapter)
-
-# Or use decorator
-@adapter("my-provider")
-class MyCustomAdapter(BaseAdapter):
-    # ... same implementation
-    pass</code></pre>
-
-                    <h3>TypeScript</h3>
-                    <pre class="code-block"><code>import { registerAdapter, adapter } from '@aecp/core';
-import { EmbeddingProvider } from '@aecp/core';
-
-class MyAdapter implements EmbeddingProvider {
-  async embed(text: string): Promise&lt;number[]&gt; {
-    // Your implementation
-    return [0.1, 0.2, ...];
-  }
-
-  async embedBatch(texts: string[]): Promise&lt;number[][]&gt; {
-    return Promise.all(texts.map(t => this.embed(t)));
-  }
-
-  getDimensions(): number {
-    return 384;
-  }
-
-  getModelId(): string {
-    return 'my-model-v1';
-  }
-}
-
-// Register it
-registerAdapter("my-provider", MyAdapter);
-
-// Or use decorator
-@adapter("my-provider")
-class MyAdapter implements EmbeddingProvider {
-  // ... same implementation
-}</code></pre>
-                </section>
-
-                <!-- Protocol Spec -->
-                <section id="protocol-spec" class="docs-section">
-                    <h2>Protocol Specification</h2>
-
-                    <h3>Mathematical Foundation</h3>
-                    <p>Given two embedding spaces A and B with vocabularies V:</p>
-                    <ol>
-                        <li>Encode vocabulary: <code>E_A = embed_A(V)</code>, <code>E_B = embed_B(V)</code></li>
-                        <li>Solve least squares: <code>W_AB = argmin ||E_A @ W - E_B||²</code></li>
-                        <li>Compute reverse: <code>W_BA = argmin ||E_B @ W - E_A||²</code></li>
-                    </ol>
-
-                    <h3>Transfer Operation</h3>
-                    <p>To transfer embedding <code>e_A</code> from space A to space B:</p>
-                    <pre class="code-block"><code>e_B = e_A @ W_AB</code></pre>
-
-                    <h3>Quality Guarantees</h3>
+                <section id="not-use" class="ds">
+                    <h2>When NOT to Use</h2>
                     <ul>
-                        <li><strong>Training similarity:</strong> &gt; 0.95 (round-trip on training vocabulary)</li>
-                        <li><strong>Validation similarity:</strong> &gt; 0.80 (round-trip on held-out vocabulary)</li>
-                        <li><strong>Worst-case similarity:</strong> &gt; 0.65 (minimum across validation)</li>
-                    </ul>
-                    <p><strong>Note:</strong> Both training and validation use round-trip evaluation (A→B→A) for fair comparison. Forward transfer (A→B only) is typically ~0.96 and is computed for reference but not used in quality comparisons.</p>
+                        <li>Maximum quality matters more than cost</li>
+                        <li>Calibration domain mismatches corpus</li>
+                        <li>Quality gate returns FAIL</li>
+                        <li>K &lt; 2000</li>
                     </ul>
                 </section>
 
-                <!-- Best Practices -->
-                <section id="best-practices" class="docs-section">
-                    <h2>Best Practices</h2>
-
-                    <h3>1. Cache Calibrations</h3>
-                    <pre class="code-block"><code># Save transfer matrix
-import json
-matrix = agent1.transfer_matrices[agent2.agent_id]
-with open('calibration.json', 'w') as f:
-    json.dump(matrix, f)
-
-# Load later
-with open('calibration.json', 'r') as f:
-    saved_matrix = json.load(f)
-    agent1.transfer_matrices[agent2.agent_id] = saved_matrix</code></pre>
-
-                    <h3>2. Monitor Quality</h3>
-                    <pre class="code-block"><code>quality = agent1.get_quality_score(agent2.agent_id)
-if quality and quality &lt; 0.80:
-    print('Quality degraded, recalibrating...')
-    agent1.calibrate_with(agent2)</code></pre>
-
-                    <h3>3. Use Domain-Specific Vocabulary</h3>
-                    <pre class="code-block"><code>medical_vocab = [
-    'diagnosis', 'treatment', 'patient', 'symptoms',
-    'The patient shows signs of infection.',
-    'Treatment protocol requires antibiotics.',
-    # ... more domain terms
-]
-
-agent1.calibrate_with(agent2, vocabulary=medical_vocab)</code></pre>
-
-                    <h3>4. Batch Operations</h3>
-                    <pre class="code-block"><code># Batch embeddings for efficiency
-texts = ['text1', 'text2', 'text3']
-embeddings = agent1.embed_batch(texts)
-
-# Transfer in batch
-transfers = [agent1.transfer_embedding_to(agent2.agent_id, emb)
-             for emb in embeddings]</code></pre>
-                </section>
-
-                <!-- Troubleshooting -->
-                <section id="troubleshooting" class="docs-section">
-                    <h2>Troubleshooting</h2>
-
-                    <h3>Low Quality Scores</h3>
-                    <p><strong>Problem:</strong> Calibration quality &lt; 0.75</p>
-                    <p><strong>Solutions:</strong></p>
+                <section id="anti" class="ds">
+                    <h2>Anti-patterns</h2>
                     <ul>
-                        <li>Increase vocabulary size</li>
-                        <li>Use more diverse vocabulary</li>
-                        <li>Check if models are too different (e.g., 384D vs 3072D)</li>
-                        <li>Consider using models from same family</li>
-                    </ul>
-
-                    <h3>Slow Calibration</h3>
-                    <p><strong>Problem:</strong> Calibration takes too long</p>
-                    <p><strong>Solutions:</strong></p>
-                    <ul>
-                        <li>Reduce vocabulary size (minimum 200–300)</li>
-                        <li>Use batch embedding APIs</li>
-                        <li>Cache calibration results</li>
-                    </ul>
-
-                    <h3>Memory Issues</h3>
-                    <p><strong>Problem:</strong> Out of memory during calibration</p>
-                    <p><strong>Solutions:</strong></p>
-                    <ul>
-                        <li>Reduce vocabulary size</li>
-                        <li>Process in smaller batches</li>
-                        <li>Use quantized models (HuggingFace)</li>
+                        <li>Don't mix vectors from different models in one collection</li>
+                        <li>Don't assume same dimensionality = compatibility</li>
+                        <li>Don't skip the quality gate</li>
+                        <li>Don't use MLP (0.719 vs 0.866 for Ridge)</li>
                     </ul>
                 </section>
 
-                <!-- Quick Reference -->
-                <section id="quick-reference" class="docs-section">
-                    <h2>Quick Reference</h2>
-
-                    <h3>Python</h3>
-                    <pre class="code-block"><code>from aecp import AECP
-from aecp.adapters import OpenAIAdapter
-
-agent = AECP(OpenAIAdapter(api_key="sk-..."))
-embedding = agent.embed("text")
-agent1.calibrate_with(agent2)
-transfer = agent1.transfer_to(agent2.agent_id, "text")</code></pre>
-
-                    <h3>TypeScript</h3>
-                    <pre class="code-block"><code>import { AECP } from '@aecp/core';
-import { OpenAIAdapter } from '@aecp/adapters-openai';
-
-const agent = new AECP({ embedder: new OpenAIAdapter({ apiKey: 'sk-...' }) });
-const embedding = await agent.embed("text");
-await agent1.calibrateWith(agent2);
-const transfer = await agent1.transferTo(agent2.agentId, "text");</code></pre>
-                </section>
-
-                <!-- Benchmarks -->
-                <section id="benchmarks" class="docs-section">
-                    <h2>Benchmarks</h2>
-
-                    <pre class="code-block"><code>from aecp import AECP
-from aecp.adapters import HuggingFaceAdapter
-
-# Create two agents with different models
-agent1 = AECP(HuggingFaceAdapter(model="all-MiniLM-L6-v2"))
-agent2 = AECP(HuggingFaceAdapter(model="all-mpnet-base-v2"))
-
-# Calibrate
-result = agent1.calibrate_with(agent2)
-
-print(f"Training similarity (round-trip): {result.training_similarity:.4f}")
-print(f"Validation similarity (round-trip): {result.validation_similarity:.4f}")
-print(f"Worst-case similarity: {result.worst_case_similarity:.4f}")
-
-# Output:
-# Training similarity (round-trip): 0.9735 (97.35%)
-# Validation similarity (round-trip): 0.9734 (97.34%)
-# Worst-case similarity: 0.8243
-# Note: Both use round-trip (A→B→A) for fair comparison</code></pre>
-                </section>
-
-                <!-- Security -->
-                <section id="security" class="docs-section">
-                    <h2>Security Considerations</h2>
-
+                <section id="sec" class="ds">
+                    <h2>Security</h2>
                     <ul>
-                        <li><strong>API Keys:</strong> Store in environment variables, never in code</li>
-                        <li><strong>Calibration Data:</strong> Use non-sensitive vocabulary for calibration</li>
-                        <li><strong>Privacy Bridge:</strong> Original text never leaves local infrastructure</li>
-                        <li><strong>Input Validation:</strong> All inputs are validated and sanitized</li>
+                        <li><strong>Inversion attacks:</strong> Treat mapped vectors with same sensitivity as source text</li>
+                        <li><strong>API keys:</strong> Environment variables, never in code</li>
+                        <li><strong>Calibration:</strong> Use non-sensitive texts</li>
                     </ul>
                 </section>
 
@@ -897,12 +315,7 @@ print(f"Worst-case similarity: {result.worst_case_similarity:.4f}")
         </main>
     </div>
 
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2026 AECP. MIT License.</p>
-        </div>
-    </footer>
-
+    <footer class="footer"><div class="wrap"><p>&copy; 2026 AECP. Apache-2.0 License.</p></div></footer>
     <script src="js/main.js"></script>
     <script src="js/docs.js"></script>
 </body>

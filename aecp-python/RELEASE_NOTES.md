@@ -1,25 +1,46 @@
-# aecp 0.1.0
+# aecp 0.2.0
 
-Initial release. Embedding migration without re-embedding.
+Embedding migration with vector DB adapters, score recalibration, and confidence scoring.
 
-## What it does
+## What's new in v0.2
 
-Fits a linear map between embedding spaces from a small calibration sample (~2K texts), then transforms stored vectors locally. 87-91% retrieval retention measured on BEIR benchmarks.
+- **ChromaDB adapter** — `AECPChromaFunction` (serve-mode `EmbeddingFunction`) + `migrate_collection()` (offline migration)
+- **LangChain adapter** — `AECPEmbeddings` (drop-in `Embeddings` shim)
+- **Score recalibration** — isotonic regression maps cross-space scores to ceiling-equivalent scores
+- **Confidence flags** — per-query high/medium/low with adaptive P33/P67 margins
+- **Independent inverse α** — separate regularization for forward and inverse directions (+2.2pts)
+- **Core abstractions** — `EmbeddingAdapter`, `VectorStoreAdapter` ABCs
+
+## What was tested and rejected
+
+- Cross-encoder reranking: −10.7pts (MS MARCO domain-mismatched for sci-text)
+- TSVD shrinkage: −0.33pt at rank=512, not worth complexity
+- Procrustes centering: −55pt on unit vectors (breaks serve-mode)
+
+## What was validated
+
+- Full threshold agreement tables on both pairs (bge→e5, MiniLM→bge)
+- Confidence flags predictive across both pairs (high=0.955, low=0.637 on bge→e5)
+- Rectangular pair re-validation: 86% retention, margin compression 0.85x
 
 ## Install
 
 ```bash
 pip install aecp
+pip install aecp[chroma]      # ChromaDB
+pip install aecp[langchain]   # LangChain
+pip install aecp[qdrant]      # Qdrant
+pip install aecp[all]         # Everything
 ```
 
 ## Highlights
 
-- **RidgeMapping** with auto alpha selection — handles rectangular dims (e.g., 1536→3072)
-- **QueryAdapter serve mode** — map queries into legacy space, zero corpus writes, instant rollback
-- **QualityGate v2** — predicts retrieval retention from holdout proxies using isotonic regression
-- **CLI** — `aecp plan`, `aecp calibrate`, `aecp transform`, `aecp inspect`
-- **Store adapters** — NumpyFileStore, QdrantStore with resumable migration
-- **5 adapters** — Ridge, Procrustes, ProcrustesDiag, LowRankAffine, ResidualMLP
+- **RidgeMapping** with auto alpha selection and independent inverse α
+- **QueryAdapter serve mode** — map queries into legacy space, zero corpus writes
+- **QualityGate v2** — data-driven PASS/WARN/FAIL from trained model
+- **ChromaDB + LangChain adapters** — drop-in wrappers for popular vector DBs
+- **Score recalibration** — isotonic regression for threshold reliability
+- **Confidence scoring** — per-query high/medium/low flags
 
 ## Benchmarks
 
@@ -31,14 +52,17 @@ pip install aecp
 
 Same-dim pair (bge-large→e5-large): 90.8% retention.
 
+Score recalibration: essential for rectangular pairs (+22% at τ=0.60).
+Confidence flags: high-conf R@10=0.955, low-conf R@10=0.637.
+
 All numbers from `benchmarks/results/`, verified by `benchmarks/audit_configs.py`.
 
 ## What's next
 
 - API model pair benchmarks (ada-002→te3-large)
-- Chroma store adapter
+- pgvector adapter
+- LlamaIndex adapter
 - MCP wrapper for agent frameworks
-- conda-forge package
 
 ## License
 

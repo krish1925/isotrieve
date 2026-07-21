@@ -48,7 +48,7 @@ def _ensure_builtins() -> None:
 def load_mapping(path: str | Path) -> Mapping:
     """Load any registered mapping from a ``.aecp`` file."""
     _ensure_builtins()
-    header, W, W_inv = load_aecp_payload(path)
+    header, W, W_inv, extra = load_aecp_payload(path)
     mapping_type = header["mapping_type"]
 
     # Special handling for ResidualMLP (torch-based, state in separate file)
@@ -72,14 +72,26 @@ def load_mapping(path: str | Path) -> Mapping:
         obj._validation_report = ValidationReport(**val)
     object.__setattr__(obj, "_normalize_output", True)
     object.__setattr__(obj, "_holdout_fraction", 0.1)
+
+    # Load score recalibrator if present
+    recal_data = header.get("score_recal_v1")
+    if recal_data is not None:
+        from aecp.recalibration import ScoreRecalibrator
+        object.__setattr__(obj, "_recalibrator", ScoreRecalibrator.from_dict(recal_data))
+    else:
+        object.__setattr__(obj, "_recalibrator", None)
+
     if mapping_type == "ridge":
         alpha = (val or {}).get("alpha") if val else None
         object.__setattr__(obj, "alpha", alpha if alpha is not None else "auto")
         object.__setattr__(obj, "_chosen_alpha", alpha)
+        object.__setattr__(obj, "_chosen_inv_alpha", alpha)
+        object.__setattr__(obj, "_rank", None)
     elif mapping_type == "lowrank_affine":
         alpha = (val or {}).get("alpha") if val else None
         object.__setattr__(obj, "alpha", alpha if alpha is not None else "auto")
         object.__setattr__(obj, "_chosen_alpha", alpha)
+        object.__setattr__(obj, "_chosen_inv_alpha", alpha)
         object.__setattr__(obj, "_rank", None)
     elif mapping_type == "procrustes_diag":
         object.__setattr__(obj, "_D", None)

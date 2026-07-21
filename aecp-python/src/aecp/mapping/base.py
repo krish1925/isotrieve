@@ -56,6 +56,12 @@ def _check_finite(name: str, arr: np.ndarray) -> None:
         raise ValueError(f"{name} contains NaN or Inf values")
 
 
+def _augment_bias(X: np.ndarray) -> np.ndarray:
+    """Append a column of ones for an affine (bias) term."""
+    ones = np.ones((X.shape[0], 1), dtype=X.dtype)
+    return np.hstack([X, ones])
+
+
 class Mapping(ABC):
     """Abstract embedding-space mapping.
 
@@ -75,6 +81,7 @@ class Mapping(ABC):
         self._seed: int = 0
         self._validation_report: ValidationReport | None = None
         self._meta: dict[str, Any] = {}
+        self._recalibrator: Any = None  # ScoreRecalibrator | None
 
     @property
     def is_fitted(self) -> bool:
@@ -148,10 +155,28 @@ class Mapping(ABC):
         if self._W_inv is not None:
             header["inverse_matrix_shape"] = list(self._W_inv.shape)
 
+        # Extra matrices (centering means for Procrustes variants)
+        extra_matrices = {}
+        if hasattr(self, "_mean_X") and self._mean_X is not None:
+            extra_matrices["mean_X"] = list(self._mean_X.shape)
+        if hasattr(self, "_mean_Y") and self._mean_Y is not None:
+            extra_matrices["mean_Y"] = list(self._mean_Y.shape)
+        if extra_matrices:
+            header["extra_matrices"] = extra_matrices
+
+        # Score recalibrator (optional section)
+        if self._recalibrator is not None and self._recalibrator.is_fitted:
+            header["score_recal_v1"] = self._recalibrator.save_dict()
+
         header_bytes = json.dumps(header, separators=(",", ":")).encode("utf-8")
         payload = self._W.astype(np.float64, copy=False).tobytes(order="C")
         if self._W_inv is not None:
             payload += self._W_inv.astype(np.float64, copy=False).tobytes(order="C")
+        # Append extra matrices (centering means for Procrustes)
+        if hasattr(self, "_mean_X") and self._mean_X is not None:
+            payload += self._mean_X.astype(np.float64, copy=False).tobytes(order="C")
+        if hasattr(self, "_mean_Y") and self._mean_Y is not None:
+            payload += self._mean_Y.astype(np.float64, copy=False).tobytes(order="C")
 
         with path.open("wb") as f:
             f.write(_AECP_MAGIC)
@@ -173,9 +198,73 @@ class Mapping(ABC):
         if not self._fitted or self._W is None:
             raise RuntimeError("Mapping is not fitted; call fit() first")
 
+    def _apply_mapping(
+        self,
+        V: np.ndarray,
+        matrix: np.ndarray,
+        expected_dim: int,
+        *,
+        direction: str,
+        bias: bool = False,
+        normalize: bool = True,
+    ) -> np.ndarray:
+        """Shared transform/inverse_transform logic.
+
+        Handles: single-vector reshape, dimension check, finiteness, bias
+        augmentation, matrix multiply, L2 normalization.
+
+        Parameters
+        ----------
+        V:
+            Input vectors (n, d) or (d,).
+        matrix:
+            Weight matrix to multiply by.
+        expected_dim:
+            Expected input dimensionality.
+        direction:
+            ``"forward"`` or ``"inverse"`` — used in error messages.
+        bias:
+            If True, augment input with a column of ones before multiply.
+        normalize:
+            If True, L2-normalize output rows.
+        """
+        V = np.asarray(V, dtype=np.float64)
+        single = V.ndim == 1
+        if single:
+            V = V.reshape(1, -1)
+        if V.shape[1] != expected_dim:
+            dim_name = "source" if direction == "forward" else "target"
+            raise ValueError(
+                f"Dimension mismatch: expected {expected_dim} ({dim_name} model dim), got {V.shape[1]}. "
+                f"Vectors must be from the {'source' if direction == 'forward' else 'target'} embedding model. "
+                f"If dims differ between models, fit an aecp mapping first: "
+                f"RidgeMapping(alpha='auto').fit(X_cal, Y_cal)"
+            )
+        _check_finite("V", V)
+        if bias:
+            V = _augment_bias(V)
+        out = V @ matrix
+        if normalize:
+            out = l2_normalize(out)
+        return out.ravel() if single else out
+
     def set_meta(self, **kwargs: Any) -> None:
         """Attach metadata stored in the ``.aecp`` header (model ids, corpus id, …)."""
         self._meta.update(kwargs)
+
+    @property
+    def has_recalibrator(self) -> bool:
+        return self._recalibrator is not None and self._recalibrator.is_fitted
+
+    def recalibrate_scores(self, scores: np.ndarray) -> np.ndarray:
+        """Map post-migration similarity scores to ceiling-equivalent scores.
+
+        Requires that a ScoreRecalibrator was fitted during calibration.
+        Returns scores unchanged if no recalibrator is present.
+        """
+        if self._recalibrator is None or not self._recalibrator.is_fitted:
+            return np.asarray(scores, dtype=np.float64)
+        return self._recalibrator.transform(scores)
 
 
 def _pkg_version() -> str:
@@ -199,7 +288,7 @@ def read_aecp_header(path: str | Path) -> dict[str, Any]:
     return header
 
 
-def load_aecp_payload(path: str | Path) -> tuple[dict[str, Any], np.ndarray, np.ndarray | None]:
+def load_aecp_payload(path: str | Path) -> tuple[dict[str, Any], np.ndarray, np.ndarray | None, dict[str, np.ndarray]]:
     """Load header, forward matrix, and optional inverse matrix from ``.aecp``."""
     path = Path(path)
     with path.open("rb") as f:
@@ -214,12 +303,27 @@ def load_aecp_payload(path: str | Path) -> tuple[dict[str, Any], np.ndarray, np.
     n_fwd = int(np.prod(shape))
     fwd = np.frombuffer(rest, dtype=np.float64, count=n_fwd).reshape(shape).copy()
     inv: np.ndarray | None = None
+    offset = n_fwd * 8
     if header.get("has_inverse") and "inverse_matrix_shape" in header:
         inv_shape = tuple(header["inverse_matrix_shape"])
         n_inv = int(np.prod(inv_shape))
         inv = (
-            np.frombuffer(rest, dtype=np.float64, count=n_inv, offset=n_fwd * 8)
+            np.frombuffer(rest, dtype=np.float64, count=n_inv, offset=offset)
             .reshape(inv_shape)
             .copy()
         )
-    return header, fwd, inv
+        offset += n_inv * 8
+    # Extra matrices (centering means for Procrustes)
+    extra = header.get("extra_matrices", {})
+    extra_arrays: dict[str, np.ndarray] = {}
+    for name in ("mean_X", "mean_Y"):
+        if name in extra:
+            eshape = tuple(extra[name])
+            n_extra = int(np.prod(eshape))
+            extra_arrays[name] = (
+                np.frombuffer(rest, dtype=np.float64, count=n_extra, offset=offset)
+                .reshape(eshape)
+                .copy()
+            )
+            offset += n_extra * 8
+    return header, fwd, inv, extra_arrays

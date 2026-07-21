@@ -3,173 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AECP - Agent Embedding Communication Protocol</title>
+    <title>AECP - Embedding Migration Without Re-embedding</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="container">
-            <div class="nav-brand">
-                <i class="fas fa-network-wired"></i>
-                <span>AECP</span>
-            </div>
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="brand"><span class="brand-dot"></span>AECP</a>
             <ul class="nav-links">
-                <li><a href="index.html" class="active">Home</a></li>
-                <li><a href="protocol.html">Protocol</a></li>
-                <li><a href="performance.html">Performance</a></li>
-                <li><a href="playground.html">Playground</a></li>
+                <li><a href="index.html" class="on">Home</a></li>
+                <li><a href="protocol.html">How It Works</a></li>
+                <li><a href="integrations.html">Integrations</a></li>
+                <li><a href="performance.html">Benchmarks</a></li>
                 <li><a href="docs.html">Docs</a></li>
             </ul>
+            <div class="nav-right">
+                <a href="https://github.com/krish1925/AECP" class="nav-gh" target="_blank">GitHub</a>
+                <button class="theme-btn" id="themeToggle" title="Toggle theme">&#9681;</button>
+            </div>
         </div>
     </nav>
 
     <section class="hero">
-        <div class="container">
-            <h1 class="hero-title">Agent Embedding Communication Protocol</h1>
-            <p class="hero-subtitle">
-                Reduce information loss in agent-to-agent communication from 57% to 14%
-            </p>
-
-            <div class="hero-stats">
-                <div class="stat-card">
-                    <div class="stat-value">97%</div>
-                    <div class="stat-label">Vocab Fidelity</div>
-                    <div class="stat-detail">On 300k unseen vocabulary</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">86%</div>
-                    <div class="stat-label">Corpus Fidelity</div>
-                    <div class="stat-detail">On 10k unseen sentences</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">&lt;1ms</div>
-                    <div class="stat-label">Transfer Latency</div>
-                    <div class="stat-detail">No re-embedding needed</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">2x</div>
-                    <div class="stat-label">Better Quality</div>
-                    <div class="stat-detail">Semantic preservation</div>
-                </div>
+        <div class="wrap">
+            <h1>Embedding Migration<br>Without Re-embedding</h1>
+            <p>Migrate a vector database to a new embedding model by fitting a linear map from ~2K calibration texts. 87–91% retrieval retention on BEIR.</p>
+            <div class="grid4" style="margin-bottom:2rem">
+                <div class="card"><div class="big">91%</div><div class="label">Retrieval Retention</div><div class="detail">bge-large &rarr; e5-large, SciFact K=2000</div></div>
+                <div class="card"><div class="big">87%</div><div class="label">Rectangular Pair</div><div class="detail">MiniLM (384d) &rarr; bge-large (1024d)</div></div>
+                <div class="card"><div class="big">~0</div><div class="label">Corpus Writes</div><div class="detail">Serve mode: map queries on-the-fly</div></div>
+                <div class="card"><div class="big">2K</div><div class="label">Calibration Texts</div><div class="detail">Minimum for PASS gate verdict</div></div>
             </div>
-
-            <div class="hero-actions">
-                <a href="playground.html" class="btn btn-primary">Try Playground</a>
-                <a href="docs.html" class="btn btn-secondary">Read Docs</a>
+            <div class="actions">
+                <a href="docs.html" class="btn primary">Quick Start</a>
+                <a href="performance.html" class="btn">View Benchmarks</a>
             </div>
         </div>
     </section>
 
-    <section class="problem-section">
-        <div class="container">
-            <h2 class="section-title">The Problem</h2>
-            <div class="problem-grid">
-                <div class="problem-card">
-                    <h3>Information Loss in Agent Communication</h3>
-                    <p>
-                        When AI agents communicate today (like in MCP or other agent frameworks),
-                        they use text-to-text transfers. Approximately <strong>57% of information is lost</strong>
-                        in this process.
-                    </p>
-                    <p class="problem-note">Only 43% of information survives the round trip</p>
-                </div>
-                <div class="problem-card">
+    <section class="section">
+        <div class="wrap">
+            <div class="st">The Problem</div>
+            <div class="grid3">
+                <div class="card">
                     <h3>Incompatible Embedding Spaces</h3>
-                    <p>
-                        Different embedding models create vectors in different spaces. An OpenAI embedding
-                        can't be directly used with a Voyage model - they need to re-embed from text each time.
-                    </p>
-                    <p class="problem-note">Requires re-processing on every transfer</p>
+                    <p>Different models produce vectors in different geometric spaces. Raw cross-space nDCG@10 = <strong>0.0</strong>.</p>
+                    <p class="note">1024d from bge &ne; 1024d from e5</p>
                 </div>
-                <div class="problem-card">
-                    <h3>Performance Impact</h3>
-                    <p>
-                        Re-embedding text adds latency (150ms+) and cost. Agents waste the understanding
-                        they already computed.
-                    </p>
-                    <p class="problem-note">150ms+ delay per conversation</p>
+                <div class="card">
+                    <h3>Re-embedding Is Expensive</h3>
+                    <p>Switching models means re-embedding every document. 1M docs = hundreds of dollars.</p>
+                    <p class="note">Cost scales linearly with corpus size</p>
                 </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="solution-section">
-        <div class="container">
-            <h2 class="section-title">Our Solution</h2>
-            <div class="solution-content">
-                <div class="solution-text">
-                    <h3>Direct Embedding Transfer</h3>
-                    <p>
-                        AECP enables agents to transfer embeddings directly between different models,
-                        without converting back to text. This preserves significantly more information.
-                    </p>
-
-                    <ul class="feature-list">
-                        <li>
-                            <i class="fas fa-check"></i>
-                            <strong>97% fidelity</strong> on unseen vocabulary (vs 43% with text transfers)
-                        </li>
-                        <li>
-                            <i class="fas fa-check"></i>
-                            <strong>86% fidelity</strong> on unseen corpus sentences (vs 43% baseline)
-                        </li>
-                        <li>
-                            <i class="fas fa-check"></i>
-                            <strong>&lt;1ms transfer latency</strong> (vs 150ms+ with re-embedding)
-                        </li>
-                        <li>
-                            <i class="fas fa-check"></i>
-                            Works with OpenAI, Voyage, Cohere, HuggingFace, and other embedding models
-                        </li>
-                        <li>
-                            <i class="fas fa-check"></i>
-                            One-time calibration, then instant transfers
-                        </li>
-                    </ul>
-                    <p>
-                        This represents approximately a 2x improvement in information preservation
-                        (43% → 86% on sentences, 97% on vocabulary). Tested on 300k unseen vocabulary
-                        and 10k unseen sentences with zero training data contamination.
-                    </p>
-
-                    <a href="protocol.html" class="btn btn-primary">See How It Works</a>
+                <div class="card">
+                    <h3>Model Deprecation Looms</h3>
+                    <p>OpenAI deprecated ada-002. New models are better, but migrating means rebuilding from scratch.</p>
+                    <p class="note">ada-002 &rarr; text-embedding-3: same story</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="quick-links">
-        <div class="container">
-            <div class="links-grid">
-                <a href="protocol.html" class="link-card">
-                    <i class="fas fa-book"></i>
-                    <h3>Protocol Details</h3>
-                    <p>Learn how AECP works</p>
-                </a>
-                <a href="performance.html" class="link-card">
-                    <i class="fas fa-chart-bar"></i>
-                    <h3>Performance</h3>
-                    <p>Benchmarks &amp; metrics</p>
-                </a>
-                <a href="playground.html" class="link-card">
-                    <i class="fas fa-play"></i>
-                    <h3>Playground</h3>
-                    <p>Try it interactively</p>
-                </a>
-                <a href="https://github.com/yourusername/aecp" class="link-card" target="_blank">
-                    <i class="fab fa-github"></i>
-                    <h3>GitHub</h3>
-                    <p>View source code</p>
-                </a>
+    <section class="section">
+        <div class="wrap">
+            <div class="st">How AECP Solves This</div>
+            <p>Fits a ridge regression from ~2K paired calibration texts. The learned mapping transforms stored vectors, or maps new-model queries into the legacy space.</p>
+            <ul class="fl">
+                <li><span class="ck">&gt;</span><strong>87–91% retrieval retention</strong> — measured on BEIR SciFact, 3 seeds</li>
+                <li><span class="ck">&gt;</span><strong>Score recalibration</strong> — isotonic regression makes threshold decisions reliable</li>
+                <li><span class="ck">&gt;</span><strong>Confidence flags</strong> — per-query high/medium/low with adaptive margins</li>
+                <li><span class="ck">&gt;</span><strong>ChromaDB + LangChain adapters</strong> — drop-in wrappers for popular vector DBs</li>
+                <li><span class="ck">&gt;</span><strong>Quality gate</strong> — data-driven PASS/WARN/FAIL from a trained model</li>
+            </ul>
+            <a href="protocol.html" class="btn primary">See How It Works</a>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="wrap">
+            <div class="grid4">
+                <a href="protocol.html" class="card" style="text-decoration:none;color:inherit"><h3>How It Works</h3><p class="note">Architecture and math</p></a>
+                <a href="integrations.html" class="card" style="text-decoration:none;color:inherit"><h3>Integrations</h3><p class="note">ChromaDB, LangChain, Qdrant</p></a>
+                <a href="performance.html" class="card" style="text-decoration:none;color:inherit"><h3>Benchmarks</h3><p class="note">Real numbers, no fakes</p></a>
+                <a href="docs.html" class="card" style="text-decoration:none;color:inherit"><h3>Documentation</h3><p class="note">API reference + guides</p></a>
             </div>
         </div>
     </section>
 
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2026 AECP. MIT License.</p>
-        </div>
-    </footer>
+    <footer class="footer"><div class="wrap"><p>&copy; 2026 AECP. Apache-2.0 License.</p></div></footer>
+    <script src="js/main.js"></script>
 </body>
 </html>

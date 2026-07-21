@@ -123,28 +123,46 @@ class NumpyFileStore(VectorStore):
         else:
             record_iter = records  # type: ignore[assignment]
 
-        all_vecs: list[np.ndarray] = []
+        batch_files: list[Path] = []
         meta_lines: list[str] = []
         written = 0
         last_id: str | None = None
-        for batch in record_iter:
-            for rec in batch:
-                all_vecs.append(np.asarray(rec.vector, dtype=np.float64))
-                row: dict[str, Any] = {"id": rec.id}
-                if rec.text is not None:
-                    row["text"] = rec.text
-                if rec.payload:
-                    for k, v in rec.payload.items():
-                        if k not in row:
-                            row[k] = v
-                meta_lines.append(json.dumps(row, ensure_ascii=False))
-                last_id = rec.id
-                written += 1
+        tmp_dir = self.path / ".write_tmp"
+        tmp_dir.mkdir(exist_ok=True)
 
-        if not all_vecs:
-            return 0
-        arr = np.stack(all_vecs, axis=0)
-        np.save(self.vectors_path, arr)
+        try:
+            for batch in record_iter:
+                vecs = [np.asarray(rec.vector, dtype=np.float64) for rec in batch]
+                arr = np.stack(vecs, axis=0)
+                batch_file = tmp_dir / f"batch_{len(batch_files)}.npy"
+                np.save(batch_file, arr)
+                batch_files.append(batch_file)
+
+                for rec in batch:
+                    row: dict[str, Any] = {"id": rec.id}
+                    if rec.text is not None:
+                        row["text"] = rec.text
+                    if rec.payload:
+                        for k, v in rec.payload.items():
+                            if k not in row:
+                                row[k] = v
+                    meta_lines.append(json.dumps(row, ensure_ascii=False))
+                    last_id = rec.id
+                    written += 1
+
+            if not batch_files:
+                return 0
+
+            # Concatenate all batch files into final array
+            arrays = [np.load(f) for f in batch_files]
+            arr = np.concatenate(arrays, axis=0)
+            np.save(self.vectors_path, arr)
+        finally:
+            # Clean up temp files
+            for f in batch_files:
+                f.unlink(missing_ok=True)
+            tmp_dir.rmdir()
+
         with self.meta_path.open("w", encoding="utf-8") as f:
             f.write("\n".join(meta_lines) + "\n")
         manifest = {"last_written_id": last_id, "count": written}

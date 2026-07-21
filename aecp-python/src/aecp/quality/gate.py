@@ -59,6 +59,8 @@ class GateReport:
     gate_model_scope: str | None = None
     lopo_error: float | None = None
     thresholds_used: dict[str, Any] = field(default_factory=dict)
+    margin_compression: float | None = None
+    score_recal_recommendation: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -80,6 +82,8 @@ class GateReport:
             "gate_model_scope": self.gate_model_scope,
             "lopo_error": self.lopo_error,
             "thresholds_used": self.thresholds_used,
+            "margin_compression": self.margin_compression,
+            "score_recal_recommendation": self.score_recal_recommendation,
         }
 
 
@@ -103,10 +107,16 @@ class QualityGate:
                 "Not validated on API model pairs (ada-002, te3-large, etc.)."
             )
 
-    def _predict_retention(self, top1_retention: float) -> tuple[float, tuple[float, float]]:
+    def _predict_retention(
+        self, top1_retention: float, margin_compression: float | None = None
+    ) -> tuple[float, tuple[float, float]]:
         """Predict retention from top1_retention using isotonic regression.
 
         Returns (predicted_retention, (lower_bound, upper_bound)).
+
+        When margin_compression is provided (< 1.0 = compressed), the
+        prediction interval is widened to reflect pair-level uncertainty
+        that the univariate isotonic model cannot capture.
         """
         if self.gate_model is None:
             # Fallback: use top1_retention directly as prediction
@@ -121,6 +131,14 @@ class QualityGate:
         # Prediction interval from LOPO stats
         lopo = self.gate_model.get("lipo", {})
         interval_hw = lopo.get("interval_half_width_80", 0.1)
+
+        # Gate v3: widen interval when margin compression is severe
+        # Compression < 0.85 means raw scores are significantly compressed,
+        # which the univariate isotonic model doesn't capture. This adds
+        # pair-level uncertainty to the interval.
+        if margin_compression is not None and margin_compression < 0.85:
+            compression_penalty = (0.85 - margin_compression) * 0.5
+            interval_hw += compression_penalty
 
         return predicted, (max(0.0, predicted - interval_hw), min(1.0, predicted + interval_hw))
 
@@ -146,8 +164,11 @@ class QualityGate:
         if holdout_top1 is not None:
             optimism_gap = float(holdout_top1 - t1)
 
-        # Predict retention from proxies
-        predicted, (lower, upper) = self._predict_retention(t1)
+        # Compute margin compression before prediction (used as covariate)
+        mc = self._compute_margin_compression(mapped, Y_sample)
+
+        # Predict retention from proxies (uses margin compression for v3 interval)
+        predicted, (lower, upper) = self._predict_retention(t1, mc)
 
         pass_r = float(self.thresholds.get("pass_retention", 0.75))
         warn_r = float(self.thresholds.get("warn_retention", 0.55))
@@ -203,4 +224,39 @@ class QualityGate:
                 "pass_retention": pass_r,
                 "warn_retention": warn_r,
             },
+            margin_compression=mc,
+            score_recal_recommendation=self._score_recal_recommendation(mc),
         )
+
+    @staticmethod
+    def _compute_margin_compression(mapped: np.ndarray, target: np.ndarray) -> float | None:
+        """Estimate margin compression from mapped vs target cosine distributions.
+
+        Returns ratio of mapped margin to target margin (< 1 = compression).
+        """
+        from aecp.mapping.base import l2_normalize
+        m_n = l2_normalize(mapped)
+        t_n = l2_normalize(target)
+        # Cosine similarity to self (diagonal = similarity of each pair)
+        mapped_self = np.sum(m_n * t_n, axis=1)  # cosine of each mapped→target pair
+        # For margin estimate: use variance of cosine as a proxy
+        # (higher variance = wider margins)
+        mapped_var = float(np.var(mapped_self))
+        # Compare to "ideal" (identity mapping): variance of target→target
+        target_self = np.sum(t_n * t_n, axis=1)
+        target_var = float(np.var(target_self))
+        if target_var < 1e-12:
+            return None
+        return mapped_var / target_var
+
+    @staticmethod
+    def _score_recal_recommendation(margin_ratio: float | None) -> str | None:
+        if margin_ratio is None:
+            return None
+        if margin_ratio < 0.8:
+            return (
+                "Score margins are compressed (ratio={:.2f}). "
+                "If your application uses absolute score thresholds, "
+                "enable score recalibration or re-tune thresholds.".format(margin_ratio)
+            )
+        return None

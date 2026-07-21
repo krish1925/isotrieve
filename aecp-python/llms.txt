@@ -6,7 +6,9 @@
 
 pip install aecp
 
-Python >= 3.10. Optional extras: [sentence-transformers], [qdrant], [pgvector], [openai], [voyage], [cohere], [gemini], [mlp].
+Python >= 3.10. Core deps: numpy, scikit-learn, typer, rich.
+
+Optional extras: [chroma], [langchain], [sentence-transformers], [qdrant], [pgvector], [openai], [voyage], [cohere], [gemini], [mlp], [all].
 
 ## API
 
@@ -23,6 +25,31 @@ m.save("mapping.aecp")
 from aecp.serve import QueryAdapter
 qa = QueryAdapter.load("mapping.aecp")
 legacy_vec = qa.map_query(new_model_vector)
+calibrated_scores = qa.recalibrate_scores(raw_scores)
+
+### ChromaDB Adapter (v0.2)
+
+from aecp.adapters.chroma import AECPChromaFunction, migrate_collection
+
+# Serve mode
+ef = AECPChromaFunction(mapping, new_model_embedder=my_embed_fn)
+col = client.get_collection("docs", embedding_function=ef)
+
+# Offline migration
+report = migrate_collection(client, "docs", mapping, new_collection="docs_v2")
+
+### LangChain Adapter (v0.2)
+
+from aecp.adapters.langchain import AECPEmbeddings
+ae = AECPEmbeddings(mapping, base_embeddings)
+results = db.similarity_search("query", embedding=ae)
+
+### Confidence Scoring (v0.2)
+
+from aecp.reranking import ConfidenceScorer
+scorer = ConfidenceScorer(margin_high=0.955, margin_low=0.637)
+result = scorer.score(query_vector, top_scores)
+# result.flag: "high" / "medium" / "low"
 
 ### QualityGate
 
@@ -31,7 +58,6 @@ gate = QualityGate()
 report = gate.evaluate(m, X_holdout, Y_holdout)
 # report.verdict: PASS / WARN / FAIL
 # report.predicted_retention: float
-# report.prediction_interval: (lower, upper)
 
 ### Other adapters
 
@@ -55,13 +81,22 @@ K-sweep (all adapters averaged):
 Same-dim pair (bge-large->e5-large, 1024->1024):
 - Floor: 0.0, AECP: 0.656, Ceiling: 0.722, Retention: 0.908
 
+Score recalibration:
+- bge->e5: MAE=0.095, margin compression=0.83x
+- MiniLM->bge: MAE=0.364, margin compression=0.85x, essential for rectangular pairs
+
+Confidence flags:
+- bge->e5: high-conf R@10=0.955, low-conf R@10=0.637
+- MiniLM->bge: high-conf R@10=0.875, low-conf R@10=0.651
+
 ## Limits
 
 - Requires paired calibration data (same texts embedded with both models)
 - Quality depends on model pair and domain match
 - K < 2000: significant quality degradation
-- MLP adapter: unoptimized, worse than linear
 - Gate model: trained on local model pairs only, not validated on API pairs
+- Cross-encoder reranking: NOT shipped (MS MARCO domain-mismatched for sci-text)
+- TSVD shrinkage: available but not recommended (quality degrades)
 
 ## Links
 

@@ -9,17 +9,11 @@ import numpy as np
 from sklearn.linear_model import Ridge, RidgeCV
 from sklearn.model_selection import train_test_split
 
-from aecp.mapping.base import Mapping, ValidationReport, _check_finite, l2_normalize
+from aecp.mapping.base import Mapping, ValidationReport, _check_finite, _augment_bias, l2_normalize
 from aecp.quality.metrics import pairwise_cosine_stats, topk_retention
 
 # Default GCV alpha grid (log-spaced)
 _ALPHA_GRID = np.logspace(-3, 3, 25)
-
-
-def _augment_bias(X: np.ndarray) -> np.ndarray:
-    """Append a column of ones for an affine (bias) term."""
-    ones = np.ones((X.shape[0], 1), dtype=np.float64)
-    return np.hstack([X, ones])
 
 
 def _coef_to_W(
@@ -58,8 +52,7 @@ def _validate_xy(X: np.ndarray, Y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     min_dim = min(X.shape[1], Y.shape[1])
     k_min = 10 * min_dim
     if X.shape[0] < k_min:
-        import warnings as _warnings
-        _warnings.warn(
+        warnings.warn(
             f"K={X.shape[0]} is below the recommended minimum "
             f"10×min(d_src,d_tgt)={k_min}. Mapping may be rank-deficient. "
             f"(Suggested K ≥ {k_min}.)",
@@ -119,6 +112,9 @@ class RidgeMapping(Mapping):
         RNG seed for the internal 10% holdout split.
     normalize_output:
         If True (default), L2-normalize every transformed row.
+    rank:
+        If set, compress W via truncated SVD to keep top-``rank`` components.
+        Reduces file size and transform cost. None (default) keeps full rank.
     """
 
     mapping_type = "ridge"
@@ -131,6 +127,7 @@ class RidgeMapping(Mapping):
         seed: int = 0,
         normalize_output: bool = True,
         holdout_fraction: float = 0.1,
+        rank: int | None = None,
     ) -> None:
         super().__init__()
         self.alpha: float | Literal["auto"] = alpha
@@ -139,6 +136,8 @@ class RidgeMapping(Mapping):
         self._normalize_output = normalize_output
         self._holdout_fraction = holdout_fraction
         self._chosen_alpha: float | None = None
+        self._chosen_inv_alpha: float | None = None
+        self._rank = rank
 
     def fit(self, X: np.ndarray, Y: np.ndarray) -> RidgeMapping:
         X, Y = _validate_xy(X, Y)
@@ -170,14 +169,28 @@ class RidgeMapping(Mapping):
         # sklearn multi-output coef_ is (n_targets, n_features); we want (feat, tgt)
         self._W = _coef_to_W(model.coef_, X_fit.shape[1], Y_train.shape[1])
 
-        # Inverse map: ridge Y -> X
+        # Inverse map: ridge Y -> X (independent alpha via GCV)
         Y_fit = _augment_bias(Y_train) if self._bias else Y_train
-        inv_alpha = self._chosen_alpha if self._chosen_alpha is not None else 1.0
-        inv_model = Ridge(alpha=inv_alpha, fit_intercept=False)
+        if self.alpha == "auto":
+            inv_model_gcv = RidgeCV(alphas=_ALPHA_GRID, fit_intercept=False)
+            inv_model_gcv.fit(Y_fit, X_train)
+            self._chosen_inv_alpha = float(inv_model_gcv.alpha_)
+        else:
+            self._chosen_inv_alpha = self._chosen_alpha
+        inv_model = Ridge(alpha=self._chosen_inv_alpha, fit_intercept=False)
         inv_model.fit(Y_fit, X_train)
         self._W_inv = _coef_to_W(
             inv_model.coef_, Y_fit.shape[1], X_train.shape[1]
         )
+
+        # Optional TSVD shrinkage
+        if self._rank is not None and self._rank < min(self._W.shape):
+            from numpy.linalg import svd as np_svd
+            U, s, Vt = np_svd(self._W, full_matrices=False)
+            self._W = (U[:, :self._rank] * s[:self._rank]) @ Vt[:self._rank]
+            if self._W_inv is not None:
+                U2, s2, Vt2 = np_svd(self._W_inv, full_matrices=False)
+                self._W_inv = (U2[:, :self._rank] * s2[:self._rank]) @ Vt2[:self._rank]
 
         self._fitted = True
         self._validation_report = _holdout_metrics(
@@ -192,24 +205,10 @@ class RidgeMapping(Mapping):
 
     def transform(self, V: np.ndarray) -> np.ndarray:
         self._require_fitted()
-        assert self._W is not None
-        V = np.asarray(V, dtype=np.float64)
-        single = V.ndim == 1
-        if single:
-            V = V.reshape(1, -1)
-        if V.shape[1] != self._d_src:
-            raise ValueError(
-                f"Dimension mismatch: expected {self._d_src} (source model dim), got {V.shape[1]}. "
-                f"Vectors must be from the source embedding model. "
-                f"If dims differ between models, fit an aecp mapping first: "
-                f"RidgeMapping(alpha='auto').fit(X_cal, Y_cal)"
-            )
-        _check_finite("V", V)
-        V_in = _augment_bias(V) if self._bias else V
-        out = V_in @ self._W
-        if self._normalize_output:
-            out = l2_normalize(out)
-        return out.ravel() if single else out
+        return self._apply_mapping(
+            V, self._W, self._d_src,
+            direction="forward", bias=self._bias, normalize=self._normalize_output,
+        )
 
     def inverse_transform(self, V: np.ndarray) -> np.ndarray:
         self._require_fitted()
@@ -219,29 +218,19 @@ class RidgeMapping(Mapping):
                 "Fit both directions for serve mode: "
                 "m.fit(X_cal, Y_cal) trains forward; inverse is computed automatically."
             )
-        V = np.asarray(V, dtype=np.float64)
-        single = V.ndim == 1
-        if single:
-            V = V.reshape(1, -1)
-        if V.shape[1] != self._d_tgt:
-            raise ValueError(
-                f"Dimension mismatch: expected {self._d_tgt} (target model dim), got {V.shape[1]}. "
-                f"Vectors must be from the target embedding model."
-            )
-        _check_finite("V", V)
-        V_in = _augment_bias(V) if self._bias else V
-        out = V_in @ self._W_inv
-        if self._normalize_output:
-            out = l2_normalize(out)
-        return out.ravel() if single else out
+        return self._apply_mapping(
+            V, self._W_inv, self._d_tgt,
+            direction="inverse", bias=self._bias, normalize=self._normalize_output,
+        )
 
 
 class OrthogonalProcrustesMapping(Mapping):
     """Orthogonal Procrustes mapping (square dims only).
 
-    Preserves pairwise geometry exactly under the orthogonal constraint, but
-    often fits worse than ridge on real embedding pairs. Only available when
-    ``d_src == d_tgt``. Prefer :class:`RidgeMapping` for migration workloads.
+    Preserves pairwise geometry exactly under the orthogonal constraint.
+    Only available when ``d_src == d_tgt``.
+    Note: centering does NOT help Procrustes on near-unit embedding vectors
+    (tested: centering causes -55pt cosine degradation on bge→e5).
     """
 
     mapping_type = "orthogonal_procrustes"
@@ -270,8 +259,7 @@ class OrthogonalProcrustesMapping(Mapping):
         self._d_tgt = int(Y.shape[1])
 
         X_train, X_hold, Y_train, Y_hold = train_test_split(
-            X,
-            Y,
+            X, Y,
             test_size=self._holdout_fraction,
             random_state=self._seed,
         )
@@ -295,32 +283,17 @@ class OrthogonalProcrustesMapping(Mapping):
 
     def transform(self, V: np.ndarray) -> np.ndarray:
         self._require_fitted()
-        assert self._W is not None
-        V = np.asarray(V, dtype=np.float64)
-        single = V.ndim == 1
-        if single:
-            V = V.reshape(1, -1)
-        if V.shape[1] != self._d_src:
-            raise ValueError(
-                f"Dimension mismatch: expected {self._d_src} (source model dim), got {V.shape[1]}. "
-                f"Vectors must be from the source embedding model."
-            )
-        out = V @ self._W
-        if self._normalize_output:
-            out = l2_normalize(out)
-        return out.ravel() if single else out
+        return self._apply_mapping(
+            V, self._W, self._d_src,
+            direction="forward", bias=False, normalize=self._normalize_output,
+        )
 
     def inverse_transform(self, V: np.ndarray) -> np.ndarray:
         self._require_fitted()
-        assert self._W_inv is not None
-        V = np.asarray(V, dtype=np.float64)
-        single = V.ndim == 1
-        if single:
-            V = V.reshape(1, -1)
-        out = V @ self._W_inv
-        if self._normalize_output:
-            out = l2_normalize(out)
-        return out.ravel() if single else out
+        return self._apply_mapping(
+            V, self._W_inv, self._d_tgt,
+            direction="inverse", bias=False, normalize=self._normalize_output,
+        )
 
 
 class ProcrustesDiagMapping(Mapping):
@@ -371,13 +344,9 @@ class ProcrustesDiagMapping(Mapping):
         R = U @ Vt  # orthogonal rotation
 
         # Step 2: Diagonal scaling after rotation
-        # After rotation: Y ≈ X · R · diag(s)
-        # Solve for s: minimize ||X · R · diag(s) - Y||^2
         XR = X_train @ R  # (n, d)
-        # For each dimension j, best s_j = sum(XR[:,j] * Y[:,j]) / sum(XR[:,j]^2)
         denom = np.sum(XR * XR, axis=0)  # (d,)
         numer = np.sum(XR * Y_train, axis=0)  # (d,)
-        # Regularize to avoid division by zero
         s = numer / np.maximum(denom, 1e-8)
 
         # Combined: W = R · diag(s)  =>  v_out = v_in @ R @ diag(s)
@@ -398,31 +367,17 @@ class ProcrustesDiagMapping(Mapping):
 
     def transform(self, V: np.ndarray) -> np.ndarray:
         self._require_fitted()
-        assert self._W is not None
-        V = np.asarray(V, dtype=np.float64)
-        single = V.ndim == 1
-        if single:
-            V = V.reshape(1, -1)
-        if V.shape[1] != self._d_src:
-            raise ValueError(
-                f"Dimension mismatch: expected {self._d_src} (source model dim), got {V.shape[1]}."
-            )
-        out = V @ self._W
-        if self._normalize_output:
-            out = l2_normalize(out)
-        return out.ravel() if single else out
+        return self._apply_mapping(
+            V, self._W, self._d_src,
+            direction="forward", bias=False, normalize=self._normalize_output,
+        )
 
     def inverse_transform(self, V: np.ndarray) -> np.ndarray:
         self._require_fitted()
-        assert self._W_inv is not None
-        V = np.asarray(V, dtype=np.float64)
-        single = V.ndim == 1
-        if single:
-            V = V.reshape(1, -1)
-        out = V @ self._W_inv
-        if self._normalize_output:
-            out = l2_normalize(out)
-        return out.ravel() if single else out
+        return self._apply_mapping(
+            V, self._W_inv, self._d_tgt,
+            direction="inverse", bias=False, normalize=self._normalize_output,
+        )
 
 
 class LowRankAffineMapping(Mapping):
@@ -456,6 +411,7 @@ class LowRankAffineMapping(Mapping):
         self._normalize_output = normalize_output
         self._holdout_fraction = holdout_fraction
         self._chosen_alpha: float | None = None
+        self._chosen_inv_alpha: float | None = None
 
     def fit(self, X: np.ndarray, Y: np.ndarray) -> LowRankAffineMapping:
         X_val, Y_val = _validate_xy(X, Y)
@@ -494,10 +450,15 @@ class LowRankAffineMapping(Mapping):
 
         self._W = W_lr
 
-        # Inverse via ridge on Y -> X
+        # Inverse via ridge on Y -> X (independent alpha)
         Y_fit = _augment_bias(Y_train) if self._bias else Y_train
-        inv_alpha = self._chosen_alpha if self._chosen_alpha is not None else 1.0
-        inv_model = Ridge(alpha=inv_alpha, fit_intercept=False)
+        if self.alpha == "auto":
+            inv_model_gcv = RidgeCV(alphas=_ALPHA_GRID, fit_intercept=False)
+            inv_model_gcv.fit(Y_fit, X_train)
+            self._chosen_inv_alpha = float(inv_model_gcv.alpha_)
+        else:
+            self._chosen_inv_alpha = self._chosen_alpha
+        inv_model = Ridge(alpha=self._chosen_inv_alpha, fit_intercept=False)
         inv_model.fit(Y_fit, X_train)
         W_inv_full = _coef_to_W(inv_model.coef_, Y_fit.shape[1], X_train.shape[1])
         if rank < min(W_inv_full.shape):
@@ -515,37 +476,20 @@ class LowRankAffineMapping(Mapping):
 
     def transform(self, V: np.ndarray) -> np.ndarray:
         self._require_fitted()
-        assert self._W is not None
-        V = np.asarray(V, dtype=np.float64)
-        single = V.ndim == 1
-        if single:
-            V = V.reshape(1, -1)
-        if V.shape[1] != self._d_src:
-            raise ValueError(
-                f"Dimension mismatch: expected {self._d_src} (source model dim), got {V.shape[1]}."
-            )
-        _check_finite("V", V)
-        V_in = _augment_bias(V) if self._bias else V
-        out = V_in @ self._W
-        if self._normalize_output:
-            out = l2_normalize(out)
-        return out.ravel() if single else out
+        return self._apply_mapping(
+            V, self._W, self._d_src,
+            direction="forward", bias=self._bias, normalize=self._normalize_output,
+        )
 
     def inverse_transform(self, V: np.ndarray) -> np.ndarray:
         self._require_fitted()
         if self._W_inv is None:
-            raise RuntimeError("Inverse mapping unavailable")
-        V = np.asarray(V, dtype=np.float64)
-        single = V.ndim == 1
-        if single:
-            V = V.reshape(1, -1)
-        if V.shape[1] != self._d_tgt:
-            raise ValueError(
-                f"Dimension mismatch: expected {self._d_tgt} (target model dim), got {V.shape[1]}."
+            raise RuntimeError(
+                "Inverse mapping not available. "
+                "Fit both directions for serve mode: "
+                "m.fit(X_cal, Y_cal) trains forward; inverse is computed automatically."
             )
-        _check_finite("V", V)
-        V_in = _augment_bias(V) if self._bias else V
-        out = V_in @ self._W_inv
-        if self._normalize_output:
-            out = l2_normalize(out)
-        return out.ravel() if single else out
+        return self._apply_mapping(
+            V, self._W_inv, self._d_tgt,
+            direction="inverse", bias=self._bias, normalize=self._normalize_output,
+        )

@@ -15,6 +15,8 @@ pip install aecp
 Python >= 3.10. Core deps: numpy, scikit-learn, typer, rich.
 
 Optional extras:
+- `pip install aecp[chroma]` - ChromaDB adapter
+- `pip install aecp[langchain]` - LangChain embeddings shim
 - `pip install aecp[sentence-transformers]` - local models
 - `pip install aecp[qdrant]` - Qdrant vector DB
 - `pip install aecp[pgvector]` - PostgreSQL pgvector
@@ -23,6 +25,7 @@ Optional extras:
 - `pip install aecp[cohere]` - Cohere embeddings
 - `pip install aecp[gemini]` - Google Gemini embeddings
 - `pip install aecp[mlp]` - Neural adapter (PyTorch)
+- `pip install aecp[all]` - Everything
 
 ## Quickstart
 
@@ -75,9 +78,78 @@ legacy_vec = qa.map_query(new_model_query_vector)
 results = qdrant.search(collection="docs", vector=legacy_vec)
 ```
 
+## ChromaDB Adapter (v0.2)
+
+### Serve Mode
+
+```python
+from aecp.adapters.chroma import AECPChromaFunction
+from aecp.mapping.base import Mapping
+
+mapping = Mapping.load("ada002_to_te3.aecp")
+ef = AECPChromaFunction(mapping, new_model_embedder=my_embed_fn)
+col = client.get_collection("docs", embedding_function=ef)
+results = col.query(query_texts=["..."], n_results=10)
+```
+
+### Offline Migration
+
+```python
+from aecp.adapters.chroma import migrate_collection
+
+report = migrate_collection(client, "docs", mapping, new_collection="docs_v2")
+print(f"Migrated {report.rows_processed} rows, recall@10={report.sampled_recall_at_10:.3f}")
+```
+
+## LangChain Adapter (v0.2)
+
+```python
+from aecp.adapters.langchain import AECPEmbeddings
+from langchain_openai import OpenAIEmbeddings
+
+mapping = Mapping.load("ada002_to_te3.aecp")
+base = OpenAIEmbeddings(model="text-embedding-3-small")
+ae = AECPEmbeddings(mapping, base)
+
+# Works with any LangChain vector store
+from langchain_chroma import Chroma
+db = Chroma.from_documents(docs, embedding=ae)
+results = db.similarity_search("query", k=10)
+```
+
+## Score Recalibration (v0.2)
+
+Isotonic regression maps cross-space scores to ceiling-equivalent scores:
+
+```python
+m = RidgeMapping(alpha="auto", seed=0).fit(X, Y)
+m.fit_recalibrator(X_heldout, Y_heldout)  # optional
+m.save("mapping.aecp")  # recalibrator saved alongside mapping
+
+# At serve time
+qa = QueryAdapter.load("mapping.aecp")
+calibrated_scores = qa.recalibrate_scores(raw_scores)
+```
+
+Effect: essential for rectangular pairs (+22% at τ=0.60 for MiniLM→bge). Marginal for same-dim pairs.
+
+## Confidence Scoring (v0.2)
+
+Per-query confidence flags with adaptive P33/P67 margins:
+
+```python
+from aecp.reranking import ConfidenceScorer
+
+scorer = ConfidenceScorer(margin_high=0.955, margin_low=0.637)
+result = scorer.score(query_vector, top_scores)
+print(result.flag)  # "high", "medium", or "low"
+```
+
+Predictive across both pairs: high-conf R@10=0.955 (bge→e5), 0.875 (MiniLM→bge).
+
 ## Quality Gate
 
-The gate predicts retrieval retention from holdout proxies using isotonic regression. No need to measure ceiling quality (full re-embed).
+The gate predicts retrieval retention from holdout proxies using isotonic regression:
 
 ```python
 from aecp.quality.gate import QualityGate
@@ -98,9 +170,10 @@ Gate model: `src/aecp/quality/gate_model_v1.json` (trained on local model pairs 
 |---------|----------|-------|
 | Ridge | 0.866 +/- 0.008 | Default. Fast, stable. |
 | LowRank | 0.857 +/- 0.009 | Compressed matrix. ~1% worse. |
+| Procrustes | 0.851 +/- 0.007 | Square only. Orthogonal rotation. |
 | MLP | 0.719 +/- 0.008 | No tuning. Linear wins. |
 
-Ridge is recommended for all cases. Use LowRank for compressed storage. MLP is not recommended (unoptimized, worse than linear).
+Ridge is recommended for all cases. Use LowRank for compressed storage. MLP is not recommended.
 
 ## Benchmarks
 
@@ -126,6 +199,26 @@ All numbers from `benchmarks/results/`, verified by `benchmarks/audit_configs.py
 
 Same dimension != same space. e5 models require "query: "/"passage: " prefixes.
 
+### Score Recalibration
+
+| Pair | MAE | Margin Compression | Notes |
+|------|-----|-------------------|-------|
+| bge->e5 (same-dim) | 0.095 | 0.83x | Marginal improvement |
+| MiniLM->bge (rectangular) | 0.364 | 0.85x | Essential (+22% at τ=0.60) |
+
+### Confidence Flags
+
+| Pair | High-conf R@10 | Low-conf R@10 | Gap |
+|------|---------------|---------------|-----|
+| bge->e5 | 0.955 | 0.637 | 0.318 |
+| MiniLM->bge | 0.875 | 0.651 | 0.224 |
+
+### Null Results (logged, not hidden)
+
+- Cross-encoder reranking: −10.7pts (bge→e5), −9.8pts (MiniLM→bge). MS MARCO model domain-mismatched.
+- TSVD shrinkage: rank=512 only −0.33pt. Not worth complexity.
+- Procrustes centering: −55pt on unit vectors. Reverted (breaks serve-mode).
+
 ## When NOT to use
 
 - Maximum retrieval quality matters more than cost -> re-embed
@@ -140,6 +233,7 @@ Same dimension != same space. e5 models require "query: "/"passage: " prefixes.
 - Do not assume same dimensionality means compatibility
 - Do not skip the quality gate
 - Do not use MLP adapter (0.719 vs 0.866 for Ridge)
+- Do not use Procrustes centering on unit vectors (breaks serve-mode)
 
 ## How it works
 

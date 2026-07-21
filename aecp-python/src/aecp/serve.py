@@ -91,6 +91,41 @@ class QueryAdapter:
         out = self._mapping.inverse_transform(vecs)
         return l2_normalize(out)
 
+    @property
+    def has_recalibrator(self) -> bool:
+        """Whether the underlying mapping has a fitted score recalibrator."""
+        return self._mapping.has_recalibrator
+
+    def recalibrate_scores(self, scores: np.ndarray) -> np.ndarray:
+        """Map post-migration scores to ceiling-equivalent scores.
+
+        Pass-through to the mapping's recalibrator. Returns scores unchanged
+        if no recalibrator is fitted.
+        """
+        return self._mapping.recalibrate_scores(scores)
+
+    def score_confidence(
+        self,
+        query_ids: list[str],
+        similarities: np.ndarray,
+        top_k: int = 10,
+    ) -> dict[str, Any]:
+        """Score per-query confidence from a similarity matrix.
+
+        Uses margin and score magnitude to flag queries where the mapping
+        is likely unreliable.
+
+        Returns a dict with per-query reports and an aggregate summary.
+        """
+        from aecp.reranking import ConfidenceScorer, confidence_summary
+
+        scorer = ConfidenceScorer()
+        reports = scorer.score_queries(query_ids, similarities, top_k=top_k)
+        return {
+            "reports": reports,
+            "summary": confidence_summary(reports),
+        }
+
 
 def csls_scores(
     query_vecs: np.ndarray,

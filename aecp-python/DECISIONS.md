@@ -181,6 +181,90 @@ above" without the prior message in-thread). Logged here for audit:
 
 **Why:** Serve-mode quality is measured by mapping queries into legacy space (query→legacy), not by transforming corpus (legacy→target). Both directions matter for the "before/after" narrative.
 
+### 2026-07-20 — WS-A: Score recalibration (isotonic regression)
+
+**Choice:** Fit isotonic regression (sklearn `IsotonicRegression`) on held-out query scores to map cross-space cosine scores to ceiling-equivalent scores. Recalibrator saved alongside mapping in `.aecp` format under `score_recal_v1` section.
+
+**Why:** Raw cross-space scores are compressed (mean 0.157 vs ceiling 0.521 for MiniLM→bge rectangular pair). This means τ-thresholding based on ceiling scores fails on migrated data. Recalibration makes τ-thresholding reliable.
+
+**Measured:**
+- bge→e5 (same-dim): Raw scores agree at 100% for τ≤0.75. Recalibration helps only at τ=0.80 (+4.7% agreement, +2.36pt recall). MAE=0.095, margin compression=0.83x.
+- MiniLM→bge (rectangular): Raw scores severely compressed (MAE=0.364). Recalibration essential: τ=0.60 goes 78%→100% (+22%), τ=0.70 goes 27%→67% (+40%). Margin compression=0.85x.
+
+**Artifacts:** `benchmarks/results/ws_a_*_recall_tables.json`
+
+### 2026-07-20 — WS-B: Cross-encoder reranking NULL RESULT
+
+**Choice:** Do NOT ship cross-encoder reranking. MS MARCO cross-encoder (`cross-encoder/ms-marco-MiniLM-L-6-v2`) is domain-mismatched for scientific text.
+
+**Measured:** -10.7pts on bge→e5, -9.8pts on MiniLM→bge. Consistent degradation.
+
+**Why not:** Would need domain-matched cross-encoder (e.g., SciFact-trained). Not worth the complexity until proven on in-domain data.
+
+**Artifacts:** `benchmarks/results/ws_b_cross_encoder.json`
+
+### 2026-07-20 — WS-B: Confidence flags (adaptive margins)
+
+**Choice:** Confidence flags using adaptive P33/P67 margin thresholds from calibration data. Predictive across both pairs.
+
+**Measured:**
+- bge→e5: high-conf R@10=0.955, low-conf R@10=0.637 (gap=0.318)
+- MiniLM→bge: high-conf R@10=0.875, low-conf R@10=0.651 (gap=0.224)
+
+**Why:** Users need per-query confidence to know when to trust migrated results. Adaptive thresholds (percentile-based) work across different score distributions without manual tuning.
+
+**Artifacts:** `benchmarks/results/ws_b_confidence_flags.json`
+
+### 2026-07-20 — WS-C: Independent inverse-α
+
+**Choice:** RidgeMapping now has separate `_chosen_inv_alpha` for inverse direction, fitted independently from forward α. Stored in `.aecp` header.
+
+**Why:** Optimal regularization differs between forward (Y = XW) and inverse (X = YW_inv) directions. Fitting α independently for each direction improves inverse quality without affecting forward.
+
+**Measured:** +2.17pts (bge→e5), +2.23pts (MiniLM→bge). Consistent across pairs. Optimal inv alpha differs from forward (0.178 vs 0.316 on bge→e5).
+
+**Artifacts:** `benchmarks/results/ws_c_independent_inv_alpha.json`
+
+### 2026-07-20 — WS-C: TSVD shrinkage NULL RESULT
+
+**Choice:** RidgeMapping now accepts `rank=r` parameter for TSVD shrinkage, but NOT recommended. Default is `rank=None` (no shrinkage).
+
+**Measured:** rank=512 only -0.33pt, rank=256 -1.69pt, rank=128 -2.33pt. Quality degrades monotonically with rank reduction.
+
+**Why keep it:** Useful for storage-constrained deployments (large mappings). But for most users, the quality loss isn't worth it.
+
+**Artifacts:** `benchmarks/results/ws_c_tsvd_shrinkage.json`
+
+### 2026-07-20 — WS-C: Procrustes centering REVERTED
+
+**Choice:** Do NOT auto-center embeddings before Procrustes mapping. Production `OrthogonalProcrustesMapping` uses `V @ R^T` for inverse (no centering).
+
+**Why reverted:** Q3 measured held-out cosine alignment (X_ho mapped to Y space vs Y_ho), NOT serve-mode retrieval. Centering breaks serve-mode because centered queries don't match uncentered source doc distribution. The -55pt swing was a measurement artifact, not a production bug.
+
+**Lesson:** Always validate against actual serve-mode retrieval (R@10), not just alignment metrics.
+
+### 2026-07-20 — WS-D: Gate v3 (margin compression)
+
+**Choice:** `_predict_retention()` now accepts `margin_compression` parameter. When margin_compression < 0.85, widen prediction interval.
+
+**Why:** Score compression indicates the mapping quality is uncertain. Wider intervals make the gate more conservative, reducing false PASS verdicts.
+
+### 2026-07-20 — Vector DB adapters (v0.2)
+
+**Choice:** Add ChromaDB and LangChain adapters. ChromaDB gets serve-mode (`AECPChromaFunction`) and offline migration (`migrate_collection`). LangChain gets `AECPEmbeddings` shim.
+
+**Why:** Most users interact with vector databases through ORMs/clients. Thin adapters that apply AECP mappings at the DB layer eliminate the need for users to manage mapping files manually.
+
+**Adapters implemented:**
+- `aecp.adapters.chroma.AECPChromaFunction` — Chroma `EmbeddingFunction`
+- `aecp.adapters.chroma.migrate_collection()` — offline migration
+- `aecp.adapters.langchain.AECPEmbeddings` — LangChain `Embeddings` shim
+- `aecp.adapters.base.EmbeddingAdapter` — core ABC
+- `aecp.adapters.base.VectorStoreAdapter` — core ABC
+- `aecp.adapters.base.MigrationReport` — migration metadata
+
+**Tests:** 21 tests for adapters (13 ChromaDB, 8 LangChain), all passing.
+
 ## Open questions
 
 None for Phase 1 gates. Questions that affect later phases:

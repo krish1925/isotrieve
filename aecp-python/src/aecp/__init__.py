@@ -12,7 +12,7 @@ a reproducible benchmark harness. See README "Prior Art & Research Basis".
 from aecp.mapping.linear import OrthogonalProcrustesMapping, RidgeMapping
 from aecp.mapping.base import Mapping, ValidationReport
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "Mapping",
     "RidgeMapping",

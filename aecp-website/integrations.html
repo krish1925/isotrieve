@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrations - AECP</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="brand"><span class="brand-dot"></span>AECP</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="protocol.html">How It Works</a></li>
+                <li><a href="integrations.html" class="on">Integrations</a></li>
+                <li><a href="performance.html">Benchmarks</a></li>
+                <li><a href="docs.html">Docs</a></li>
+            </ul>
+            <div class="nav-right">
+                <a href="https://github.com/krish1925/AECP" class="nav-gh" target="_blank">GitHub</a>
+                <button class="theme-btn" id="themeToggle" title="Toggle theme">&#9681;</button>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="wrap">
+            <h1>Integrations</h1>
+            <p>Drop-in adapters for popular vector databases and frameworks.</p>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="wrap">
+            <div class="grid2">
+
+                <div class="card">
+                    <h3>ChromaDB <span class="badge ok">Stable</span></h3>
+                    <p>Full adapter: serve-mode EmbeddingFunction + offline migration with batched I/O and recall sampling.</p>
+<pre><code>pip install "aecp[chroma]"</code></pre>
+<pre><code>from aecp.adapters.chroma import AECPChromaFunction
+
+ef = AECPChromaFunction(mapping, new_model_embedder=embed_fn)
+col = client.get_collection("docs", embedding_function=ef)
+results = col.query(query_texts=["search"], n_results=10)</code></pre>
+                </div>
+
+                <div class="card">
+                    <h3>LangChain <span class="badge ok">Stable</span></h3>
+                    <p>Drop-in <code>Embeddings</code> shim. Works with any LangChain vector store.</p>
+<pre><code>pip install "aecp[langchain]"</code></pre>
+<pre><code>from aecp.adapters.langchain import AECPEmbeddings
+
+ae = AECPEmbeddings(mapping, base_embeddings)
+db = Chroma.from_documents(docs, embedding=ae)
+results = db.similarity_search("query", k=10)</code></pre>
+                </div>
+
+                <div class="card">
+                    <h3>Qdrant <span class="badge warn">Beta</span></h3>
+                    <p>Stream-read adapter for Qdrant collections.</p>
+<pre><code>pip install "aecp[qdrant]"</code></pre>
+<pre><code>from aecp.stores.qdrant_store import QdrantStore
+
+store = QdrantStore.connect(url="http://localhost:6333")
+for batch in store.iter_vectors(batch_size=1024):
+    Z = m.transform(np.stack([r.vector for r in batch]))</code></pre>
+                </div>
+
+                <div class="card">
+                    <h3>Sentence Transformers <span class="badge ok">Stable</span></h3>
+                    <p>Direct integration for local model inference.</p>
+<pre><code>pip install "aecp[sentence-transformers]"</code></pre>
+<pre><code>from sentence_transformers import SentenceTransformer
+
+old = SentenceTransformer("all-MiniLM-L6-v2")
+new = SentenceTransformer("BAAI/bge-large-en-v1.5")
+
+X = old.encode(calibration_texts)
+Y = new.encode(calibration_texts)
+m = RidgeMapping(alpha="auto", seed=0).fit(X, Y)</code></pre>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer"><div class="wrap"><p>&copy; 2026 AECP. Apache-2.0 License.</p></div></footer>
+    <script src="js/main.js"></script>
+</body>
+</html>
