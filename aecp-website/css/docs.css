@@ -18,8 +18,8 @@
 .docs-side a.on{color:var(--accent);border-left-color:var(--accent);background:var(--accent-bg)}
 
 /* Main content */
-.docs-main{background:var(--bg);overflow-x:hidden;min-width:0;transition:background .2s}
-.docs-body{padding:2.5rem 2.75rem}
+.docs-main{background:var(--bg);min-width:0;transition:background .2s}
+.docs-body{padding:2.5rem 2.75rem;max-width:100%;box-sizing:border-box}
 
 /* Sections */
 .ds{margin-bottom:2.75rem;scroll-margin-top:56px}
@@ -34,8 +34,8 @@
 .ds a:hover{text-decoration:underline}
 
 /* Code in docs */
-.ds pre{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;overflow-x:auto;margin:1rem 0;position:relative}
-.ds pre code{background:none;padding:0;border:none;font-size:.8125rem;color:var(--text);line-height:1.7}
+.ds pre{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;overflow-x:auto;margin:1rem 0;position:relative;max-width:100%;box-sizing:border-box}
+.ds pre code{background:none;padding:0;border:none;font-size:.8125rem;color:var(--text);line-height:1.7;font-family:var(--mono);white-space:pre}
 
 /* Tables in docs */
 .ds table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.875rem}
