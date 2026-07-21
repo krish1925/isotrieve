@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from aecp.mapping.linear import RidgeMapping
 from aecp.quality.gate import GateVerdict, QualityGate

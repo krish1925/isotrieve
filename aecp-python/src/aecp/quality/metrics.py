@@ -49,9 +49,7 @@ def pairwise_cosine_stats(
     predicted = np.asarray(predicted, dtype=np.float64)
     target = np.asarray(target, dtype=np.float64)
     if predicted.shape != target.shape:
-        raise ValueError(
-            f"Shape mismatch: {predicted.shape} vs {target.shape}"
-        )
+        raise ValueError(f"Shape mismatch: {predicted.shape} vs {target.shape}")
     p = l2_normalize(predicted)
     t = l2_normalize(target)
     sims = np.sum(p * t, axis=1)
@@ -195,8 +193,6 @@ def retrieval_retention_report(
     return {
         "cosine": cos,
         "top1_retention": topk_retention(mapped, target, k=1),
-        "top10_retention": topk_retention(
-            mapped, target, k=min(10, len(target))
-        ),
+        "top10_retention": topk_retention(mapped, target, k=min(10, len(target))),
         "mrr": mrr_delta(mapped, target, target),
     }

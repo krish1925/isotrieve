@@ -68,6 +68,7 @@ class TestAECPEmbeddings:
         class DeterministicEmbed:
             def embed_documents(self, texts):
                 return np.ones((len(texts), 12)).tolist()
+
             def embed_query(self, text):
                 return np.ones(12).tolist()
 
@@ -116,6 +117,7 @@ class TestAECPEmbeddings:
 
         ae = AECPEmbeddings(m, base)
         import asyncio
+
         result = asyncio.get_event_loop().run_until_complete(
             ae.aembed_documents(["hello"])
         )
@@ -131,8 +133,7 @@ class TestAECPEmbeddings:
 
         ae = AECPEmbeddings(m, base)
         import asyncio
-        result = asyncio.get_event_loop().run_until_complete(
-            ae.aembed_query("hello")
-        )
+
+        result = asyncio.get_event_loop().run_until_complete(ae.aembed_query("hello"))
         assert isinstance(result, list)
         assert len(result) == 8

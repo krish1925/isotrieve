@@ -6,7 +6,7 @@ Hits the network. Install: ``pip install aecp[cohere]``.
 from __future__ import annotations
 
 import os
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -32,7 +32,7 @@ class CohereEmbedder(Embedder):
             ) from e
         key = api_key or os.environ.get("COHERE_API_KEY")
         if not key:
-            raise EnvironmentError("COHERE_API_KEY is not set")
+            raise OSError("COHERE_API_KEY is not set")
         self._client = cohere.ClientV2(api_key=key)
         self._model_id = model_id
         self._input_type = input_type

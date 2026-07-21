@@ -9,16 +9,19 @@ import numpy as np
 from sklearn.linear_model import Ridge, RidgeCV
 from sklearn.model_selection import train_test_split
 
-from aecp.mapping.base import Mapping, ValidationReport, _check_finite, _augment_bias, l2_normalize
+from aecp.mapping.base import (
+    Mapping,
+    ValidationReport,
+    _augment_bias,
+    _check_finite,
+)
 from aecp.quality.metrics import pairwise_cosine_stats, topk_retention
 
 # Default GCV alpha grid (log-spaced)
 _ALPHA_GRID = np.logspace(-3, 3, 25)
 
 
-def _coef_to_W(
-    coef: np.ndarray, n_features: int, n_targets: int
-) -> np.ndarray:
+def _coef_to_W(coef: np.ndarray, n_features: int, n_targets: int) -> np.ndarray:
     """Convert sklearn ``coef_`` to a right-multiply matrix ``(n_features, n_targets)``."""
     coef = np.asarray(coef, dtype=np.float64)
     if coef.ndim == 1:
@@ -56,7 +59,8 @@ def _validate_xy(X: np.ndarray, Y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
             f"K={X.shape[0]} is below the recommended minimum "
             f"10×min(d_src,d_tgt)={k_min}. Mapping may be rank-deficient. "
             f"(Suggested K ≥ {k_min}.)",
-            UserWarning, stacklevel=3,
+            UserWarning,
+            stacklevel=3,
         )
 
     rank = int(np.linalg.matrix_rank(X, tol=1e-8))
@@ -179,18 +183,19 @@ class RidgeMapping(Mapping):
             self._chosen_inv_alpha = self._chosen_alpha
         inv_model = Ridge(alpha=self._chosen_inv_alpha, fit_intercept=False)
         inv_model.fit(Y_fit, X_train)
-        self._W_inv = _coef_to_W(
-            inv_model.coef_, Y_fit.shape[1], X_train.shape[1]
-        )
+        self._W_inv = _coef_to_W(inv_model.coef_, Y_fit.shape[1], X_train.shape[1])
 
         # Optional TSVD shrinkage
         if self._rank is not None and self._rank < min(self._W.shape):
             from numpy.linalg import svd as np_svd
+
             U, s, Vt = np_svd(self._W, full_matrices=False)
-            self._W = (U[:, :self._rank] * s[:self._rank]) @ Vt[:self._rank]
+            self._W = (U[:, : self._rank] * s[: self._rank]) @ Vt[: self._rank]
             if self._W_inv is not None:
                 U2, s2, Vt2 = np_svd(self._W_inv, full_matrices=False)
-                self._W_inv = (U2[:, :self._rank] * s2[:self._rank]) @ Vt2[:self._rank]
+                self._W_inv = (U2[:, : self._rank] * s2[: self._rank]) @ Vt2[
+                    : self._rank
+                ]
 
         self._fitted = True
         self._validation_report = _holdout_metrics(
@@ -206,8 +211,12 @@ class RidgeMapping(Mapping):
     def transform(self, V: np.ndarray) -> np.ndarray:
         self._require_fitted()
         return self._apply_mapping(
-            V, self._W, self._d_src,
-            direction="forward", bias=self._bias, normalize=self._normalize_output,
+            V,
+            self._W,
+            self._d_src,
+            direction="forward",
+            bias=self._bias,
+            normalize=self._normalize_output,
         )
 
     def inverse_transform(self, V: np.ndarray) -> np.ndarray:
@@ -219,8 +228,12 @@ class RidgeMapping(Mapping):
                 "m.fit(X_cal, Y_cal) trains forward; inverse is computed automatically."
             )
         return self._apply_mapping(
-            V, self._W_inv, self._d_tgt,
-            direction="inverse", bias=self._bias, normalize=self._normalize_output,
+            V,
+            self._W_inv,
+            self._d_tgt,
+            direction="inverse",
+            bias=self._bias,
+            normalize=self._normalize_output,
         )
 
 
@@ -259,7 +272,8 @@ class OrthogonalProcrustesMapping(Mapping):
         self._d_tgt = int(Y.shape[1])
 
         X_train, X_hold, Y_train, Y_hold = train_test_split(
-            X, Y,
+            X,
+            Y,
             test_size=self._holdout_fraction,
             random_state=self._seed,
         )
@@ -284,15 +298,23 @@ class OrthogonalProcrustesMapping(Mapping):
     def transform(self, V: np.ndarray) -> np.ndarray:
         self._require_fitted()
         return self._apply_mapping(
-            V, self._W, self._d_src,
-            direction="forward", bias=False, normalize=self._normalize_output,
+            V,
+            self._W,
+            self._d_src,
+            direction="forward",
+            bias=False,
+            normalize=self._normalize_output,
         )
 
     def inverse_transform(self, V: np.ndarray) -> np.ndarray:
         self._require_fitted()
         return self._apply_mapping(
-            V, self._W_inv, self._d_tgt,
-            direction="inverse", bias=False, normalize=self._normalize_output,
+            V,
+            self._W_inv,
+            self._d_tgt,
+            direction="inverse",
+            bias=False,
+            normalize=self._normalize_output,
         )
 
 
@@ -335,7 +357,10 @@ class ProcrustesDiagMapping(Mapping):
         self._d_tgt = int(Y.shape[1])
 
         X_train, X_hold, Y_train, Y_hold = train_test_split(
-            X, Y, test_size=self._holdout_fraction, random_state=self._seed,
+            X,
+            Y,
+            test_size=self._holdout_fraction,
+            random_state=self._seed,
         )
 
         # Step 1: Procrustes rotation
@@ -360,23 +385,35 @@ class ProcrustesDiagMapping(Mapping):
 
         self._fitted = True
         self._validation_report = _holdout_metrics(
-            self, X_hold, Y_hold, n_train=len(X_train),
-            seed=self._seed, alpha=None,
+            self,
+            X_hold,
+            Y_hold,
+            n_train=len(X_train),
+            seed=self._seed,
+            alpha=None,
         )
         return self
 
     def transform(self, V: np.ndarray) -> np.ndarray:
         self._require_fitted()
         return self._apply_mapping(
-            V, self._W, self._d_src,
-            direction="forward", bias=False, normalize=self._normalize_output,
+            V,
+            self._W,
+            self._d_src,
+            direction="forward",
+            bias=False,
+            normalize=self._normalize_output,
         )
 
     def inverse_transform(self, V: np.ndarray) -> np.ndarray:
         self._require_fitted()
         return self._apply_mapping(
-            V, self._W_inv, self._d_tgt,
-            direction="inverse", bias=False, normalize=self._normalize_output,
+            V,
+            self._W_inv,
+            self._d_tgt,
+            direction="inverse",
+            bias=False,
+            normalize=self._normalize_output,
         )
 
 
@@ -419,7 +456,10 @@ class LowRankAffineMapping(Mapping):
         self._d_tgt = int(Y_val.shape[1])
 
         X_train, X_hold, Y_train, Y_hold = train_test_split(
-            X_val, Y_val, test_size=self._holdout_fraction, random_state=self._seed,
+            X_val,
+            Y_val,
+            test_size=self._holdout_fraction,
+            random_state=self._seed,
         )
         if len(X_hold) < 1:
             X_hold, Y_hold = X_train[-1:], Y_train[-1:]
@@ -469,16 +509,24 @@ class LowRankAffineMapping(Mapping):
 
         self._fitted = True
         self._validation_report = _holdout_metrics(
-            self, X_hold, Y_hold, n_train=len(X_train),
-            seed=self._seed, alpha=self._chosen_alpha,
+            self,
+            X_hold,
+            Y_hold,
+            n_train=len(X_train),
+            seed=self._seed,
+            alpha=self._chosen_alpha,
         )
         return self
 
     def transform(self, V: np.ndarray) -> np.ndarray:
         self._require_fitted()
         return self._apply_mapping(
-            V, self._W, self._d_src,
-            direction="forward", bias=self._bias, normalize=self._normalize_output,
+            V,
+            self._W,
+            self._d_src,
+            direction="forward",
+            bias=self._bias,
+            normalize=self._normalize_output,
         )
 
     def inverse_transform(self, V: np.ndarray) -> np.ndarray:
@@ -490,6 +538,10 @@ class LowRankAffineMapping(Mapping):
                 "m.fit(X_cal, Y_cal) trains forward; inverse is computed automatically."
             )
         return self._apply_mapping(
-            V, self._W_inv, self._d_tgt,
-            direction="inverse", bias=self._bias, normalize=self._normalize_output,
+            V,
+            self._W_inv,
+            self._d_tgt,
+            direction="inverse",
+            bias=self._bias,
+            normalize=self._normalize_output,
         )

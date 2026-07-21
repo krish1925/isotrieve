@@ -21,11 +21,11 @@ def _require_pinecone() -> Any:
     """Import and return pinecone Client, or raise with install instructions."""
     try:
         from pinecone import Pinecone  # type: ignore[import-untyped]
+
         return Pinecone
     except ImportError:
         raise ImportError(
-            "Pinecone client is required.  "
-            "Install it with: pip install aecp[pinecone]"
+            "Pinecone client is required.  Install it with: pip install aecp[pinecone]"
         ) from None
 
 
@@ -81,11 +81,13 @@ class PineconeAdapter(VectorStoreAdapter):
             )
             hits = []
             for match in resp.get("matches", []):
-                hits.append({
-                    "id": match["id"],
-                    "score": match["score"],
-                    "metadata": match.get("metadata", {}),
-                })
+                hits.append(
+                    {
+                        "id": match["id"],
+                        "score": match["score"],
+                        "metadata": match.get("metadata", {}),
+                    }
+                )
             results.append(hits)
         return results
 

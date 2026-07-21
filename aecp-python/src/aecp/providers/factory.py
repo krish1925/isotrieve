@@ -75,7 +75,11 @@ def _create_raw(model_id: str) -> Embedder:
 
         return CohereEmbedder(mid)
 
-    if lower.startswith("models/") or "gemini" in lower or "text-embedding-004" in lower:
+    if (
+        lower.startswith("models/")
+        or "gemini" in lower
+        or "text-embedding-004" in lower
+    ):
         from aecp.providers.gemini import GeminiEmbedder
 
         return GeminiEmbedder(mid)

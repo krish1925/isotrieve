@@ -6,7 +6,7 @@ Hits the network. Install: ``pip install aecp[voyage]``.
 from __future__ import annotations
 
 import os
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -31,7 +31,7 @@ class VoyageEmbedder(Embedder):
             ) from e
         key = api_key or os.environ.get("VOYAGE_API_KEY")
         if not key:
-            raise EnvironmentError("VOYAGE_API_KEY is not set")
+            raise OSError("VOYAGE_API_KEY is not set")
         self._client = voyageai.Client(api_key=key)
         self._model_id = model_id
         self._batch_size = batch_size

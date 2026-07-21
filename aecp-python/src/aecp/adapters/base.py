@@ -68,7 +68,9 @@ class VectorStoreAdapter(ABC):
         ``"migrated"`` = corpus already transformed, no query mapping needed.
     """
 
-    def __init__(self, mapping: Mapping, mode: Literal["serve", "migrated"] = "serve") -> None:
+    def __init__(
+        self, mapping: Mapping, mode: Literal["serve", "migrated"] = "serve"
+    ) -> None:
         self._mapping = mapping
         self._mode = mode
 
@@ -86,6 +88,7 @@ class VectorStoreAdapter(ABC):
         Returns a GateReport. Caller should check verdict before proceeding.
         """
         from aecp.quality.gate import QualityGate
+
         gate = QualityGate()
         return gate.evaluate(self._mapping, sample_vectors, target_vectors)
 

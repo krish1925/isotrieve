@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-from aecp.mapping.base import Mapping, ValidationReport, _check_finite, l2_normalize
+from aecp.mapping.base import Mapping, _check_finite, l2_normalize
 from aecp.mapping.linear import _holdout_metrics
-from aecp.quality.metrics import pairwise_cosine_stats, topk_retention
 
 
 class ResidualMLPMapping(Mapping):
@@ -69,8 +66,7 @@ class ResidualMLPMapping(Mapping):
             import torch.optim as optim
         except ImportError:
             raise ImportError(
-                "ResidualMLPMapping requires torch. "
-                "Install with: pip install aecp[mlp]"
+                "ResidualMLPMapping requires torch. Install with: pip install aecp[mlp]"
             )
 
         X = np.asarray(X, dtype=np.float32)
@@ -82,10 +78,12 @@ class ResidualMLPMapping(Mapping):
         min_dim = min(X.shape[1], Y.shape[1])
         if X.shape[0] < 10 * min_dim:
             import warnings as _warnings
+
             _warnings.warn(
                 f"K={X.shape[0]} below recommended minimum 10×min_dim={10 * min_dim}. "
                 f"Mapping may be underdetermined.",
-                UserWarning, stacklevel=3,
+                UserWarning,
+                stacklevel=3,
             )
         _check_finite("X", X)
         _check_finite("Y", Y)
@@ -96,7 +94,10 @@ class ResidualMLPMapping(Mapping):
         self._d_tgt_int = self._d_tgt
 
         X_train, X_hold, Y_train, Y_hold = train_test_split(
-            X, Y, test_size=self._holdout_fraction, random_state=self._seed,
+            X,
+            Y,
+            test_size=self._holdout_fraction,
+            random_state=self._seed,
         )
 
         d_src = X_train.shape[1]
@@ -108,7 +109,7 @@ class ResidualMLPMapping(Mapping):
         class ResidualMLP(nn.Module):
             def __init__(self, d_in: int, d_out: int, h: int):
                 super().__init__()
-                self.is_residual = (d_in == d_out)
+                self.is_residual = d_in == d_out
                 if self.is_residual:
                     self.net = nn.Sequential(
                         nn.Linear(d_in, h),
@@ -154,7 +155,7 @@ class ResidualMLPMapping(Mapping):
         class InverseMLP(nn.Module):
             def __init__(self, d_in: int, d_out: int, h: int):
                 super().__init__()
-                self.is_residual = (d_in == d_out)
+                self.is_residual = d_in == d_out
                 if self.is_residual:
                     self.net = nn.Sequential(
                         nn.Linear(d_in, h),
@@ -193,12 +194,18 @@ class ResidualMLPMapping(Mapping):
         self._W_inv = np.zeros((self._d_tgt, self._d_src), dtype=np.float64)
 
         self._validation_report = _holdout_metrics(
-            self, X_hold, Y_hold, n_train=len(X_train),
-            seed=self._seed, alpha=None,
+            self,
+            X_hold,
+            Y_hold,
+            n_train=len(X_train),
+            seed=self._seed,
+            alpha=None,
         )
         return self
 
-    def _validate_input(self, V: np.ndarray, expected_dim: int, direction: str) -> tuple[np.ndarray, bool]:
+    def _validate_input(
+        self, V: np.ndarray, expected_dim: int, direction: str
+    ) -> tuple[np.ndarray, bool]:
         """Shared preprocessing: reshape, dimension check, finiteness."""
         V = np.asarray(V, dtype=np.float32)
         single = V.ndim == 1
@@ -264,13 +271,15 @@ class ResidualMLPMapping(Mapping):
         except ImportError:
             raise ImportError("ResidualMLPMapping requires torch for save")
 
-        from pathlib import Path
         import json
+        from pathlib import Path
 
         path = Path(path)
         state = {
             "model": self._model.state_dict() if self._model else None,
-            "inv_model": self._inv_model.state_dict() if hasattr(self, "_inv_model") and self._inv_model else None,
+            "inv_model": self._inv_model.state_dict()
+            if hasattr(self, "_inv_model") and self._inv_model
+            else None,
             "d_src": self._d_src,
             "d_tgt": self._d_tgt,
             "hidden_dim": self._hidden_dim,
@@ -278,7 +287,13 @@ class ResidualMLPMapping(Mapping):
         # Save state dict as .pt and header as .json
         torch.save(state, str(path) + ".pt")
         # Write minimal header
-        from aecp.mapping.base import _AECP_MAGIC, _AECP_FORMAT_VERSION, _HEADER_LEN_STRUCT, _pkg_version
+        from aecp.mapping.base import (
+            _AECP_FORMAT_VERSION,
+            _AECP_MAGIC,
+            _HEADER_LEN_STRUCT,
+            _pkg_version,
+        )
+
         header = {
             "format_version": _AECP_FORMAT_VERSION,
             "aecp_version": _pkg_version(),
@@ -290,7 +305,9 @@ class ResidualMLPMapping(Mapping):
             "has_inverse": True,
             "meta": self._meta,
             "torch_state_file": str(path) + ".pt",
-            "validation": self._validation_report.to_dict() if self._validation_report else None,
+            "validation": self._validation_report.to_dict()
+            if self._validation_report
+            else None,
         }
         header_bytes = json.dumps(header, separators=(",", ":")).encode("utf-8")
         with path.open("wb") as f:

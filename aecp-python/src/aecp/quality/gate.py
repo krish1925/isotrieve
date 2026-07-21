@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from enum import Enum
-import json
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from aecp.mapping.base import Mapping
-from aecp.quality.metrics import pairwise_cosine_stats, topk_retention, holdout_rank_correlation
+from aecp.quality.metrics import (
+    holdout_rank_correlation,
+    pairwise_cosine_stats,
+    topk_retention,
+)
 
 
 class GateVerdict(str, Enum):
@@ -102,6 +106,7 @@ class QualityGate:
         self.gate_model = _load_gate_model()
         if self.gate_model and self.gate_model.get("scope") == "local_model_pairs_only":
             import logging
+
             logging.getLogger(__name__).info(
                 "Gate model scope: local model pairs only. "
                 "Not validated on API model pairs (ada-002, te3-large, etc.)."
@@ -140,7 +145,10 @@ class QualityGate:
             compression_penalty = (0.85 - margin_compression) * 0.5
             interval_hw += compression_penalty
 
-        return predicted, (max(0.0, predicted - interval_hw), min(1.0, predicted + interval_hw))
+        return predicted, (
+            max(0.0, predicted - interval_hw),
+            min(1.0, predicted + interval_hw),
+        )
 
     def evaluate(
         self,
@@ -229,12 +237,15 @@ class QualityGate:
         )
 
     @staticmethod
-    def _compute_margin_compression(mapped: np.ndarray, target: np.ndarray) -> float | None:
+    def _compute_margin_compression(
+        mapped: np.ndarray, target: np.ndarray
+    ) -> float | None:
         """Estimate margin compression from mapped vs target cosine distributions.
 
         Returns ratio of mapped margin to target margin (< 1 = compression).
         """
         from aecp.mapping.base import l2_normalize
+
         m_n = l2_normalize(mapped)
         t_n = l2_normalize(target)
         # Cosine similarity to self (diagonal = similarity of each pair)
@@ -255,8 +266,8 @@ class QualityGate:
             return None
         if margin_ratio < 0.8:
             return (
-                "Score margins are compressed (ratio={:.2f}). "
+                f"Score margins are compressed (ratio={margin_ratio:.2f}). "
                 "If your application uses absolute score thresholds, "
-                "enable score recalibration or re-tune thresholds.".format(margin_ratio)
+                "enable score recalibration or re-tune thresholds."
             )
         return None
