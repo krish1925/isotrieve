@@ -1,0 +1,151 @@
+/* ============================================================
+   Integrations page
+   ============================================================ */
+
+/* --- TOC links in hero --- */
+.toc {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-top: .25rem;
+}
+.toc a {
+    display: inline-block;
+    padding: .25rem .75rem;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: .75rem;
+    font-weight: 500;
+    color: var(--muted);
+    transition: color .12s, border-color .12s, background .12s;
+    text-decoration: none;
+}
+.toc a:hover,
+.toc a.active {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-bg);
+    text-decoration: none;
+}
+
+/* --- Integration card --- */
+.int-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color .2s;
+}
+.int-card:hover {
+    border-color: var(--dim);
+}
+
+.int-header {
+    padding: 1.5rem 1.75rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+.int-title-row {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-bottom: .375rem;
+}
+.int-title-row h2 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin: 0;
+}
+.int-header p {
+    color: var(--muted);
+    font-size: .875rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.int-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+}
+.int-body .int-col {
+    padding: 1.25rem 1.75rem 1.5rem;
+}
+.int-body .int-col + .int-col {
+    border-left: 1px solid var(--border);
+}
+
+.int-col h3 {
+    font-size: .75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--dim);
+    margin-bottom: .5rem;
+    margin-top: 1.25rem;
+}
+.int-col h3:first-child {
+    margin-top: 0;
+}
+
+.int-col p {
+    color: var(--muted);
+    font-size: .8125rem;
+    line-height: 1.55;
+    margin-bottom: .5rem;
+}
+
+/* --- Contained code blocks --- */
+.int-card pre {
+    margin: .5rem 0 .75rem;
+    font-size: .78rem;
+    line-height: 1.65;
+}
+
+/* --- Note strip --- */
+.int-note {
+    display: flex;
+    align-items: flex-start;
+    gap: .5rem;
+    margin-top: .75rem;
+    padding: .5rem .75rem;
+    background: var(--raised);
+    border-radius: var(--radius);
+    font-size: .75rem;
+    color: var(--dim);
+    line-height: 1.5;
+}
+.int-note .ck {
+    color: var(--green);
+    flex-shrink: 0;
+    font-weight: 700;
+}
+
+/* --- Syntax highlighting (CSS-only) --- */
+.kw  { color: #ff7b72; }          /* keywords: from, import, for, in, print */
+.st  { color: #a5d6ff; }          /* strings */
+.nv  { color: #79c0ff; }          /* numbers */
+.cm  { color: #8b949e; font-style: italic; }  /* comments */
+.fn  { color: #d2a8ff; }          /* function calls */
+
+[data-theme="light"] .kw  { color: #cf222e; }
+[data-theme="light"] .st  { color: #0a3069; }
+[data-theme="light"] .nv  { color: #0550ae; }
+[data-theme="light"] .cm  { color: #6e7781; }
+[data-theme="light"] .fn  { color: #8250df; }
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .int-body {
+        grid-template-columns: 1fr;
+    }
+    .int-body .int-col + .int-col {
+        border-left: none;
+        border-top: 1px solid var(--border);
+    }
+    .int-header {
+        padding: 1.25rem 1.25rem 1rem;
+    }
+    .int-body .int-col {
+        padding: 1rem 1.25rem 1.25rem;
+    }
+}
