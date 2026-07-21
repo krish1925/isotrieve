@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/aecp-python"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "infra"
+      - "dependencies"
+    open-pull-requests-limit: 5
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "infra"
+      - "dependencies"

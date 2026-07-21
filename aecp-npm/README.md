@@ -1,5 +1,8 @@
 # AECP - Agent Embedding Communication Protocol
 
+> **⚠️ Historical/Experimental Package**
+> This NPM package is the original protocol prototype. The actively maintained, benchmark-validated project is [`aecp-python/`](../aecp-python/) — available on [PyPI as `aecp`](https://pypi.org/project/aecp/). This package is not actively maintained.
+
 Production-ready NPM package for semantic communication between agents using different embedding models.
 
 ## What is AECP?
