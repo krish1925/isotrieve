@@ -3,20 +3,19 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Type
 
 from aecp.mapping.base import Mapping, load_aecp_payload
 
-_REGISTRY: dict[str, Type[Mapping]] = {}
+_REGISTRY: dict[str, type[Mapping]] = {}
 
 
-def register_mapping(cls: Type[Mapping]) -> Type[Mapping]:
+def register_mapping(cls: type[Mapping]) -> type[Mapping]:
     """Register a Mapping subclass by its ``mapping_type`` attribute."""
     _REGISTRY[cls.mapping_type] = cls
     return cls
 
 
-def get_mapping_class(mapping_type: str) -> Type[Mapping]:
+def get_mapping_class(mapping_type: str) -> type[Mapping]:
     if mapping_type not in _REGISTRY:
         _ensure_builtins()
     if mapping_type not in _REGISTRY:
@@ -26,9 +25,9 @@ def get_mapping_class(mapping_type: str) -> Type[Mapping]:
 
 def _ensure_builtins() -> None:
     from aecp.mapping.linear import (
+        LowRankAffineMapping,
         OrthogonalProcrustesMapping,
         ProcrustesDiagMapping,
-        LowRankAffineMapping,
         RidgeMapping,
     )
 
@@ -40,6 +39,7 @@ def _ensure_builtins() -> None:
     # Optional: ResidualMLP (only if torch available)
     try:
         from aecp.mapping.mlp import ResidualMLPMapping
+
         register_mapping(ResidualMLPMapping)
     except ImportError:
         pass
@@ -69,6 +69,7 @@ def load_mapping(path: str | Path) -> Mapping:
     val = header.get("validation")
     if val is not None:
         from aecp.mapping.base import ValidationReport
+
         obj._validation_report = ValidationReport(**val)
     object.__setattr__(obj, "_normalize_output", True)
     object.__setattr__(obj, "_holdout_fraction", 0.1)
@@ -77,17 +78,14 @@ def load_mapping(path: str | Path) -> Mapping:
     recal_data = header.get("score_recal_v1")
     if recal_data is not None:
         from aecp.recalibration import ScoreRecalibrator
-        object.__setattr__(obj, "_recalibrator", ScoreRecalibrator.from_dict(recal_data))
+
+        object.__setattr__(
+            obj, "_recalibrator", ScoreRecalibrator.from_dict(recal_data)
+        )
     else:
         object.__setattr__(obj, "_recalibrator", None)
 
-    if mapping_type == "ridge":
-        alpha = (val or {}).get("alpha") if val else None
-        object.__setattr__(obj, "alpha", alpha if alpha is not None else "auto")
-        object.__setattr__(obj, "_chosen_alpha", alpha)
-        object.__setattr__(obj, "_chosen_inv_alpha", alpha)
-        object.__setattr__(obj, "_rank", None)
-    elif mapping_type == "lowrank_affine":
+    if mapping_type == "ridge" or mapping_type == "lowrank_affine":
         alpha = (val or {}).get("alpha") if val else None
         object.__setattr__(obj, "alpha", alpha if alpha is not None else "auto")
         object.__setattr__(obj, "_chosen_alpha", alpha)
@@ -130,6 +128,7 @@ def _load_mlp_mapping(header: dict) -> Mapping:
     val = header.get("validation")
     if val is not None:
         from aecp.mapping.base import ValidationReport
+
         obj._validation_report = ValidationReport(**val)
 
     # Reconstruct models
@@ -146,8 +145,11 @@ def _load_mlp_mapping(header: dict) -> Mapping:
         def __init__(self, d_in, d_out, h):
             super().__init__()
             self.net = nn.Sequential(
-                nn.Linear(d_in, h), nn.GELU(), nn.Linear(h, d_out),
+                nn.Linear(d_in, h),
+                nn.GELU(),
+                nn.Linear(h, d_out),
             )
+
         def forward(self, x):
             return x + self.net(x)
 
@@ -161,4 +163,3 @@ def _load_mlp_mapping(header: dict) -> Mapping:
         obj._inv_model = inv_model
 
     return obj
-

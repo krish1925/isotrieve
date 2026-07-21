@@ -23,8 +23,7 @@ def _require_qdrant() -> Any:
         return QdrantClient, PointStruct
     except ImportError:
         raise ImportError(
-            "Qdrant client is required.  "
-            "Install it with: pip install aecp[qdrant]"
+            "Qdrant client is required.  Install it with: pip install aecp[qdrant]"
         ) from None
 
 
@@ -75,14 +74,16 @@ class QdrantAdapter(VectorStoreAdapter):
                 query_vector=vec.tolist(),
                 limit=k,
             )
-            results.append([
-                {
-                    "id": str(hit.id),
-                    "score": hit.score,
-                    "metadata": hit.payload or {},
-                }
-                for hit in hits
-            ])
+            results.append(
+                [
+                    {
+                        "id": str(hit.id),
+                        "score": hit.score,
+                        "metadata": hit.payload or {},
+                    }
+                    for hit in hits
+                ]
+            )
         return results
 
     def migrate(
@@ -155,9 +156,7 @@ class QdrantAdapter(VectorStoreAdapter):
             # Upsert to target
             upsert_points = [
                 PointStruct(id=pid, vector=vec, payload=pl)
-                for pid, vec, pl in zip(
-                    ids, vectors, payloads, strict=True
-                )
+                for pid, vec, pl in zip(ids, vectors, payloads, strict=True)
             ]
             self._client.upsert(
                 collection_name=target,

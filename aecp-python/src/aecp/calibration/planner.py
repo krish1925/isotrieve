@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 # Rough public list prices ($ / 1M tokens). Update when providers change;
 # these are planning estimates, not invoices. Documented as estimates in CLI.
 _PRICE_PER_MILLION: dict[str, float] = {
@@ -29,7 +28,9 @@ class CalibrationPlan:
     notes: list[str]
 
 
-def estimate_embed_cost(model_id: str, n_texts: int, tokens_per_text: int = 100) -> float:
+def estimate_embed_cost(
+    model_id: str, n_texts: int, tokens_per_text: int = 100
+) -> float:
     """Estimate USD cost for embedding ``n_texts`` (rough token heuristic)."""
     price = _PRICE_PER_MILLION.get(model_id, _PRICE_PER_MILLION["default"])
     # Try suffix match
@@ -64,9 +65,9 @@ def plan_calibration(
     k = recommend_k(corpus_size, d_src, d_tgt)
     cal_calls = 2 * k
     reembed_calls = corpus_size
-    cal_usd = estimate_embed_cost(source_model, k, tokens_per_text) + estimate_embed_cost(
-        target_model, k, tokens_per_text
-    )
+    cal_usd = estimate_embed_cost(
+        source_model, k, tokens_per_text
+    ) + estimate_embed_cost(target_model, k, tokens_per_text)
     reembed_usd = estimate_embed_cost(target_model, corpus_size, tokens_per_text)
     notes = [
         "Costs are rough public-list estimates, not invoices.",

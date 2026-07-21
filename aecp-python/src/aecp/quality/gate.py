@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from enum import Enum
-import json
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from aecp.mapping.base import Mapping
-from aecp.quality.metrics import pairwise_cosine_stats, topk_retention, holdout_rank_correlation
+from aecp.quality.metrics import (
+    holdout_rank_correlation,
+    pairwise_cosine_stats,
+    topk_retention,
+)
 
 
 class GateVerdict(str, Enum):
@@ -102,6 +106,7 @@ class QualityGate:
         self.gate_model = _load_gate_model()
         if self.gate_model and self.gate_model.get("scope") == "local_model_pairs_only":
             import logging
+
             logging.getLogger(__name__).info(
                 "Gate model scope: local model pairs only. "
                 "Not validated on API model pairs (ada-002, te3-large, etc.)."
@@ -140,7 +145,9 @@ class QualityGate:
             compression_penalty = (0.85 - margin_compression) * 0.5
             interval_hw += compression_penalty
 
-        return predicted, (max(0.0, predicted - interval_hw), min(1.0, predicted + interval_hw))
+        lo = max(0.0, predicted - interval_hw)
+        hi = min(1.0, predicted + interval_hw)
+        return predicted, (lo, hi)
 
     def evaluate(
         self,
@@ -229,25 +236,39 @@ class QualityGate:
         )
 
     @staticmethod
-    def _compute_margin_compression(mapped: np.ndarray, target: np.ndarray) -> float | None:
+    def _compute_margin_compression(
+        mapped: np.ndarray, target: np.ndarray
+    ) -> float | None:
         """Estimate margin compression from mapped vs target cosine distributions.
 
         Returns ratio of mapped margin to target margin (< 1 = compression).
+
+        Uses cosine similarity between paired mapped→target vectors (not
+        self-similarity, which is always 1 after L2 norm). The reference
+        distribution is random target→target cosine similarities, giving
+        a meaningful baseline for variance comparison.
         """
         from aecp.mapping.base import l2_normalize
+
         m_n = l2_normalize(mapped)
         t_n = l2_normalize(target)
-        # Cosine similarity to self (diagonal = similarity of each pair)
-        mapped_self = np.sum(m_n * t_n, axis=1)  # cosine of each mapped→target pair
-        # For margin estimate: use variance of cosine as a proxy
-        # (higher variance = wider margins)
-        mapped_var = float(np.var(mapped_self))
-        # Compare to "ideal" (identity mapping): variance of target→target
-        target_self = np.sum(t_n * t_n, axis=1)
-        target_var = float(np.var(target_self))
-        if target_var < 1e-12:
+        k = len(m_n)
+
+        # Paired cosine: each mapped vector vs its corresponding target
+        paired_cos = np.sum(m_n * t_n, axis=1)
+        paired_var = float(np.var(paired_cos))
+
+        # Reference: variance of cosine similarities between random target pairs
+        rng = np.random.default_rng(0)
+        idx_a = rng.integers(0, k, size=k)
+        idx_b = rng.integers(0, k, size=k)
+        ref_cos = np.sum(t_n[idx_a] * t_n[idx_b], axis=1)
+        ref_var = float(np.var(ref_cos))
+
+        if ref_var < 1e-12:
             return None
-        return mapped_var / target_var
+
+        return paired_var / ref_var
 
     @staticmethod
     def _score_recal_recommendation(margin_ratio: float | None) -> str | None:
@@ -255,8 +276,8 @@ class QualityGate:
             return None
         if margin_ratio < 0.8:
             return (
-                "Score margins are compressed (ratio={:.2f}). "
+                f"Score margins are compressed (ratio={margin_ratio:.2f}). "
                 "If your application uses absolute score thresholds, "
-                "enable score recalibration or re-tune thresholds.".format(margin_ratio)
+                "enable score recalibration or re-tune thresholds."
             )
         return None

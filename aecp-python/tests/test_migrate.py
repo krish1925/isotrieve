@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import tempfile
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 from aecp.mapping.linear import RidgeMapping
 from aecp.migrate import MigrationManifest, migrate_store
-from aecp.stores.base import VectorRecord
 from aecp.stores.numpy_files import NumpyFileStore
 
 
@@ -69,8 +66,10 @@ def test_migrate_store_resumable():
         manifest_path = Path(tmpdir) / "manifest.json"
 
         # First migration (partial - simulate by saving manifest after 2 batches)
-        manifest = migrate_store(
-            source, target, mapping,
+        migrate_store(
+            source,
+            target,
+            mapping,
             batch_size=10,
             manifest_path=manifest_path,
         )
@@ -103,7 +102,10 @@ def test_migrate_preserves_ids():
         texts = [f"Text {i}" for i in range(20)]
 
         source = NumpyFileStore.from_arrays(
-            Path(tmpdir) / "source", vectors, ids=ids, texts=texts,
+            Path(tmpdir) / "source",
+            vectors,
+            ids=ids,
+            texts=texts,
         )
         target = NumpyFileStore(Path(tmpdir) / "target", create=True)
         mapping = _make_mapping(d=8)

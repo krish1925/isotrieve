@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Sequence
+from collections.abc import Sequence
 
 # Tiny frozen seed set for offline demos/tests — NOT aecp-calib-v1.
 # Full versioned corpus lands in Phase 2 (DECISIONS.md Q2).
