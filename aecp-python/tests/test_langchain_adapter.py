@@ -5,6 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+pytest.importorskip("langchain_core", reason="langchain_core not installed")
+
 from aecp.mapping.linear import RidgeMapping
 
 
