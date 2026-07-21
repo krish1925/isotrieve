@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import typer
@@ -31,8 +30,8 @@ app = typer.Typer(
 console = Console()
 
 # Register additional commands
-from aecp.cli_gate import register_gate_command
 from aecp.cli_doctor import register_doctor_command
+from aecp.cli_gate import register_gate_command
 from aecp.cli_report import register_report_command
 
 register_gate_command(app)
@@ -95,27 +94,30 @@ def plan_cmd(
 
 @app.command("calibrate")
 def calibrate_cmd(
-    source_vectors: Optional[Path] = typer.Option(
+    source_vectors: Path | None = typer.Option(
         None, "--source-vectors", help="NPY of source embeddings (K, d_src)"
     ),
-    target_vectors: Optional[Path] = typer.Option(
+    target_vectors: Path | None = typer.Option(
         None, "--target-vectors", help="NPY of target embeddings (K, d_tgt)"
     ),
-    source_model: Optional[str] = typer.Option(
+    source_model: str | None = typer.Option(
         None, "--source-model", help="sentence-transformers model id"
     ),
-    target_model: Optional[str] = typer.Option(
+    target_model: str | None = typer.Option(
         None, "--target-model", help="sentence-transformers model id"
     ),
-    texts_file: Optional[Path] = typer.Option(
+    texts_file: Path | None = typer.Option(
         None, "--texts", help="Text file (one text per line) for in-domain calib"
     ),
     queries_only: bool = typer.Option(
-        False, "--queries-only",
-        help="Calibrate from query log + stored vectors (no source docs)"
+        False,
+        "--queries-only",
+        help="Calibrate from query log + stored vectors (no source docs)",
     ),
-    queries_file: Optional[Path] = typer.Option(
-        None, "--queries", help="NPY of query embeddings in source space (for --queries-only)"
+    queries_file: Path | None = typer.Option(
+        None,
+        "--queries",
+        help="NPY of query embeddings in source space (for --queries-only)",
     ),
     k: int = typer.Option(2000, "--k"),
     seed: int = typer.Option(0, "--seed"),
@@ -187,11 +189,12 @@ def calibrate_cmd(
     mapping.fit(X, Y)
 
     # Fit score recalibrator from holdout calibration data
-    from aecp.recalibration import ScoreRecalibrator
     from aecp.mapping.base import l2_normalize
+    from aecp.recalibration import ScoreRecalibrator
+
     recal = ScoreRecalibrator()
     try:
-        val = mapping.validation_report()
+        mapping.validation_report()
         # Use holdout indices from the mapping's internal split
         # Reconstruct: use the calibration data as both query and doc set
         # (K-pair similarity matrix covers the score range adequately)
@@ -237,7 +240,9 @@ def calibrate_cmd(
     report = mapping.validation_report()
 
     if as_json:
-        _print_json({"output": str(output), "validation": report.to_dict(), "meta": meta})
+        _print_json(
+            {"output": str(output), "validation": report.to_dict(), "meta": meta}
+        )
         return
 
     table = Table(title=f"Calibrated → {output}")

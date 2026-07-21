@@ -24,6 +24,7 @@ from aecp.stores.base import VectorRecord, VectorStore
 # Mapping helper
 # ---------------------------------------------------------------------------
 
+
 def make_mapping(
     d_src: int = 8,
     d_tgt: int = 12,
@@ -55,6 +56,7 @@ def save_mapping(m: Mapping, tmp_path: Any, name: str = "map.aecp") -> str:
 # ---------------------------------------------------------------------------
 # Fake embedder — implements the Embedder ABC surface
 # ---------------------------------------------------------------------------
+
 
 class FakeEmbedder:
     """Deterministic embedder.  Returns seeded random vectors.
@@ -94,6 +96,7 @@ class FakeEmbedder:
 # Fake LangChain Embeddings — duck-types langchain_core Embeddings
 # ---------------------------------------------------------------------------
 
+
 class FakeLangChainEmbeddings:
     """Fake LangChain ``Embeddings`` base class.
 
@@ -124,6 +127,7 @@ class FakeLangChainEmbeddings:
 # ---------------------------------------------------------------------------
 # Fake LlamaIndex BaseEmbedding — duck-types the interface
 # ---------------------------------------------------------------------------
+
 
 class FakeLlamaIndexEmbedding:
     """Fake LlamaIndex ``BaseEmbedding``.
@@ -163,6 +167,7 @@ class FakeLlamaIndexEmbedding:
 # ---------------------------------------------------------------------------
 # Fake OpenAI embeddings client — duck-types client.embeddings.create
 # ---------------------------------------------------------------------------
+
 
 class _FakeOpenAIEmbeddingData:
     """Mimics openai.types.CreateEmbeddingResponse.data[0]."""
@@ -224,13 +229,8 @@ class _FakeOpenAIEmbeddingsNamespace:
         if isinstance(input, str):
             input = [input]
         self._client._call_count += 1
-        rng = np.random.default_rng(
-            self._client._seed + self._client._call_count
-        )
-        embeddings = [
-            rng.normal(size=(self._client._dim,)).tolist()
-            for _ in input
-        ]
+        rng = np.random.default_rng(self._client._seed + self._client._call_count)
+        embeddings = [rng.normal(size=(self._client._dim,)).tolist() for _ in input]
         return _FakeOpenAIEmbeddingResponse(
             embeddings, model=model or self._client._model
         )
@@ -239,6 +239,7 @@ class _FakeOpenAIEmbeddingsNamespace:
 # ---------------------------------------------------------------------------
 # Fake vector store — in-memory, implements VectorStore ABC
 # ---------------------------------------------------------------------------
+
 
 class FakeStore(VectorStore):
     """In-memory vector store for tests.
@@ -291,6 +292,7 @@ class FakeStore(VectorStore):
 # ---------------------------------------------------------------------------
 # Fake ChromaDB — minimal client + collection
 # ---------------------------------------------------------------------------
+
 
 class FakeChromaCollection:
     """Minimal fake for ``chromadb.Collection``."""

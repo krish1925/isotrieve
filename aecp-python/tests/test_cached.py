@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from aecp.providers.base import Embedder
 from aecp.providers.cached import CachedEmbedder, with_disk_cache

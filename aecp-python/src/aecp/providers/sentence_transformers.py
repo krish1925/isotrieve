@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -16,7 +16,9 @@ class SentenceTransformerEmbedder(Embedder):
     Install with ``pip install aecp[sentence-transformers]``.
     """
 
-    def __init__(self, model_id: str = "sentence-transformers/all-MiniLM-L6-v2") -> None:
+    def __init__(
+        self, model_id: str = "sentence-transformers/all-MiniLM-L6-v2"
+    ) -> None:
         try:
             from sentence_transformers import SentenceTransformer
         except ImportError as e:

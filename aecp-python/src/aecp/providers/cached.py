@@ -5,8 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 import numpy as np
 
@@ -104,9 +104,7 @@ class CachedEmbedder(Embedder):
                 np.save(self._cache_dir / fname, fresh[j])
                 self._index[key] = fname
                 out[i] = fresh[j]
-            self._index_path.write_text(
-                json.dumps(self._index), encoding="utf-8"
-            )
+            self._index_path.write_text(json.dumps(self._index), encoding="utf-8")
 
         return np.stack([np.asarray(v, dtype=np.float64) for v in out], axis=0)
 

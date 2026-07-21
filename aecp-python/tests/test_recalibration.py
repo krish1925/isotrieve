@@ -24,7 +24,9 @@ class TestScoreRecalibrator:
         recalibrated = recal.transform(mapped)
         err_before = np.mean(np.abs(mapped - ceiling))
         err_after = np.mean(np.abs(recalibrated - ceiling))
-        assert err_after < err_before, f"Recalibration made things worse: {err_after} > {err_before}"
+        assert err_after < err_before, (
+            f"Recalibration made things worse: {err_after} > {err_before}"
+        )
 
     def test_roundtrip_via_dict(self):
         rng = np.random.default_rng(42)
@@ -39,9 +41,7 @@ class TestScoreRecalibrator:
         recal2 = ScoreRecalibrator.from_dict(data)
 
         scores = np.array([0.5, 0.7, 0.9])
-        np.testing.assert_array_equal(
-            recal.transform(scores), recal2.transform(scores)
-        )
+        np.testing.assert_array_equal(recal.transform(scores), recal2.transform(scores))
 
     def test_report_fields(self):
         rng = np.random.default_rng(0)

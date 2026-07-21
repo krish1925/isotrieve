@@ -6,7 +6,6 @@ flag low-confidence queries where the mapping is likely unreliable.
 
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass
 from typing import Any
 
@@ -186,13 +185,15 @@ class ConfidenceScorer:
             else:
                 conf = "medium"
 
-            reports.append(ConfidenceReport(
-                query_id=qid,
-                top1_margin=margin,
-                top1_score=top1,
-                confidence=conf,
-                n_candidates=top_k,
-            ))
+            reports.append(
+                ConfidenceReport(
+                    query_id=qid,
+                    top1_margin=margin,
+                    top1_score=top1,
+                    confidence=conf,
+                    n_candidates=top_k,
+                )
+            )
         return reports
 
 

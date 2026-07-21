@@ -288,7 +288,9 @@ def read_aecp_header(path: str | Path) -> dict[str, Any]:
     return header
 
 
-def load_aecp_payload(path: str | Path) -> tuple[dict[str, Any], np.ndarray, np.ndarray | None, dict[str, np.ndarray]]:
+def load_aecp_payload(
+    path: str | Path,
+) -> tuple[dict[str, Any], np.ndarray, np.ndarray | None, dict[str, np.ndarray]]:
     """Load header, forward matrix, and optional inverse matrix from ``.aecp``."""
     path = Path(path)
     with path.open("rb") as f:

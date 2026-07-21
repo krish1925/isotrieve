@@ -24,13 +24,20 @@ class TestGateCommand:
         np.save(tmp_path / "X.npy", X)
         np.save(tmp_path / "Y.npy", Y)
 
-        result = runner.invoke(app, [
-            "gate",
-            "--mapping", str(tmp_path / "map.aecp"),
-            "--source-vectors", str(tmp_path / "X.npy"),
-            "--target-vectors", str(tmp_path / "Y.npy"),
-            "--format", "json",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "gate",
+                "--mapping",
+                str(tmp_path / "map.aecp"),
+                "--source-vectors",
+                str(tmp_path / "X.npy"),
+                "--target-vectors",
+                str(tmp_path / "Y.npy"),
+                "--format",
+                "json",
+            ],
+        )
         # Should not crash (exit 0 or 1 depending on gate verdict)
         assert result.exit_code in (0, 1)
         # JSON output should be valid
@@ -42,10 +49,14 @@ class TestGateCommand:
         m = make_mapping(d_src=8, d_tgt=12, k=200)
         save_mapping(m, tmp_path)
 
-        result = runner.invoke(app, [
-            "gate",
-            "--mapping", str(tmp_path / "map.aecp"),
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "gate",
+                "--mapping",
+                str(tmp_path / "map.aecp"),
+            ],
+        )
         assert result.exit_code == 2
 
     def test_gate_queries_only(self, tmp_path):
@@ -56,13 +67,20 @@ class TestGateCommand:
         np.save(tmp_path / "queries.npy", rng.normal(size=(50, 8)))
         np.save(tmp_path / "corpus.npy", rng.normal(size=(50, 12)))
 
-        result = runner.invoke(app, [
-            "gate",
-            "--mapping", str(tmp_path / "map.aecp"),
-            "--queries", str(tmp_path / "queries.npy"),
-            "--corpus", str(tmp_path / "corpus.npy"),
-            "--format", "json",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "gate",
+                "--mapping",
+                str(tmp_path / "map.aecp"),
+                "--queries",
+                str(tmp_path / "queries.npy"),
+                "--corpus",
+                str(tmp_path / "corpus.npy"),
+                "--format",
+                "json",
+            ],
+        )
         assert result.exit_code in (0, 1)
 
 
@@ -79,21 +97,31 @@ class TestDoctorCommand:
         ]
         store.write_vectors([records])
 
-        result = runner.invoke(app, [
-            "doctor",
-            "--store", "numpy",
-            "--url", str(tmp_path / "store"),
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "doctor",
+                "--store",
+                "numpy",
+                "--url",
+                str(tmp_path / "store"),
+            ],
+        )
         assert result.exit_code == 0
         assert "10" in result.output  # vector count
 
     def test_doctor_json(self, tmp_path):
-        result = runner.invoke(app, [
-            "doctor",
-            "--store", "numpy",
-            "--url", str(tmp_path / "nonexistent"),
-            "--json",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "doctor",
+                "--store",
+                "numpy",
+                "--url",
+                str(tmp_path / "nonexistent"),
+                "--json",
+            ],
+        )
         # Should still return valid JSON even with error
         assert result.exit_code == 0
         data = json.loads(result.output)

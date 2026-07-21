@@ -2,12 +2,10 @@
 
 Requires: pip install aecp[qdrant]
 """
+
 from __future__ import annotations
 
-import json
 from collections.abc import Iterator
-from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -62,9 +60,7 @@ class QdrantStore(VectorStore):
         info = self._client.get_collection(self._collection)
         return info.points_count or 0
 
-    def iter_vectors(
-        self, batch_size: int = 1024
-    ) -> Iterator[list[VectorRecord]]:
+    def iter_vectors(self, batch_size: int = 1024) -> Iterator[list[VectorRecord]]:
         """Stream vectors with server-side pagination."""
         offset = None
         while True:
@@ -83,12 +79,14 @@ class QdrantStore(VectorStore):
                 payload = point.payload or {}
                 if self._text_field in payload:
                     text = payload[self._text_field]
-                records.append(VectorRecord(
-                    id=str(point.id),
-                    vector=np.array(point.vector, dtype=np.float32),
-                    text=text,
-                    payload=payload,
-                ))
+                records.append(
+                    VectorRecord(
+                        id=str(point.id),
+                        vector=np.array(point.vector, dtype=np.float32),
+                        text=text,
+                        payload=payload,
+                    )
+                )
             yield records
             if offset is None:
                 break
@@ -100,7 +98,7 @@ class QdrantStore(VectorStore):
         batch_size: int = 1024,
     ) -> int:
         """Write records to Qdrant."""
-        QdrantClient, _, PointStruct, VectorParams = _require_qdrant()
+        QdrantClient, Distance, PointStruct, VectorParams = _require_qdrant()
 
         # Get dimensions from first record
         first_batch = next(iter(records))

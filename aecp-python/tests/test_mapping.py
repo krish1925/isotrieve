@@ -29,6 +29,7 @@ def _paired_gaussian(
 
 # ── RidgeMapping ──
 
+
 def test_ridge_fit_transform_recovers_targets():
     d_src, d_tgt = 16, 24
     k = 10 * min(d_src, d_tgt)
@@ -37,6 +38,7 @@ def test_ridge_fit_transform_recovers_targets():
     m.fit(X, Y)
     pred = m.transform(X)
     from aecp.mapping.base import l2_normalize
+
     y_n = l2_normalize(Y)
     sims = np.sum(pred * y_n, axis=1)
     assert float(np.mean(sims)) > 0.95
@@ -107,6 +109,7 @@ def test_validation_report_present():
 
 # ── OrthogonalProcrustesMapping ──
 
+
 def test_procrustes_square_only():
     X, Y = _paired_gaussian(200, 10, 12, seed=7)
     with pytest.raises(ValueError, match="d_src == d_tgt"):
@@ -128,6 +131,7 @@ def test_procrustes_inverse():
     X_back = m.inverse_transform(Z)
     assert X_back.shape == X.shape
     from aecp.mapping.base import l2_normalize
+
     x_n = l2_normalize(X)
     sims = np.sum(X_back * x_n, axis=1)
     assert float(np.mean(sims)) > 0.5
@@ -143,6 +147,7 @@ def test_procrustes_save_load(tmp_path):
 
 
 # ── ProcrustesDiagMapping ──
+
 
 def test_procrustes_diag_fit():
     X, Y = _paired_gaussian(200, 16, 16, seed=12)
@@ -182,12 +187,14 @@ def test_procrustes_diag_save_load(tmp_path):
 
 # ── LowRankAffineMapping ──
 
+
 def test_lowrank_affine_fit():
     X, Y = _paired_gaussian(200, 16, 24, seed=16)
     m = LowRankAffineMapping(alpha=1.0, rank=8, seed=0).fit(X, Y)
     Z = m.transform(X)
     assert Z.shape == (200, 24)
     from aecp.mapping.base import l2_normalize
+
     y_n = l2_normalize(Y)
     sims = np.sum(Z * y_n, axis=1)
     assert float(np.mean(sims)) > 0.8
@@ -198,9 +205,7 @@ def test_lowrank_affine_full_rank_equals_ridge():
     m_lr = LowRankAffineMapping(alpha=1.0, rank=16, seed=0).fit(X, Y)
     m_ridge = RidgeMapping(alpha=1.0, seed=0).fit(X, Y)
     # Full-rank low-rank should be very close to ridge
-    np.testing.assert_allclose(
-        m_lr.transform(X), m_ridge.transform(X), atol=1e-4
-    )
+    np.testing.assert_allclose(m_lr.transform(X), m_ridge.transform(X), atol=1e-4)
 
 
 def test_lowrank_affine_rectangular():
@@ -220,6 +225,7 @@ def test_lowrank_affine_save_load(tmp_path):
 
 
 # ── Cross-adapter comparison ──
+
 
 def test_all_adapters_beat_random_on_synthetic():
     """All adapters should significantly beat random on a known linear pair."""

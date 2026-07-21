@@ -2,6 +2,7 @@
 
 End-to-end migration with resumability, non-destructive safety, and progress tracking.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -13,7 +14,7 @@ from typing import Any
 
 import numpy as np
 
-from aecp.mapping.base import Mapping, l2_normalize
+from aecp.mapping.base import Mapping
 from aecp.stores.base import VectorRecord, VectorStore
 
 
@@ -128,33 +129,35 @@ def migrate_store(
         # Create new records
         new_records = []
         for i, r in enumerate(batch_records):
-            new_records.append(VectorRecord(
-                id=r.id,
-                vector=transformed[i],
-                text=r.text,
-                payload=r.payload,
-            ))
+            new_records.append(
+                VectorRecord(
+                    id=r.id,
+                    vector=transformed[i],
+                    text=r.text,
+                    payload=r.payload,
+                )
+            )
 
         # Write to target
         target.write_vectors(new_records, batch_size=batch_size)
 
         # Update manifest
         batch_hash = compute_batch_hash(transformed)
-        manifest.batches.append({
-            "batch_num": batch_num,
-            "start_idx": batch_num * batch_size,
-            "count": len(batch_records),
-            "hash": batch_hash,
-        })
+        manifest.batches.append(
+            {
+                "batch_num": batch_num,
+                "start_idx": batch_num * batch_size,
+                "count": len(batch_records),
+                "hash": batch_hash,
+            }
+        )
         manifest.migrated_vectors += len(batch_records)
         manifest.batch_end = batch_num + 1
         manifest.last_batch_hash = batch_hash
 
         # Save manifest
         if manifest_path:
-            manifest_path.write_text(
-                json.dumps(manifest.to_dict(), indent=2)
-            )
+            manifest_path.write_text(json.dumps(manifest.to_dict(), indent=2))
 
         written += len(batch_records)
         batch_num += 1
@@ -162,11 +165,16 @@ def migrate_store(
         # Progress
         elapsed = time.perf_counter() - t_start
         rate = written / elapsed if elapsed > 0 else 0
-        pct = (written / manifest.total_vectors * 100) if manifest.total_vectors > 0 else 0
+        pct = (
+            (written / manifest.total_vectors * 100)
+            if manifest.total_vectors > 0
+            else 0
+        )
         print(
             f"\r  Migrated {written}/{manifest.total_vectors} "
             f"({pct:.1f}%) at {rate:.0f} vec/s",
-            end="", flush=True,
+            end="",
+            flush=True,
         )
 
     print()  # newline after progress

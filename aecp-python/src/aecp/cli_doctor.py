@@ -37,9 +37,7 @@ def register_doctor_command(app: typer.Typer) -> None:
         info = _inspect_store(store_type, store_url, collection, source_model)
 
         if as_json:
-            console.print_json(
-                __import__("json").dumps(info, indent=2, default=str)
-            )
+            console.print_json(__import__("json").dumps(info, indent=2, default=str))
             return
 
         table = Table(title=f"Doctor: {store_type} store")
@@ -120,9 +118,7 @@ def _inspect_qdrant(url: str | None, collection: str | None) -> dict:
         return {
             "vector_count": info.points_count,
             "dimension": (
-                info.config.params.vectors.size
-                if info.config.params.vectors
-                else None
+                info.config.params.vectors.size if info.config.params.vectors else None
             ),
         }
     except Exception as e:

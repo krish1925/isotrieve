@@ -1,7 +1,6 @@
 """Tests for aecp.reranking (WS-B)."""
 
 import numpy as np
-import pytest
 
 from aecp.reranking import ConfidenceReport, ConfidenceScorer, confidence_summary
 
