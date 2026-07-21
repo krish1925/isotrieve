@@ -138,6 +138,14 @@ class TestAECPChromaFunction:
         assert len(vec) == 8  # mapped into legacy (source) space
 
 
+try:
+    import chromadb as _chromadb_mod
+    _has_chroma = True
+except ImportError:
+    _has_chroma = False
+
+
+@pytest.mark.skipif(not _has_chroma, reason="chromadb not installed")
 class TestMigrateCollection:
     """Test migrate_collection with mocked ChromaDB."""
 

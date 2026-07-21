@@ -59,6 +59,9 @@ def register_doctor_command(app: typer.Typer) -> None:
                 "Run 'aecp gate' with calibration data to evaluate migration.[/yellow]"
             )
 
+        # Print scenario-calibrated expectations
+        console.print(SCENARIO_GUIDANCE)
+
 
 def _inspect_store(
     store_type: str,
@@ -154,3 +157,27 @@ def _suggest_playbook(info: dict) -> str | None:
     if "voyage-2" in model:
         return "voyage-2 → voyage-3 (docs/playbooks/voyage-2-to-v3.md)"
     return None
+
+
+# Scenario-calibrated retention expectations (from benchmarks).
+# Same-family = same provider, similar architecture (e.g., ada-002 → te3-small).
+# Cross-family = different provider/architecture (e.g., MiniLM → bge-large).
+SCENARIO_GUIDANCE = """
+[bold]Expected retention by scenario (SciFact benchmarks, 3 seeds):[/bold]
+
+  Same-family pairs (e.g., ada-002 → te3-small, bge → e5):
+    K ≥ 2000: 0.85–0.93 nDCG@10 retention (PASS)
+    K = 1000: 0.73–0.80 (WARN — usable for recall-tolerant workloads)
+
+  Cross-family pairs (e.g., MiniLM → bge-large):
+    K ≥ 2000: 0.78–0.87 nDCG@10 retention (PASS)
+    K = 1000: 0.67–0.78 (WARN — consider more calibration)
+
+  Same-dim pairs (e.g., bge-large → e5-large, 1024→1024):
+    K ≥ 2000: 0.90–0.95 retention (high confidence)
+
+  Gate thresholds: PASS ≥ 0.75, WARN ≥ 0.55, FAIL < 0.55
+  These are conservative defaults calibrated to real benchmarks.
+  If your gate returns WARN, it does NOT mean the tool is broken —
+  it means your specific pair needs more calibration or is cross-family.
+"""
