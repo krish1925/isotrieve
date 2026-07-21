@@ -1,6 +1,8 @@
 # aecp
 
-Migrate a vector database to a new embedding model without re-embedding the corpus. Fits a linear map from ~2K calibration texts; 87-91% retrieval retention measured on BEIR.
+Migrate a vector database to a new embedding model without re-embedding the corpus. Fits a ridge regression map from ~2K calibration texts; 87-91% retrieval retention measured on BEIR.
+
+Use cases: ada-002 to text-embedding-3 migration, changing embedding models in Qdrant/pgvector/ChromaDB, replacing a deprecated embedding provider, or switching from a hosted API to local models.
 
 ## Install
 
@@ -50,7 +52,7 @@ aecp inspect map.aecp
 
 ## Serve mode (zero corpus writes)
 
-Map new-model queries into legacy space. No re-embedding, instant rollback:
+For vector database migration without touching stored data: map new-model queries into legacy space. No re-embedding, instant rollback:
 
 ```python
 from aecp.serve import QueryAdapter
@@ -203,6 +205,8 @@ Same dimension != same space. e5 models require "query: "/"passage: " prefixes; 
 - Do not use MLP adapter (0.729 vs 0.871 for Ridge, same cost)
 
 ## How it works
+
+AECP solves embedding migration (changing your vector database's embedding model) with ridge regression:
 
 1. Embed K texts with source and target models → matrices X, Y
 2. Fit ridge map Y = [X | 1] W (handles unequal dims)
