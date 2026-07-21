@@ -159,13 +159,13 @@ All numbers from `benchmarks/results/`, verified by `benchmarks/audit_configs.py
 | bge→e5 | 0.955 | 0.637 | 0.318 |
 | MiniLM→bge | 0.875 | 0.651 | 0.224 |
 
-### Adapter comparison (SciFact, MiniLM→bge-large, K=4000, 3 seeds)
+### Adapter comparison (SciFact, MiniLM→bge-large, K=3840, 3 seeds)
 
 | Adapter | nDCG@10 retention | Notes |
 |---------|------------------|-------|
-| Ridge | 0.866 +/- 0.008 | Default. Fast, stable. |
-| LowRank | 0.857 +/- 0.009 | Compressed matrix. ~1% worse. |
-| MLP | 0.719 +/- 0.008 | No tuning. Linear wins. |
+| Ridge | 0.871 +/- 0.006 | Default. Fast, stable. |
+| LowRank | 0.862 +/- 0.010 | Compressed matrix. ~1% worse. |
+| MLP | 0.729 +/- 0.008 | No tuning. Linear wins. |
 
 ### K-sweep (all adapters averaged, SciFact, 3 seeds)
 
@@ -174,7 +174,7 @@ All numbers from `benchmarks/results/`, verified by `benchmarks/audit_configs.py
 | 500 | 0.667 +/- 0.039 | WARN |
 | 1000 | 0.732 +/- 0.056 | WARN |
 | 2000 | 0.788 +/- 0.054 | PASS |
-| 4000 | 0.814 +/- 0.068 | PASS |
+| 4000 | 0.817 +/- 0.064 | PASS |
 
 ### Same-dim pair (bge-large→e5-large, 1024→1024)
 
@@ -200,7 +200,7 @@ Same dimension != same space. e5 models require "query: "/"passage: " prefixes; 
 - Do not mix vectors from different models in one collection
 - Do not assume same dimensionality means compatibility
 - Do not skip the quality gate
-- Do not use MLP adapter (0.719 vs 0.866 for Ridge, same cost)
+- Do not use MLP adapter (0.729 vs 0.871 for Ridge, same cost)
 
 ## How it works
 
