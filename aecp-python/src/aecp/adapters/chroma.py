@@ -25,11 +25,11 @@ def _require_chroma():
     try:
         import chromadb
         from chromadb import Documents, EmbeddingFunction, Embeddings
+
         return chromadb, Documents, EmbeddingFunction, Embeddings
     except ImportError:
         raise ImportError(
-            "ChromaDB adapter requires chromadb. "
-            "Install with: pip install chromadb"
+            "ChromaDB adapter requires chromadb. Install with: pip install chromadb"
         )
 
 
@@ -171,17 +171,24 @@ def migrate_collection(
 
     if dry_run:
         # Just read a batch and report dimensions
-        sample = src.get(limit=min(batch_size, total), include=["embeddings", "metadatas", "documents"])
+        sample = src.get(
+            limit=min(batch_size, total),
+            include=["embeddings", "metadatas", "documents"],
+        )
         if sample["embeddings"]:
             dims = len(sample["embeddings"][0])
             report.rows_processed = len(sample["embeddings"])
             report.elapsed_seconds = time.perf_counter() - t0
-            report.errors.append(f"DRY RUN: would migrate {total} vectors of dim {dims}")
+            report.errors.append(
+                f"DRY RUN: would migrate {total} vectors of dim {dims}"
+            )
         return report
 
     # Check for double-migration: does the source already have aecp metadata?
     sample_meta = src.get(limit=1, include=["metadatas"])
-    if sample_meta["metadatas"] and "aecp_mapping_id" in (sample_meta["metadatas"][0] or {}):
+    if sample_meta["metadatas"] and "aecp_mapping_id" in (
+        sample_meta["metadatas"][0] or {}
+    ):
         report.idempotent = False
         report.errors.append(
             "Source collection already has aecp_mapping_id metadata. "
@@ -190,13 +197,12 @@ def migrate_collection(
 
     # Create target collection with correct dimensions
     # Read first batch to determine dims
-    first_batch = src.get(limit=batch_size, include=["embeddings", "metadatas", "documents"])
+    first_batch = src.get(
+        limit=batch_size, include=["embeddings", "metadatas", "documents"]
+    )
     if not first_batch["embeddings"]:
         report.errors.append("Source collection is empty")
         return report
-
-    src_dims = len(first_batch["embeddings"][0])
-    target_dims = mapping._d_tgt
 
     # Create target
     try:

@@ -74,8 +74,11 @@ def register_gate_command(app: typer.Typer) -> None:
 
         # Bootstrap confidence intervals on retention metrics
         ci = _bootstrap_retention_ci(
-            mapping, X_sample, Y_sample,
-            n_resamples=bootstrap_resamples, seed=seed,
+            mapping,
+            X_sample,
+            Y_sample,
+            n_resamples=bootstrap_resamples,
+            seed=seed,
         )
 
         # Format output
@@ -167,9 +170,7 @@ def _output_md(report: Any, ci: dict, output_file: Path | None) -> None:
         if key in ci:
             lower, upper = ci[key]
             mid = (lower + upper) / 2
-            table.add_row(
-                metric, f"{mid:.3f}", f"[{lower:.3f}, {upper:.3f}]"
-            )
+            table.add_row(metric, f"{mid:.3f}", f"[{lower:.3f}, {upper:.3f}]")
 
     table.add_row("Verdict", f"[bold]{report.verdict.value}[/bold]", "")
 
@@ -184,6 +185,7 @@ def _output_md(report: Any, ci: dict, output_file: Path | None) -> None:
 def _table_to_text(table: Table) -> str:
     """Convert a Rich table to plain text."""
     from io import StringIO
+
     buf = StringIO()
     tmp_console = Console(file=buf, force_terminal=False)
     tmp_console.print(table)

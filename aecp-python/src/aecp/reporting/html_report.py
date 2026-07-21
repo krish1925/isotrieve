@@ -17,11 +17,7 @@ def generate_gate_html(report: Any, ci: dict[str, Any]) -> str:
             lo, hi = bounds["lower"], bounds["upper"]
         else:
             lo, hi = bounds
-        ci_rows += (
-            f"<tr><td>{metric}</td>"
-            f"<td>{lo:.4f}</td>"
-            f"<td>{hi:.4f}</td></tr>\n"
-        )
+        ci_rows += f"<tr><td>{metric}</td><td>{lo:.4f}</td><td>{hi:.4f}</td></tr>\n"
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -61,6 +57,6 @@ def generate_gate_html(report: Any, ci: dict[str, Any]) -> str:
 {ci_rows}
 </table>
 
-<p class="muted">Gate model: {report.gate_model_used} | Scope: {report.gate_model_scope or 'N/A'} | LOPO MAE: {report.lopo_error or 'N/A'}</p>
+<p class="muted">Gate model: {report.gate_model_used} | Scope: {report.gate_model_scope or "N/A"} | LOPO MAE: {report.lopo_error or "N/A"}</p>
 </body>
 </html>"""

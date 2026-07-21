@@ -19,6 +19,7 @@ from aecp.mapping.base import Mapping, l2_normalize
 def _require_langchain():
     try:
         from langchain_core.embeddings import Embeddings
+
         return Embeddings
     except ImportError:
         raise ImportError(
@@ -61,12 +62,10 @@ class AECPEmbeddings:
             A ``langchain_core.embeddings.Embeddings`` instance for the
             new model (e.g. ``OpenAIEmbeddings``).
         """
-        Embeddings = _require_langchain()
+        _require_langchain()
         # Validate that base_embeddings satisfies the interface
         if not hasattr(base_embeddings, "embed_documents"):
-            raise TypeError(
-                "base_embeddings must implement embed_documents()"
-            )
+            raise TypeError("base_embeddings must implement embed_documents()")
         self._mapping = mapping
         self._base = base_embeddings
 
@@ -93,21 +92,15 @@ class AECPEmbeddings:
                 await self._base.aembed_documents(texts), dtype=np.float64
             )
         else:
-            new_vecs = np.asarray(
-                self._base.embed_documents(texts), dtype=np.float64
-            )
+            new_vecs = np.asarray(self._base.embed_documents(texts), dtype=np.float64)
         legacy_vecs = self._map_vectors(new_vecs)
         return legacy_vecs.tolist()
 
     async def aembed_query(self, text: str) -> list[float]:
         if hasattr(self._base, "aembed_query"):
-            new_vec = np.asarray(
-                await self._base.aembed_query(text), dtype=np.float64
-            )
+            new_vec = np.asarray(await self._base.aembed_query(text), dtype=np.float64)
         else:
-            new_vec = np.asarray(
-                self._base.embed_query(text), dtype=np.float64
-            )
+            new_vec = np.asarray(self._base.embed_query(text), dtype=np.float64)
         legacy_vec = self._map_vectors(new_vec.reshape(1, -1)).ravel()
         return legacy_vec.tolist()
 

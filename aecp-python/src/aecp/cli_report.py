@@ -39,9 +39,7 @@ def register_report_command(app: typer.Typer) -> None:
         console.print(f"\nTelemetry path: {s['telemetry_path']}")
 
         console.print("\n[bold]Graduation steps[/bold]")
-        console.print(
-            "1. Run the quality gate on a sample:"
-        )
+        console.print("1. Run the quality gate on a sample:")
         console.print(
             "   aecp gate --mapping mapping.aecp "
             "--source-vectors X.npy --target-vectors Y.npy"

@@ -40,7 +40,9 @@ class RecalibrationReport:
             "pre_margin_mean": self.pre_margin_mean,
             "post_margin_mean": self.post_margin_mean,
             "margin_ratio": self.margin_ratio,
-            "threshold_agreement": {str(k): v for k, v in self.threshold_agreement.items()},
+            "threshold_agreement": {
+                str(k): v for k, v in self.threshold_agreement.items()
+            },
         }
 
 
@@ -120,7 +122,7 @@ class ScoreRecalibrator:
         thresholds = [0.5, 0.6, 0.7, 0.8, 0.9]
         agreement = {}
         for tau in thresholds:
-            pre_decisions = pre >= tau
+            _ = pre >= tau
             post_decisions = post >= tau
             ceiling_decisions = ceiling_scores >= tau
             # Agreement = fraction where recalibrated matches ceiling
