@@ -51,6 +51,14 @@ legacy_vec = qa.map_query(new_model_query_vector)
 - Do not assume same dimensionality means compatibility
 - Do not skip the quality gate
 - Do not use MLP adapter (0.719 vs 0.866 retention for Ridge)
+- Do not use the phrase "3-month cliff" or similar unfalsifiable temporal claims in docs or marketing
+- Do not cite research synthesis claims without verifying the underlying sources (see #34)
+
+## Direction
+
+AECP is migration CI for vector stores. Sell at the moment an upgrade is forced or blocked (deprecation, scale, SLA). Differentiate on the gate — quantified, per-domain, seed-robust retention numbers with boring rollback — not on the transform, which is commodity. The accumulating corpus of domain × model-pair validation results is the long-term moat.
+
+**Falsification check (v0.4.0 + 60 days):** If adopters engage with transform but ignore gate/report/rollback, the migration-CI framing is wrong. Measure: fraction of transform users who run gate, fraction of gate passes followed by apply. If gate engagement < 20%, reposition at 0.6.0 as "best adapter library with honest benchmarks" (weaker but survivable). See #43.
 
 ## Error messages
 
