@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aecp"
-version = "0.2.0"
+version = "0.2.1"
 description = "Migrate a vector database to a new embedding model without re-embedding the corpus. Fits a linear map from ~2K calibration texts; 87-91% retrieval retention measured on BEIR."
 readme = "README.md"
 license = "Apache-2.0"

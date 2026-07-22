@@ -22,7 +22,7 @@ class TestPackageImport:
     def test_import_aecp(self):
         import aecp
 
-        assert aecp.__version__ == "0.2.0"
+        assert aecp.__version__ == "0.2.1"
 
     def test_import_mapping(self):
         from aecp.mapping.linear import RidgeMapping
@@ -148,7 +148,7 @@ class TestCLI:
     def test_cli_version(self):
         result = _run_aecp("version")
         assert result.returncode == 0
-        assert "0.2.0" in result.stdout
+        assert "0.2.1" in result.stdout
 
     def test_cli_help(self):
         result = _run_aecp("--help")
@@ -175,9 +175,9 @@ class TestVersionConsistency:
     def test_version_in_pyproject(self):
         pyproject = Path(__file__).parent.parent / "pyproject.toml"
         content = pyproject.read_text()
-        assert 'version = "0.2.0"' in content
+        assert 'version = "0.2.1"' in content
 
     def test_version_in_init(self):
         init = Path(__file__).parent.parent / "src" / "aecp" / "__init__.py"
         content = init.read_text()
-        assert "0.2.0" in content
+        assert "0.2.1" in content
