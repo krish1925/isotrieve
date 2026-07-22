@@ -1,39 +1,32 @@
 # Contributing to AECP
 
-We are building the standard for Agent-to-Agent communication. We welcome your help!
+**Canonical contributing guide:** [`aecp-python/CONTRIBUTING.md`](aecp-python/CONTRIBUTING.md)
 
-## Getting Started
+That file covers development setup, testing, code style, PR expectations, and the escalation protocol for design decisions.
 
-1.  **Fork and Clone**
-    ```bash
-    git clone https://github.com/yourusername/aecp.git
-    cd aecp
-    ```
+## Quick reference
 
-2.  **Install Dependencies**
-    ```bash
-    pip install -r requirements.txt
-    ```
+```bash
+# Clone and setup
+git clone https://github.com/krish1925/AECP.git
+cd AECP/aecp-python
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
 
-3.  **Run Benchmarks**
-    Before submitting a PR, ensure your changes don't degrade fidelity.
-    ```bash
-    python benchmarks/run_benchmark.py
-    ```
+# Before submitting a PR
+ruff check src/ tests/           # lint
+ruff format --check src/ tests/  # format
+python -m pytest tests/ -q       # tests (97 pass, 6 skip expected)
+```
 
-## Definition of Done
+## Project structure
 
-*   Code follows the existing style (clean, typed Python).
-*   Benchmarks pass (>95% fidelity).
-*   Any new feature has an example in `examples/`.
-*   Any protocol change is reflected in `spec/`.
+- `aecp-python/` — the maintained, benchmark-validated Python package ([PyPI](https://pypi.org/project/aecp/))
+- `aecp-npm/` — historical/experimental NPM protocol package (not actively maintained)
+- `aecp-website/` — GitHub Pages site
+- `benchmarks/` — benchmark harness and results
+- `spec/` — protocol specification (RFC-001)
 
-## Roadmap
+## Which package is current?
 
-*   [ ] Add support for Cohere Embeddings
-*   [ ] Optimize Matrix Multiplication with quantization
-*   [ ] Create a Rust implementation for maximum speed
-
-## License
-
-By contributing, you agree that your code will be licensed under the MIT License.
+**`aecp` on PyPI** is the actively maintained, benchmark-validated package. The NPM package (`aecp-npm/`) is historical/experimental — the maintained project is `aecp-python/`.

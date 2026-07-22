@@ -7,7 +7,7 @@ Always wrap with :func:`aecp.providers.cached.with_disk_cache` in production.
 from __future__ import annotations
 
 import os
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -43,7 +43,7 @@ class OpenAIEmbedder(Embedder):
             ) from e
         key = api_key or os.environ.get("OPENAI_API_KEY")
         if not key:
-            raise EnvironmentError("OPENAI_API_KEY is not set")
+            raise OSError("OPENAI_API_KEY is not set")
         self._client = OpenAI(api_key=key)
         self._model_id = model_id
         self._batch_size = batch_size

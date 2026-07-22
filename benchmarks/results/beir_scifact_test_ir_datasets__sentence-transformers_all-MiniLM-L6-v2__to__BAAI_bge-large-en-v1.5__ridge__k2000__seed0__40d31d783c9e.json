@@ -1,29 +1,30 @@
 {
-  "timestamp": "2026-07-19T22:10:52.054540+00:00",
-  "commit": "d60526e3283e96c1a0ad169e0ceda6e701976297",
+  "timestamp": "2026-07-21T23:49:22.419513+00:00",
+  "commit": "a6bbe00105a129e99ff412706e824f4b7dd4bc83",
   "dataset": "beir/scifact/test@ir_datasets",
   "source_model": "sentence-transformers/all-MiniLM-L6-v2",
   "target_model": "BAAI/bge-large-en-v1.5",
   "adapter": "ridge",
   "calibration_mode": "in_domain",
+  "protocol": "fixed_calibration_per_seed",
   "k_cal": 2000,
   "seed": 0,
-  "n_docs": 5000,
+  "n_docs": 5183,
   "n_queries": 300,
   "d_src": 384,
   "d_tgt": 1024,
   "timings_s": {
     "embed": 0.0,
-    "fit": 0.28555716598930303,
-    "transform": 0.01689004199579358
+    "fit": 0.8463255829992704,
+    "transform": 0.018635874999745283
   },
-  "transform_vectors_per_s": 296032.41964971053,
+  "transform_vectors_per_s": 278119.487283041,
   "validation": {
-    "holdout_cosine_mean": 0.8718412279088719,
-    "holdout_cosine_median": 0.8750368620852528,
-    "holdout_cosine_p5": 0.8274152994388085,
-    "top1_retention": 0.985,
-    "top10_retention": 0.995,
+    "holdout_cosine_mean": 0.8707100385803624,
+    "holdout_cosine_median": 0.876782617664317,
+    "holdout_cosine_p5": 0.8216494183408517,
+    "top1_retention": 0.97,
+    "top10_retention": 1.0,
     "n_train": 1800,
     "n_holdout": 200,
     "seed": 0,
@@ -38,23 +39,34 @@
     "note": "dims differ; floor set to 0 (cross-space raw retrieval impossible)"
   },
   "aecp": {
-    "nDCG@10": 0.6061102640598129,
-    "Recall@10": 0.7609444444444445,
-    "Recall@100": 0.9268333333333334,
+    "nDCG@10": 0.599078143290085,
+    "Recall@10": 0.759,
+    "Recall@100": 0.9333333333333333,
     "n_eval": 300
   },
   "ceiling": {
-    "nDCG@10": 0.7252650606597285,
-    "Recall@10": 0.8450555555555556,
-    "Recall@100": 0.9575,
+    "nDCG@10": 0.7346323295663102,
+    "Recall@10": 0.8592222222222222,
+    "Recall@100": 0.9716666666666667,
     "n_eval": 300
   },
   "retention": {
-    "nDCG@10": 0.8357086214913926,
-    "Recall@10": 0.9004667674709093,
-    "Recall@100": 0.9679721496953874
+    "nDCG@10": 0.8154802330081913,
+    "Recall@10": 0.883357041251778,
+    "Recall@100": 0.9605488850771869
   },
   "calibration_calls": 4000,
-  "reembed_calls": 5000,
+  "reembed_calls": 5183,
+  "query_legacy": {
+    "nDCG@10": 0.5734734413681525,
+    "Recall@10": 0.7215555555555556,
+    "Recall@100": 0.9366666666666666,
+    "n_eval": 300
+  },
+  "query_legacy_retention": {
+    "nDCG@10": 0.7806264688986696,
+    "Recall@10": 0.839777576619682,
+    "Recall@100": 0.9639794168096054
+  },
   "config_hash": "40d31d783c9e"
 }

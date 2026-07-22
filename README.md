@@ -1,8 +1,10 @@
 # AECP — Embedding migration without re-embedding
 
 [![PyPI](https://img.shields.io/pypi/v/aecp)](https://pypi.org/project/aecp/)
+[![CI](https://github.com/krish1925/AECP/actions/workflows/ci.yml/badge.svg)](https://github.com/krish1925/AECP/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](aecp-python/LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](aecp-python/)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://krish1925.github.io/AECP/)
 
 Open-source toolkit to switch embedding models **without re-embedding your corpus**.
 Learn a mapping from a small calibration sample, transform stored vectors in place,
@@ -53,6 +55,22 @@ flowchart LR
    migration only proceeds if retention clears a configurable threshold; otherwise
    AECP reports why and falls back safely — your index is never left in a
    half-migrated state.
+
+## Project structure
+
+```
+AECP/
+├── aecp-python/          # Maintained Python package (PyPI: aecp)
+├── aecp-npm/             # Historical NPM protocol package (experimental)
+├── aecp-website/         # GitHub Pages site
+├── benchmarks/           # Benchmark harness and results
+├── spec/                 # Protocol specification (RFC-001)
+├── docs/                 # Technical overview, protocol spec
+├── .github/              # CI workflows, issue templates, gate action
+└── AGENTS.md             # Development contract for AI agents
+```
+
+**Which package is current?** `aecp` on PyPI is the actively maintained, benchmark-validated package. The NPM package (`aecp-npm/`) is historical/experimental.
 
 ## Package
 

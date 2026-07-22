@@ -51,6 +51,18 @@ legacy_vec = qa.map_query(new_model_query_vector)
 - Do not assume same dimensionality means compatibility
 - Do not skip the quality gate
 - Do not use MLP adapter (0.719 vs 0.866 retention for Ridge)
+- Do not use the phrase "3-month cliff" or similar unfalsifiable temporal claims in docs or marketing
+- Do not cite research synthesis claims without verifying the underlying sources (see #34)
+
+## Direction
+
+AECP is migration CI for vector stores. Sell at the moment an upgrade is forced or blocked (deprecation, scale, SLA). Differentiate on the gate — quantified, per-domain, seed-robust retention numbers with boring rollback — not on the transform, which is commodity. The accumulating corpus of domain × model-pair validation results is the long-term moat.
+
+**Embedding translation ≠ summarization.** Summarization is lossy compression of content (discarding information). AECP is change of coordinates for the same content (nothing discarded, same chunk, different geometry). The failure mode isn'"'"'t "information thrown away" — it'"'"'s "map between geometries is distorted" (hubness, non-isomorphism, seed sensitivity). That'"'"'s why the gate measures retrieval retention, not summary fidelity. Do not conflate these in docs or marketing.
+
+**Falsification check (v0.4.0 + 60 days):** If adopters engage with transform but ignore gate/report/rollback, the migration-CI framing is wrong. Measure: fraction of transform users who run gate, fraction of gate passes followed by apply. If gate engagement < 20%, reposition at 0.6.0 as "best adapter library with honest benchmarks" (weaker but survivable). See #43.
+
+**Probe-based evaluation (v0.4.0 domain matrix):** Abstract nDCG@10 misses the failure mode that matters most: exact identifiers dying under transformation. Add identifier-level probes (error codes, file paths, legal citations, UUIDs) to domain benchmarks. If the migrated index can'"'"'t find the chunk with the exact error code, the user doesn'"'"'t care that abstract semantic similarity is 87%. See #37.
 
 ## Error messages
 

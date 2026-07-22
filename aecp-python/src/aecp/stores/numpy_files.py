@@ -76,9 +76,7 @@ class NumpyFileStore(VectorStore):
                     rows.append(json.loads(line))
         return rows
 
-    def iter_vectors(
-        self, batch_size: int = 1024
-    ) -> Iterator[list[VectorRecord]]:
+    def iter_vectors(self, batch_size: int = 1024) -> Iterator[list[VectorRecord]]:
         vectors = np.load(self.vectors_path, mmap_mode="r")
         meta = self._load_meta()
         n = vectors.shape[0]
@@ -166,7 +164,5 @@ class NumpyFileStore(VectorStore):
         with self.meta_path.open("w", encoding="utf-8") as f:
             f.write("\n".join(meta_lines) + "\n")
         manifest = {"last_written_id": last_id, "count": written}
-        self.manifest_path.write_text(
-            json.dumps(manifest, indent=2), encoding="utf-8"
-        )
+        self.manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         return written

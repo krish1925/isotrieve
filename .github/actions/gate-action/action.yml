@@ -1,0 +1,56 @@
+name: "AECP Gate"
+description: "Run AECP quality gate on embedding config changes"
+
+inputs:
+  mapping-path:
+    description: "Path to .aecp mapping file"
+    required: true
+  source-vectors:
+    description: "Path to source embedding NPY"
+    required: true
+  target-vectors:
+    description: "Path to target embedding NPY"
+    required: true
+  format:
+    description: "Output format: json, md, html"
+    required: false
+    default: "md"
+  fail-on-warn:
+    description: "Exit 1 on WARN (not just FAIL)"
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install AECP
+      shell: bash
+      run: pip install aecp
+
+    - name: Run gate
+      shell: bash
+      run: |
+        set +e
+        aecp gate \
+          --mapping ${{ inputs.mapping-path }} \
+          --source-vectors ${{ inputs.source-vectors }} \
+          --target-vectors ${{ inputs.target-vectors }} \
+          --format ${{ inputs.format }} \
+          -o gate-report.${{ inputs.format }}
+        EXIT_CODE=$?
+
+        if [ "${{ inputs.fail-on-warn }}" = "true" ] && [ $EXIT_CODE -ne 0 ]; then
+          echo "::error::AECP gate did not PASS (exit code $EXIT_CODE)"
+          exit 1
+        elif [ $EXIT_CODE -eq 1 ]; then
+          echo "::warning::AECP gate returned WARN — migration may reduce quality"
+          exit 0
+        fi
+        exit $EXIT_CODE
+
+    - name: Upload gate report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gate-report
+        path: gate-report.*

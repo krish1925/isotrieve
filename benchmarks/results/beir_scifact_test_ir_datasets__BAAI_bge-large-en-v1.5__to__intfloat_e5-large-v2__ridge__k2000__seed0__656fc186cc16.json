@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-07-19T23:19:20.774653+00:00",
-  "commit": "d60526e3283e96c1a0ad169e0ceda6e701976297",
+  "timestamp": "2026-07-21T23:50:03.879445+00:00",
+  "commit": "a6bbe00105a129e99ff412706e824f4b7dd4bc83",
   "dataset": "beir/scifact/test@ir_datasets",
   "source_model": "BAAI/bge-large-en-v1.5",
   "target_model": "intfloat/e5-large-v2",
@@ -14,15 +14,15 @@
   "d_src": 1024,
   "d_tgt": 1024,
   "timings_s": {
-    "embed": 706.3785649169877,
-    "fit": 0.6893644590018084,
-    "transform": 0.039121416994021274
+    "embed": 0.0,
+    "fit": 1.6998370840010466,
+    "transform": 0.027734833005524706
   },
-  "transform_vectors_per_s": 132484.97621627792,
+  "transform_vectors_per_s": 186876.9139142666,
   "validation": {
-    "holdout_cosine_mean": 0.93582603134048,
-    "holdout_cosine_median": 0.9370097359318648,
-    "holdout_cosine_p5": 0.9111603449728689,
+    "holdout_cosine_mean": 0.9358260313404938,
+    "holdout_cosine_median": 0.9370097359319283,
+    "holdout_cosine_p5": 0.9111603449730907,
     "top1_retention": 1.0,
     "top10_retention": 1.0,
     "n_train": 1800,
@@ -57,15 +57,15 @@
   "calibration_calls": 4000,
   "reembed_calls": 5183,
   "query_legacy": {
-    "nDCG@10": 0.6126239990747196,
-    "Recall@10": 0.7347222222222222,
-    "Recall@100": 0.92,
+    "nDCG@10": 0.6313350106240866,
+    "Recall@10": 0.7563888888888889,
+    "Recall@100": 0.93,
     "n_eval": 300
   },
   "query_legacy_retention": {
-    "nDCG@10": 0.8483311088415598,
-    "Recall@10": 0.8706958983474884,
-    "Recall@100": 0.9556786703601109
+    "nDCG@10": 0.8742411828824002,
+    "Recall@10": 0.8963723747448813,
+    "Recall@100": 0.9660664819944599
   },
   "config_hash": "656fc186cc16"
 }

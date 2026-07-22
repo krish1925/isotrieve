@@ -75,12 +75,12 @@ class TestAECPChromaFunction:
 
     def test_basic_embedding(self):
         m = _make_mapping(d_src=8, d_tgt=12)
-        rng = np.random.default_rng(99)
-        new_model_texts = np.random.randn(5, 12)
 
         from aecp.adapters.chroma import AECPChromaFunction
 
-        ef = AECPChromaFunction(m, new_model_embedder=lambda texts: np.random.randn(len(texts), 12))
+        ef = AECPChromaFunction(
+            m, new_model_embedder=lambda texts: np.random.randn(len(texts), 12)
+        )
         # Just verify it calls through without error
         # (real test would verify dims, but we need a real embedder for that)
         result = ef(["hello"])
@@ -138,6 +138,15 @@ class TestAECPChromaFunction:
         assert len(vec) == 8  # mapped into legacy (source) space
 
 
+try:
+    import importlib.util
+
+    _has_chroma = importlib.util.find_spec("chromadb") is not None
+except Exception:
+    _has_chroma = False
+
+
+@pytest.mark.skipif(not _has_chroma, reason="chromadb not installed")
 class TestMigrateCollection:
     """Test migrate_collection with mocked ChromaDB."""
 
@@ -164,7 +173,11 @@ class TestMigrateCollection:
         report = migrate_collection(client, "test_col", m, batch_size=20)
         assert report.rows_processed == 50
         assert report.target_collection == "test_col_migrated"
-        assert "aecp_mapping_id" in report.metadatas if hasattr(report, "metadatas") else True
+        assert (
+            "aecp_mapping_id" in report.metadatas
+            if hasattr(report, "metadatas")
+            else True
+        )
 
         # Verify target collection was created
         target = client.get_collection("test_col_migrated")

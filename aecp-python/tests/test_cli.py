@@ -8,7 +8,6 @@ from typer.testing import CliRunner
 from aecp.cli import app
 from aecp.mapping.linear import RidgeMapping
 
-
 runner = CliRunner()
 
 

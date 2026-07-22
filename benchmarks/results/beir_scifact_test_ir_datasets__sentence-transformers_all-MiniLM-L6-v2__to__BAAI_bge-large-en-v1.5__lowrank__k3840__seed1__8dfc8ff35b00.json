@@ -1,28 +1,29 @@
 {
-  "timestamp": "2026-07-19T22:08:17.894708+00:00",
-  "commit": "d60526e3283e96c1a0ad169e0ceda6e701976297",
+  "timestamp": "2026-07-21T23:49:43.953974+00:00",
+  "commit": "a6bbe00105a129e99ff412706e824f4b7dd4bc83",
   "dataset": "beir/scifact/test@ir_datasets",
   "source_model": "sentence-transformers/all-MiniLM-L6-v2",
   "target_model": "BAAI/bge-large-en-v1.5",
   "adapter": "lowrank",
   "calibration_mode": "in_domain",
+  "protocol": "fixed_calibration_per_seed",
   "k_cal": 3840,
   "seed": 1,
-  "n_docs": 5000,
+  "n_docs": 5183,
   "n_queries": 300,
   "d_src": 384,
   "d_tgt": 1024,
   "timings_s": {
     "embed": 0.0,
-    "fit": 0.5222989169997163,
-    "transform": 0.01569779201236088
+    "fit": 1.3322541660018032,
+    "transform": 0.018088666001858655
   },
-  "transform_vectors_per_s": 318516.13246390707,
+  "transform_vectors_per_s": 286533.01462183194,
   "validation": {
-    "holdout_cosine_mean": 0.8775753949456083,
-    "holdout_cosine_median": 0.8802478906183376,
-    "holdout_cosine_p5": 0.8312444580519934,
-    "top1_retention": 0.9973958333333334,
+    "holdout_cosine_mean": 0.8772235280719926,
+    "holdout_cosine_median": 0.8823302296354487,
+    "holdout_cosine_p5": 0.8293771652203151,
+    "top1_retention": 0.984375,
     "top10_retention": 1.0,
     "n_train": 3456,
     "n_holdout": 384,
@@ -38,23 +39,34 @@
     "note": "dims differ; floor set to 0 (cross-space raw retrieval impossible)"
   },
   "aecp": {
-    "nDCG@10": 0.635093617961001,
-    "Recall@10": 0.7798333333333333,
-    "Recall@100": 0.9291666666666667,
+    "nDCG@10": 0.6294021199445552,
+    "Recall@10": 0.7773333333333333,
+    "Recall@100": 0.9433333333333334,
     "n_eval": 300
   },
   "ceiling": {
-    "nDCG@10": 0.7252650606597285,
-    "Recall@10": 0.8450555555555556,
-    "Recall@100": 0.9575,
+    "nDCG@10": 0.7346323295663102,
+    "Recall@10": 0.8592222222222222,
+    "Recall@100": 0.9716666666666667,
     "n_eval": 300
   },
   "retention": {
-    "nDCG@10": 0.8756710510544873,
-    "Recall@10": 0.9228190125567023,
-    "Recall@100": 0.9704090513489991
+    "nDCG@10": 0.8567579925540745,
+    "Recall@10": 0.9046941678520626,
+    "Recall@100": 0.9708404802744426
   },
   "calibration_calls": 7680,
-  "reembed_calls": 5000,
+  "reembed_calls": 5183,
+  "query_legacy": {
+    "nDCG@10": 0.6157172711251123,
+    "Recall@10": 0.7615555555555557,
+    "Recall@100": 0.9410000000000001,
+    "n_eval": 300
+  },
+  "query_legacy_retention": {
+    "nDCG@10": 0.8381298322231485,
+    "Recall@10": 0.8863313073839391,
+    "Recall@100": 0.9684391080617496
+  },
   "config_hash": "8dfc8ff35b00"
 }

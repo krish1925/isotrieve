@@ -28,9 +28,7 @@ class VectorStore(ABC):
         """Number of vectors in the store."""
 
     @abstractmethod
-    def iter_vectors(
-        self, batch_size: int = 1024
-    ) -> Iterator[list[VectorRecord]]:
+    def iter_vectors(self, batch_size: int = 1024) -> Iterator[list[VectorRecord]]:
         """Yield batches of records for streaming transform."""
 
     @abstractmethod

@@ -6,7 +6,7 @@ Hits the network. Install: ``pip install aecp[gemini]``.
 from __future__ import annotations
 
 import os
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -35,7 +35,7 @@ class GeminiEmbedder(Embedder):
             or os.environ.get("GEMINI_API_KEY")
         )
         if not key:
-            raise EnvironmentError("GOOGLE_API_KEY or GEMINI_API_KEY is not set")
+            raise OSError("GOOGLE_API_KEY or GEMINI_API_KEY is not set")
         genai.configure(api_key=key)
         self._genai = genai
         self._model_id = model_id

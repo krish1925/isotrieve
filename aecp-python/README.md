@@ -1,8 +1,6 @@
 # aecp
 
-Migrate a vector database to a new embedding model without re-embedding the corpus. Fits a ridge regression map from ~2K calibration texts; 87-91% retrieval retention measured on BEIR.
-
-Use cases: ada-002 to text-embedding-3 migration, changing embedding models in Qdrant/pgvector/ChromaDB, replacing a deprecated embedding provider, or switching from a hosted API to local models.
+Embedding providers deprecate models constantly — ada-002 is gone, text-embedding-3 is next. When that happens, you either re-embed your entire corpus (expensive, slow, risky) or get stuck on a dead model. AECP lets you switch without re-embedding: fit a lightweight linear transform from ~2K calibration texts, apply it to stored vectors, and gate the migration on measured retrieval retention. 87-91% retention on BEIR benchmarks.
 
 ## Install
 
@@ -15,144 +13,139 @@ Python >= 3.10. Core deps: numpy, scikit-learn, typer, rich.
 Optional extras:
 - `pip install aecp[chroma]` — ChromaDB adapter
 - `pip install aecp[langchain]` — LangChain embeddings shim
+- `pip install aecp[llamaindex]` — LlamaIndex query wrapper
 - `pip install aecp[sentence-transformers]` — local model support
 - `pip install aecp[qdrant]` — Qdrant store adapter
+- `pip install aecp[openai]` — OpenAI client shim
 - `pip install aecp[all]` — everything above
 
-## Quickstart
+## 5-minute trial: query-time wrapper
+
+Zero writes to your vector store. Map new-model queries into legacy space on-the-fly. Fully reversible.
+
+### LlamaIndex
 
 ```python
-import numpy as np
-from aecp import RidgeMapping
+from aecp.wrappers.llamaindex import AECPEmbedding
+from aecp.mapping.registry import load_mapping
 
-# Paired calibration embeddings (K texts embedded with both models)
-rng = np.random.default_rng(0)
-K, d_src, d_tgt = 500, 32, 48
-X = rng.normal(size=(K, d_src))
-Y = X @ rng.normal(size=(d_src, d_tgt))
-
-m = RidgeMapping(alpha="auto", seed=0)
-m.fit(X, Y)
-m.save("mapping.aecp")
-
-Z = m.transform(X[:10])  # (10, d_tgt), L2-normalized
+mapping = load_mapping("mapping.aecp")
+wrapper = AECPEmbedding(
+    new_model_embedder=your_llamaindex_embedder,
+    transform_artifact_path="mapping.aecp",
+)
+# Use wrapper anywhere LlamaIndex expects a BaseEmbedding
+# Queries are mapped; document embeddings raise AECPWrapperUsageError
 ```
 
-## CLI
+### OpenAI client
+
+```python
+import openai
+from aecp.wrappers.openai_shim import AECPOpenAI
+
+client = openai.OpenAI()
+shim = AECPOpenAI(client, "mapping.aecp")
+response = shim.embeddings.create(input=["query text"], model="text-embedding-3-small")
+# response.data[0].embedding is now in legacy-model space
+```
+
+### LangChain
+
+```python
+from aecp.adapters.langchain import AECPEmbeddings
+from langchain_openai import OpenAIEmbeddings
+
+mapping = Mapping.load("mapping.aecp")
+base = OpenAIEmbeddings(model="text-embedding-3-small")
+ae = AECPEmbeddings(mapping, base)
+
+from langchain_chroma import Chroma
+db = Chroma.from_documents(docs, embedding=ae)
+results = db.similarity_search("query", k=10)
+```
+
+## Quality gate
+
+Before migrating anything, verify the transform preserves retrieval quality:
 
 ```bash
-aecp plan --source-model text-embedding-ada-002 \
-          --target-model text-embedding-3-large \
-          --corpus-size 1000000
-
-aecp calibrate --source-vectors X.npy --target-vectors Y.npy -o map.aecp
-aecp transform --mapping map.aecp --source-dir ./old_store --target-dir ./new_store
-aecp inspect map.aecp
+aecp gate --mapping mapping.aecp \
+          --source-vectors X_sample.npy \
+          --target-vectors Y_sample.npy
 ```
 
-## Serve mode (zero corpus writes)
+Output: retention table (Recall@1/5/10, MRR), bootstrap confidence intervals, per-metric pass/fail, and a one-line verdict. Exit code 0 for PASS, 1 for WARN/FAIL — use it in CI.
 
-For vector database migration without touching stored data: map new-model queries into legacy space. No re-embedding, instant rollback:
+## Full migration
+
+```bash
+# 1. Plan cost
+aecp plan --source-model ada-002 --target-model te3-large --corpus-size 1000000
+
+# 2. Calibrate
+aecp calibrate --source-vectors X.npy --target-vectors Y.npy -o mapping.aecp
+
+# 3. Gate
+aecp gate --mapping mapping.aecp --source-vectors X.npy --target-vectors Y.npy
+
+# 4. Migrate
+aecp transform --mapping mapping.aecp --source-dir ./old_store --target-dir ./new_store
+```
+
+### Serve mode (zero corpus writes)
+
+Map queries on-the-fly without touching stored data:
 
 ```python
 from aecp.serve import QueryAdapter
 
 qa = QueryAdapter.load("mapping.aecp")
 legacy_vec = qa.map_query(new_model_embed(query))
-results = qdrant.search(collection="docs", vector=legacy_vec)
 ```
 
-## Vector DB adapters (v0.2)
+## Adapter status
 
-### ChromaDB
+| Store | Serve mode | Offline migration | Status |
+|-------|-----------|-------------------|--------|
+| ChromaDB | `AECPChromaFunction` | `migrate_collection()` | Supported |
+| LangChain | `AECPEmbeddings` | via store adapter | Supported |
+| LlamaIndex | `AECPEmbedding` wrapper | via store adapter | Query wrapper |
+| OpenAI | `AECPOpenAI` shim | N/A | Query shim |
+| Qdrant | `QdrantStore` | checkpointed in-place | Supported |
+| Pinecone | — | shadow-namespace | Planned |
 
-**Serve mode** — drop-in `EmbeddingFunction`:
+## Claims policy
 
-```python
-from aecp.adapters.chroma import AECPChromaFunction
-from aecp.mapping.base import Mapping
+Every quantitative claim in this README or docs references a committed artifact in `benchmarks/results/` and a row in `aecp-python/CLAIMS.md`. No exceptions. If a number isn't in CLAIMS.md, it isn't a claim.
 
-mapping = Mapping.load("ada002_to_te3.aecp")
-ef = AECPChromaFunction(mapping, new_model_embedder=my_embed_fn)
-col = client.get_collection("docs", embedding_function=ef)
-results = col.query(query_texts=["..."], n_results=10)
-```
+### Adapter comparison (SciFact, MiniLM→bge-large, K=4000, 3 seeds)
 
-**Offline migration** — transform stored vectors:
+| Adapter | nDCG@10 retention | Notes |
+|---------|------------------|-------|
+| Ridge | 0.871 ± 0.006 | Default. Fast, stable. |
+| LowRank | 0.857 ± 0.009 | Compressed matrix. ~1% worse. |
+| MLP | 0.727 ± 0.007 | No tuning. Linear wins. |
 
-```python
-from aecp.adapters.chroma import migrate_collection
+### K-sweep (all adapters averaged, SciFact, 3 seeds)
 
-report = migrate_collection(
-    client, "docs", mapping,
-    new_collection="docs_v2",
-    batch_size=1000,
-)
-print(f"Migrated {report.rows_processed} rows, recall@10={report.sampled_recall_at_10:.3f}")
-```
+| K | nDCG@10 retention | Gate |
+|---|------------------|------|
+| 500 | 0.671 ± 0.041 | WARN |
+| 1000 | 0.735 ± 0.058 | WARN |
+| 2000 | 0.785 ± 0.052 | PASS |
+| 4000 | 0.832 ± 0.061 | PASS |
 
-### LangChain
+### Same-dim pair (bge-large→e5-large, 1024→1024)
 
-Drop-in `Embeddings` shim:
+| Metric | Value |
+|--------|-------|
+| Floor (raw cross-space) | 0.0 |
+| AECP (mapped) | 0.667 |
+| Ceiling (full re-embed) | 0.722 |
+| Retention | 0.923 ± 0.010 |
 
-```python
-from aecp.adapters.langchain import AECPEmbeddings
-from langchain_openai import OpenAIEmbeddings
-
-mapping = Mapping.load("ada002_to_te3.aecp")
-base = OpenAIEmbeddings(model="text-embedding-3-small")
-ae = AECPEmbeddings(mapping, base)
-
-# Works with any LangChain vector store
-from langchain_chroma import Chroma
-db = Chroma.from_documents(docs, embedding=ae)
-results = db.similarity_search("query", k=10)
-```
-
-## Score recalibration (v0.2)
-
-Isotonic regression maps cross-space scores to ceiling-equivalent scores. Built into the mapping file; no extra steps:
-
-```python
-m = RidgeMapping(alpha="auto", seed=0).fit(X, Y)
-m.fit_recalibrator(X_heldout, Y_heldout)  # optional
-m.save("mapping.aecp")  # recalibrator saved alongside mapping
-
-# At serve time
-qa = QueryAdapter.load("mapping.aecp")
-calibrated_scores = qa.recalibrate_scores(raw_scores)
-```
-
-## Confidence scoring (v0.2)
-
-Per-query confidence flags with adaptive percentile-based margins:
-
-```python
-from aecp.reranking import ConfidenceScorer
-
-scorer = ConfidenceScorer(margin_high=0.955, margin_low=0.637)
-result = scorer.score(query_vector, top_scores)
-print(result.flag)  # "high", "medium", or "low"
-```
-
-## Results
-
-All numbers from `benchmarks/results/`, verified by `benchmarks/audit_configs.py`.
-
-### Score recalibration agreement (bge-large→e5-large, same-dim)
-
-| Threshold | Raw recall | + Recalibration | Δ |
-|-----------|-----------|-----------------|---|
-| τ ≤ 0.75 | 100% | 100% | 0 |
-| τ = 0.80 | 12% | 17% | +4.7% |
-
-### Score recalibration agreement (MiniLM→bge-large, rectangular)
-
-| Threshold | Raw recall | + Recalibration | Δ |
-|-----------|-----------|-----------------|---|
-| τ = 0.60 | 78% | 100% | +22% |
-| τ = 0.70 | 27% | 67% | +40% |
-| τ = 0.80 | 8% | 19% | +11% |
+Same dimension ≠ same space. e5 models require "query: "/"passage: " prefixes; without them ceiling drops to 0.36.
 
 ### Confidence flags (predictive across both pairs)
 
@@ -161,33 +154,12 @@ All numbers from `benchmarks/results/`, verified by `benchmarks/audit_configs.py
 | bge→e5 | 0.955 | 0.637 | 0.318 |
 | MiniLM→bge | 0.875 | 0.651 | 0.224 |
 
-### Adapter comparison (SciFact, MiniLM→bge-large, K=3840, 3 seeds)
+### Score recalibration (MiniLM→bge, rectangular)
 
-| Adapter | nDCG@10 retention | Notes |
-|---------|------------------|-------|
-| Ridge | 0.871 +/- 0.006 | Default. Fast, stable. |
-| LowRank | 0.862 +/- 0.010 | Compressed matrix. ~1% worse. |
-| MLP | 0.729 +/- 0.008 | No tuning. Linear wins. |
-
-### K-sweep (all adapters averaged, SciFact, 3 seeds)
-
-| K | nDCG@10 retention | Gate |
-|---|------------------|------|
-| 500 | 0.667 +/- 0.039 | WARN |
-| 1000 | 0.732 +/- 0.056 | WARN |
-| 2000 | 0.788 +/- 0.054 | PASS |
-| 4000 | 0.817 +/- 0.064 | PASS |
-
-### Same-dim pair (bge-large→e5-large, 1024→1024)
-
-| Metric | Value |
-|--------|-------|
-| Floor (raw cross-space) | 0.0 |
-| AECP (mapped) | 0.656 |
-| Ceiling (full re-embed) | 0.722 |
-| Retention | 0.908 |
-
-Same dimension != same space. e5 models require "query: "/"passage: " prefixes; without them ceiling drops to 0.36.
+| Threshold | Raw recall | + Recalibration | Δ |
+|-----------|-----------|-----------------|---|
+| τ = 0.60 | 78% | 100% | +22% |
+| τ = 0.70 | 27% | 67% | +40% |
 
 ## When NOT to use AECP
 
@@ -202,11 +174,9 @@ Same dimension != same space. e5 models require "query: "/"passage: " prefixes; 
 - Do not mix vectors from different models in one collection
 - Do not assume same dimensionality means compatibility
 - Do not skip the quality gate
-- Do not use MLP adapter (0.729 vs 0.871 for Ridge, same cost)
+- Do not use MLP adapter (0.727 vs 0.871 for Ridge, same cost)
 
 ## How it works
-
-AECP solves embedding migration (changing your vector database's embedding model) with ridge regression:
 
 1. Embed K texts with source and target models → matrices X, Y
 2. Fit ridge map Y = [X | 1] W (handles unequal dims)
