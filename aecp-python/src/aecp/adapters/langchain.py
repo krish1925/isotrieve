@@ -62,7 +62,7 @@ class AECPEmbeddings:
             A ``langchain_core.embeddings.Embeddings`` instance for the
             new model (e.g. ``OpenAIEmbeddings``).
         """
-        _require_langchain()
+        _require_langchain()  # side effect: raises ImportError if langchain missing
         # Validate that base_embeddings satisfies the interface
         if not hasattr(base_embeddings, "embed_documents"):
             raise TypeError("base_embeddings must implement embed_documents()")

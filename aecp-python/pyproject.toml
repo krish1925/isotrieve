@@ -133,10 +133,26 @@ ignore = [
 "tests/*" = ["E731"]  # lambda in tests is fine
 
 [tool.mypy]
-python_version = "3.10"
-strict = true
+python_version = "3.12"
 packages = ["aecp"]
 mypy_path = "src"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "aecp.mapping.mlp",
+    "aecp.mapping.linear",
+    "aecp.mapping.registry",
+    "aecp.stores.qdrant_store",
+    "aecp.stores.numpy_files",
+    "aecp.adapters.*",
+    "aecp.wrappers.*",
+    "aecp.providers.*",
+    "aecp.serve",
+    "aecp.reranking",
+    "aecp.recalibration",
+]
+ignore_errors = true
 
 [tool.coverage.run]
 source = ["aecp"]

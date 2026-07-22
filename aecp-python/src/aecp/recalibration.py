@@ -122,7 +122,6 @@ class ScoreRecalibrator:
         thresholds = [0.5, 0.6, 0.7, 0.8, 0.9]
         agreement = {}
         for tau in thresholds:
-            _ = pre >= tau
             post_decisions = post >= tau
             ceiling_decisions = ceiling_scores >= tau
             # Agreement = fraction where recalibrated matches ceiling

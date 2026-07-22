@@ -139,10 +139,10 @@ class TestAECPChromaFunction:
 
 
 try:
-    import chromadb as _chromadb_mod  # noqa: F401
+    import importlib.util
 
-    _has_chroma = True
-except ImportError:
+    _has_chroma = importlib.util.find_spec("chromadb") is not None
+except Exception:
     _has_chroma = False
 
 
