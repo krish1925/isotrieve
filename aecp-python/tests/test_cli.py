@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 from typer.testing import CliRunner
 
+from aecp import __version__
 from aecp.cli import app
 from aecp.mapping.linear import RidgeMapping
 
@@ -14,7 +15,7 @@ runner = CliRunner()
 def test_version():
     r = runner.invoke(app, ["version"])
     assert r.exit_code == 0
-    assert "0.2.0" in r.stdout
+    assert __version__ in r.stdout
 
 
 def test_plan_json():
