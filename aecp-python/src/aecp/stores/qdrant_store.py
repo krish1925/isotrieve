@@ -97,11 +97,26 @@ class QdrantStore(VectorStore):
         *,
         batch_size: int = 1024,
     ) -> int:
-        """Write records to Qdrant."""
+        """Write records to Qdrant.
+
+        Accepts either:
+        - ``Iterator[list[VectorRecord]]``: lazily yields batches
+        - ``list[VectorRecord]``: flat list treated as a single batch
+        """
         QdrantClient, Distance, PointStruct, VectorParams = _require_qdrant()
 
-        # Get dimensions from first record
-        first_batch = next(iter(records))
+        # Normalize both input forms into an iterator of batches
+        if isinstance(records, list):
+
+            def _flat_batches() -> Iterator[list[VectorRecord]]:
+                yield records
+
+            batches: Iterator[list[VectorRecord]] = _flat_batches()
+        else:
+            batches = records
+
+        # Lazily peek at first batch to get dimensions
+        first_batch = next(batches, None)
         if not first_batch:
             return 0
         dims = len(first_batch[0].vector)
@@ -119,9 +134,12 @@ class QdrantStore(VectorStore):
             )
 
         total = 0
-        # Process first batch + remaining
-        all_batches = [first_batch] + list(records)
-        for batch in all_batches:
+
+        def _all_batches() -> Iterator[list[VectorRecord]]:
+            yield first_batch
+            yield from batches  # lazy — no materialization
+
+        for batch in _all_batches():
             if not batch:
                 continue
             points = [

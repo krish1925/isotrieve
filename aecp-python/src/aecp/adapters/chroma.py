@@ -239,9 +239,10 @@ def migrate_collection(
         mapped_list = mapped.tolist()
 
         # Add AECP metadata to each row
-        for meta in metadatas:
+        for i, meta in enumerate(metadatas):
             if meta is None:
                 meta = {}
+                metadatas[i] = meta
             meta["aecp_mapping_id"] = _hash_mapping(mapping)
             meta["aecp_format_version"] = 1
             meta["aecp_source_collection"] = collection_name
