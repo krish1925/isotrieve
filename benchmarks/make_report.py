@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "benchmarks" / "results"
-README = ROOT / "aecp-python" / "README.md"
+README = ROOT / "isotrieve-python" / "README.md"
 MARKER_START = "<!-- BEGIN AUTO-RESULTS -->"
 MARKER_END = "<!-- END AUTO-RESULTS -->"
 
@@ -44,14 +44,14 @@ def render_table(rows: list[dict]) -> str:
         groups[key].append(r)
 
     lines = [
-        "| Dataset | Pair | K | nDCG@10 floor | nDCG@10 AECP | nDCG@10 ceiling | Retention (AECP÷ceiling) | Artifacts |",
+        "| Dataset | Pair | K | nDCG@10 floor | nDCG@10 isotrieve | nDCG@10 ceiling | Retention (Isotrieve÷ceiling) | Artifacts |",
         "|---------|------|---|---------------|--------------|-----------------|--------------------------|-----------|",
     ]
     for key, items in sorted(groups.items()):
         dataset, src, tgt, mode, k = key
         pair = f"{src.split('/')[-1]} → {tgt.split('/')[-1]}"
         floors = [i["floor"]["nDCG@10"] for i in items]
-        aecps = [i["aecp"]["nDCG@10"] for i in items]
+        isotrieves = [i["isotrieve"]["nDCG@10"] for i in items]
         ceils = [i["ceiling"]["nDCG@10"] for i in items]
         rets = [
             i["retention"]["nDCG@10"]
@@ -71,8 +71,8 @@ def render_table(rows: list[dict]) -> str:
         lines.append(
             f"| {dataset} | {pair} ({mode}) | {k} | "
             f"{statistics.mean(floors):.3f} | "
-            f"{statistics.mean(aecps):.3f} ± "
-            f"{(statistics.stdev(aecps) if len(aecps)>1 else 0):.3f} | "
+            f"{statistics.mean(isotrieves):.3f} ± "
+            f"{(statistics.stdev(isotrieves) if len(isotrieves)>1 else 0):.3f} | "
             f"{statistics.mean(ceils):.3f} | "
             f"**{ret_s}** | {art} |"
         )

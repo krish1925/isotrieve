@@ -1,0 +1,18 @@
+{
+  "name": "@isotrieve/example-auto-negotiation",
+  "version": "1.0.0",
+  "description": "Isotrieve auto-negotiation example",
+  "main": "index.ts",
+  "scripts": {
+    "start": "ts-node index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@isotrieve/core": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.1",
+    "@types/node": "^18.0.0"
+  }
+}

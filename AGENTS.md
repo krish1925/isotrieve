@@ -2,39 +2,39 @@
 
 ## What this library does
 
-`aecp` migrates a vector database to a new embedding model without re-embedding the corpus. Fits a linear map from ~2K calibration texts, then transforms stored vectors locally. 87-91% retrieval retention measured on BEIR benchmarks.
+`isotrieve` migrates a vector database to a new embedding model without re-embedding the corpus. Fits a linear map from ~2K calibration texts, then transforms stored vectors locally. 87-91% retrieval retention measured on BEIR benchmarks.
 
 ## Install
 
 ```bash
-pip install aecp
+pip install isotrieve
 ```
 
 ## Quickstart (6 lines)
 
 ```python
-from aecp import RidgeMapping
+from isotrieve import RidgeMapping
 import numpy as np
 m = RidgeMapping(alpha="auto", seed=0)
 m.fit(X_cal, Y_cal)  # X_cal: (K, d_src), Y_cal: (K, d_tgt)
-m.save("mapping.aecp")
+m.save("mapping.isotrieve")
 Z = m.transform(source_vectors)
 ```
 
 ## CLI commands
 
 ```bash
-aecp plan --source-model <old> --target-model <new> --corpus-size <N>
-aecp calibrate --source-vectors X.npy --target-vectors Y.npy -o map.aecp
-aecp transform --mapping map.aecp --source-dir ./old --target-dir ./new
-aecp inspect map.aecp --json
+isotrieve plan --source-model <old> --target-model <new> --corpus-size <N>
+isotrieve calibrate --source-vectors X.npy --target-vectors Y.npy -o map.isotrieve
+isotrieve transform --mapping map.isotrieve --source-dir ./old --target-dir ./new
+isotrieve inspect map.isotrieve --json
 ```
 
 ## Serve mode (zero corpus writes)
 
 ```python
-from aecp.serve import QueryAdapter
-qa = QueryAdapter.load("mapping.aecp")
+from isotrieve.serve import QueryAdapter
+qa = QueryAdapter.load("mapping.isotrieve")
 legacy_vec = qa.map_query(new_model_query_vector)
 ```
 
@@ -56,9 +56,9 @@ legacy_vec = qa.map_query(new_model_query_vector)
 
 ## Direction
 
-AECP is migration CI for vector stores. Sell at the moment an upgrade is forced or blocked (deprecation, scale, SLA). Differentiate on the gate — quantified, per-domain, seed-robust retention numbers with boring rollback — not on the transform, which is commodity. The accumulating corpus of domain × model-pair validation results is the long-term moat.
+Isotrieve is migration CI for vector stores. Sell at the moment an upgrade is forced or blocked (deprecation, scale, SLA). Differentiate on the gate — quantified, per-domain, seed-robust retention numbers with boring rollback — not on the transform, which is commodity. The accumulating corpus of domain × model-pair validation results is the long-term moat.
 
-**Embedding translation ≠ summarization.** Summarization is lossy compression of content (discarding information). AECP is change of coordinates for the same content (nothing discarded, same chunk, different geometry). The failure mode isn'"'"'t "information thrown away" — it'"'"'s "map between geometries is distorted" (hubness, non-isomorphism, seed sensitivity). That'"'"'s why the gate measures retrieval retention, not summary fidelity. Do not conflate these in docs or marketing.
+**Embedding translation ≠ summarization.** Summarization is lossy compression of content (discarding information). Isotrieve is change of coordinates for the same content (nothing discarded, same chunk, different geometry). The failure mode isn'"'"'t "information thrown away" — it'"'"'s "map between geometries is distorted" (hubness, non-isomorphism, seed sensitivity). That'"'"'s why the gate measures retrieval retention, not summary fidelity. Do not conflate these in docs or marketing.
 
 **Falsification check (v0.4.0 + 60 days):** If adopters engage with transform but ignore gate/report/rollback, the migration-CI framing is wrong. Measure: fraction of transform users who run gate, fraction of gate passes followed by apply. If gate engagement < 20%, reposition at 0.6.0 as "best adapter library with honest benchmarks" (weaker but survivable). See #43.
 
@@ -66,10 +66,10 @@ AECP is migration CI for vector stores. Sell at the moment an upgrade is forced 
 
 ## Error messages
 
-Dimension mismatch: "dims differ (1536->3072): fit an aecp mapping or re-embed"
+Dimension mismatch: "dims differ (1536->3072): fit an isotrieve mapping or re-embed"
 Quality gate fail: "predicted retention below threshold; re-embed instead"
 
 ## Benchmarks
 
 All numbers in `benchmarks/results/`, verified by `benchmarks/audit_configs.py`.
-Gate model: `src/aecp/quality/gate_model_v1.json` (trained on local model pairs only).
+Gate model: `src/isotrieve/quality/gate_model_v1.json` (trained on local model pairs only).

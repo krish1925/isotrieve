@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in AECP
+about: Report a bug in Isotrieve
 labels: bug
 ---
 
@@ -16,7 +16,7 @@ labels: bug
 
 ## Environment
 
-- AECP version:
+- Isotrieve version:
 - Python version:
 - OS:
 

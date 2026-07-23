@@ -15,10 +15,10 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import MiniBatchKMeans
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "aecp-python" / "src"))
+sys.path.insert(0, str(ROOT / "isotrieve-python" / "src"))
 
-from aecp.mapping.base import l2_normalize
-from aecp.mapping.linear import (
+from isotrieve.mapping.base import l2_normalize
+from isotrieve.mapping.linear import (
     RidgeMapping, OrthogonalProcrustesMapping,
     ProcrustesDiagMapping, _ALPHA_GRID, _augment_bias, _coef_to_W,
     _validate_xy,
@@ -59,7 +59,7 @@ def retrieval_retention(doc_mapped, doc_tgt, qry_tgt, doc_ids, query_ids, qrels,
     dm_n = l2_normalize(doc_mapped)
     dt_n = l2_normalize(doc_tgt)
     qt_n = l2_normalize(qry_tgt)
-    aecp_sims = qt_n @ dm_n.T
+    isotrieve_sims = qt_n @ dm_n.T
     ceil_sims = qt_n @ dt_n.T
 
     def recalls_at(sims):
@@ -72,7 +72,7 @@ def retrieval_retention(doc_mapped, doc_tgt, qry_tgt, doc_ids, query_ids, qrels,
             r10.append(len(rel_idx & set(top)) / len(rel))
         return np.mean(r10) if r10 else 0.0
 
-    return recalls_at(aecp_sims), recalls_at(ceil_sims)
+    return recalls_at(isotrieve_sims), recalls_at(ceil_sims)
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -227,26 +227,26 @@ def q3_normalization_ablation(doc_src, doc_tgt, qry_tgt, doc_ids, query_ids, qre
             doc_src_p, doc_tgt_p, qry_p = doc_src, doc_tgt, qry_tgt
 
         doc_mapped_ridge = m_ridge.transform(doc_src_p)
-        r10_aecp, r10_ceil = retrieval_retention(
+        r10_isotrieve, r10_ceil = retrieval_retention(
             doc_mapped_ridge, doc_tgt_p, qry_p, doc_ids, query_ids, qrels
         )
-        ret_ridge = r10_aecp / r10_ceil if r10_ceil > 1e-12 else 0
+        ret_ridge = r10_isotrieve / r10_ceil if r10_ceil > 1e-12 else 0
         results[(prep_name, "ridge")] = ret_ridge
         print(f"  {prep_name:>10s} × ridge:  Recall@10 retention = {ret_ridge:.4f}  "
-              f"(aecp={r10_aecp:.4f}, ceil={r10_ceil:.4f})")
+              f"(isotrieve={r10_isotrieve:.4f}, ceil={r10_ceil:.4f})")
 
         # Procrustes (square dims only — check)
         if doc_src.shape[1] == doc_tgt.shape[1]:
             m_proc = OrthogonalProcrustesMapping(seed=0)
             m_proc.fit(Xp, Yp)
             doc_mapped_proc = m_proc.transform(doc_src_p)
-            r10_aecp_p, r10_ceil_p = retrieval_retention(
+            r10_isotrieve_p, r10_ceil_p = retrieval_retention(
                 doc_mapped_proc, doc_tgt_p, qry_p, doc_ids, query_ids, qrels
             )
-            ret_proc = r10_aecp_p / r10_ceil_p if r10_ceil_p > 1e-12 else 0
+            ret_proc = r10_isotrieve_p / r10_ceil_p if r10_ceil_p > 1e-12 else 0
             results[(prep_name, "procrustes")] = ret_proc
             print(f"  {prep_name:>10s} × procrustes: Recall@10 retention = {ret_proc:.4f}  "
-                  f"(aecp={r10_aecp_p:.4f}, ceil={r10_ceil_p:.4f})")
+                  f"(isotrieve={r10_isotrieve_p:.4f}, ceil={r10_ceil_p:.4f})")
 
     # Summary table
     print("\n  ┌─────────────┬───────────┬────────────┐")
@@ -379,20 +379,20 @@ def q5_hubness(doc_src, doc_tgt, qry_tgt, doc_ids, query_ids, qrels):
     ceil_sims = qt_n @ dt_n.T
     ceil_top10 = np.argsort(-ceil_sims, axis=1)[:, :10]
 
-    # AECP: target queries vs mapped docs
+    # Isotrieve: target queries vs mapped docs
     dm_n = l2_normalize(doc_mapped)
-    aecp_sims = qt_n @ dm_n.T
-    aecp_top10 = np.argsort(-aecp_sims, axis=1)[:, :10]
+    isotrieve_sims = qt_n @ dm_n.T
+    isotrieve_top10 = np.argsort(-isotrieve_sims, axis=1)[:, :10]
 
     # k-occurrence: how many queries have each doc in their top-10
     n_docs = len(doc_ids)
     ceil_kocc = np.zeros(n_docs, dtype=int)
-    aecp_kocc = np.zeros(n_docs, dtype=int)
+    isotrieve_kocc = np.zeros(n_docs, dtype=int)
     for qi in range(len(query_ids)):
         for di in ceil_top10[qi]:
             ceil_kocc[di] += 1
-        for di in aecp_top10[qi]:
-            aecp_kocc[di] += 1
+        for di in isotrieve_top10[qi]:
+            isotrieve_kocc[di] += 1
 
     print(f"  Ceiling hubness (top-10 occurrences per doc):")
     print(f"    mean={np.mean(ceil_kocc):.2f}, median={np.median(ceil_kocc):.1f}, "
@@ -400,51 +400,51 @@ def q5_hubness(doc_src, doc_tgt, qry_tgt, doc_ids, query_ids, qrels):
     print(f"    % docs appearing 0 times: {100*np.mean(ceil_kocc==0):.1f}%")
     print(f"    % docs appearing >5 times: {100*np.mean(ceil_kocc>5):.1f}%")
 
-    print(f"  AECP hubness (top-10 occurrences per doc):")
-    print(f"    mean={np.mean(aecp_kocc):.2f}, median={np.median(aecp_kocc):.1f}, "
-          f"max={np.max(aecp_kocc)}, std={np.std(aecp_kocc):.2f}")
-    print(f"    % docs appearing 0 times: {100*np.mean(aecp_kocc==0):.1f}%")
-    print(f"    % docs appearing >5 times: {100*np.mean(aecp_kocc>5):.1f}%")
+    print(f"  Isotrieve hubness (top-10 occurrences per doc):")
+    print(f"    mean={np.mean(isotrieve_kocc):.2f}, median={np.median(isotrieve_kocc):.1f}, "
+          f"max={np.max(isotrieve_kocc)}, std={np.std(isotrieve_kocc):.2f}")
+    print(f"    % docs appearing 0 times: {100*np.mean(isotrieve_kocc==0):.1f}%")
+    print(f"    % docs appearing >5 times: {100*np.mean(isotrieve_kocc>5):.1f}%")
 
     # Skewness increase
     from scipy.stats import skew, kurtosis
-    print(f"  Skewness: ceiling={skew(ceil_kocc):.3f} → AECP={skew(aecp_kocc):.3f}")
-    print(f"  Kurtosis: ceiling={kurtosis(ceil_kocc):.3f} → AECP={kurtosis(aecp_kocc):.3f}")
+    print(f"  Skewness: ceiling={skew(ceil_kocc):.3f} → Isotrieve={skew(isotrieve_kocc):.3f}")
+    print(f"  Kurtosis: ceiling={kurtosis(ceil_kocc):.3f} → Isotrieve={kurtosis(isotrieve_kocc):.3f}")
 
     # Top-10 hub docs (most frequent in top-10)
-    print(f"\n  Top-10 hub docs (AECP):")
-    top_hubs = np.argsort(-aecp_kocc)[:10]
+    print(f"\n  Top-10 hub docs (Isotrieve):")
+    top_hubs = np.argsort(-isotrieve_kocc)[:10]
     for di in top_hubs:
-        print(f"    doc[{di}] ({doc_ids[di]}): {aecp_kocc[di]} appearances "
+        print(f"    doc[{di}] ({doc_ids[di]}): {isotrieve_kocc[di]} appearances "
               f"(ceiling: {ceil_kocc[di]})")
 
     # Plot
     fig, axes = plt.subplots(1, 3, figsize=(16, 4))
     ax = axes[0]
-    ax.hist(ceil_kocc, bins=range(0, max(ceil_kocc.max(), aecp_kocc.max())+2),
+    ax.hist(ceil_kocc, bins=range(0, max(ceil_kocc.max(), isotrieve_kocc.max())+2),
             alpha=0.6, color="#2196F3", label="Ceiling", density=True)
-    ax.hist(aecp_kocc, bins=range(0, max(ceil_kocc.max(), aecp_kocc.max())+2),
-            alpha=0.6, color="#F44336", label="AECP", density=True)
+    ax.hist(isotrieve_kocc, bins=range(0, max(ceil_kocc.max(), isotrieve_kocc.max())+2),
+            alpha=0.6, color="#F44336", label="Isotrieve", density=True)
     ax.set_xlabel("Top-10 appearances per doc")
     ax.set_ylabel("Density")
     ax.set_title("Q5: Hubness distribution")
     ax.legend()
 
     ax = axes[1]
-    ax.scatter(ceil_kocc, aecp_kocc, s=5, alpha=0.3, c="black")
-    max_val = max(ceil_kocc.max(), aecp_kocc.max())
+    ax.scatter(ceil_kocc, isotrieve_kocc, s=5, alpha=0.3, c="black")
+    max_val = max(ceil_kocc.max(), isotrieve_kocc.max())
     ax.plot([0, max_val], [0, max_val], "r--", alpha=0.5, label="y=x (no change)")
     ax.set_xlabel("Ceiling top-10 count")
-    ax.set_ylabel("AECP top-10 count")
+    ax.set_ylabel("Isotrieve top-10 count")
     ax.set_title("Q5: Hub count change per doc")
     ax.legend()
 
     ax = axes[2]
     # CDF of hubness
     ceil_sorted = np.sort(ceil_kocc)
-    aecp_sorted = np.sort(aecp_kocc)
+    isotrieve_sorted = np.sort(isotrieve_kocc)
     ax.plot(ceil_sorted, np.linspace(0, 1, len(ceil_sorted)), label="Ceiling", color="#2196F3")
-    ax.plot(aecp_sorted, np.linspace(0, 1, len(aecp_sorted)), label="AECP", color="#F44336")
+    ax.plot(isotrieve_sorted, np.linspace(0, 1, len(isotrieve_sorted)), label="Isotrieve", color="#F44336")
     ax.set_xlabel("Top-10 appearances")
     ax.set_ylabel("CDF")
     ax.set_title("Q5: Hubness CDF")
@@ -454,7 +454,7 @@ def q5_hubness(doc_src, doc_tgt, qry_tgt, doc_ids, query_ids, qrels):
     plt.savefig(OUT_DIR / "q5_hubness.png", dpi=150, bbox_inches="tight")
     print(f"  Plot → {OUT_DIR / 'q5_hubness.png'}")
 
-    return ceil_kocc, aecp_kocc
+    return ceil_kocc, isotrieve_kocc
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -482,10 +482,10 @@ def q6_calibration_sampling(doc_src, doc_tgt, qry_tgt, doc_ids, query_ids, qrels
         m_rand = RidgeMapping(alpha="auto", seed=seed)
         m_rand.fit(doc_src[rand_idx], doc_tgt[rand_idx])
         doc_mapped_rand = m_rand.transform(doc_src)
-        r10_aecp, r10_ceil = retrieval_retention(
+        r10_isotrieve, r10_ceil = retrieval_retention(
             doc_mapped_rand, doc_tgt, qry_tgt, doc_ids, query_ids, qrels
         )
-        ret_rand = r10_aecp / r10_ceil if r10_ceil > 1e-12 else 0
+        ret_rand = r10_isotrieve / r10_ceil if r10_ceil > 1e-12 else 0
         results_random.append(ret_rand)
 
         # Diversity sampling: k-means in source space, pick cluster centers
@@ -505,10 +505,10 @@ def q6_calibration_sampling(doc_src, doc_tgt, qry_tgt, doc_ids, query_ids, qrels
         m_div = RidgeMapping(alpha="auto", seed=seed)
         m_div.fit(doc_src[diverse_idx], doc_tgt[diverse_idx])
         doc_mapped_div = m_div.transform(doc_src)
-        r10_aecp_d, r10_ceil_d = retrieval_retention(
+        r10_isotrieve_d, r10_ceil_d = retrieval_retention(
             doc_mapped_div, doc_tgt, qry_tgt, doc_ids, query_ids, qrels
         )
-        ret_div = r10_aecp_d / r10_ceil_d if r10_ceil_d > 1e-12 else 0
+        ret_div = r10_isotrieve_d / r10_ceil_d if r10_ceil_d > 1e-12 else 0
         results_diverse.append(ret_div)
 
     print(f"  Random K={k} (n={n_trials} trials):")
@@ -529,7 +529,7 @@ def q8_gate_residuals():
     print("Q8: GATE MODEL RESIDUALS — predicted vs true retention by pair")
     print("="*70)
 
-    gate_path = Path("/Users/kpatel/Desktop/agent-communication/aecp-python/src/aecp/quality/gate_model_v1.json")
+    gate_path = Path("/Users/kpatel/Desktop/agent-communication/isotrieve-python/src/isotrieve/quality/gate_model_v1.json")
     gate = json.loads(gate_path.read_text())
 
     # Gate model info
@@ -599,14 +599,14 @@ def q10_score_distribution(doc_src, doc_tgt, qry_tgt, doc_ids, query_ids, qrels)
     dm_n = l2_normalize(doc_mapped)
 
     ceil_sims = qt_n @ dt_n.T
-    aecp_sims = qt_n @ dm_n.T
+    isotrieve_sims = qt_n @ dm_n.T
 
     ceil_top1_scores = []
     ceil_top2_scores = []
     ceil_margins = []
-    aecp_top1_scores = []
-    aecp_top2_scores = []
-    aecp_margins = []
+    isotrieve_top1_scores = []
+    isotrieve_top2_scores = []
+    isotrieve_margins = []
 
     for qi, qid in enumerate(query_ids):
         rel = qrels.get(qid, set())
@@ -622,44 +622,44 @@ def q10_score_distribution(doc_src, doc_tgt, qry_tgt, doc_ids, query_ids, qrels)
         ceil_top2_scores.append(float(c_top2))
         ceil_margins.append(float(c_top1 - c_top2))
 
-        # AECP
-        a_sorted = np.argsort(-aecp_sims[qi])
-        a_top1 = aecp_sims[qi, a_sorted[0]]
-        a_top2 = aecp_sims[qi, a_sorted[1]]
-        aecp_top1_scores.append(float(a_top1))
-        aecp_top2_scores.append(float(a_top2))
-        aecp_margins.append(float(a_top1 - a_top2))
+        # Isotrieve
+        a_sorted = np.argsort(-isotrieve_sims[qi])
+        a_top1 = isotrieve_sims[qi, a_sorted[0]]
+        a_top2 = isotrieve_sims[qi, a_sorted[1]]
+        isotrieve_top1_scores.append(float(a_top1))
+        isotrieve_top2_scores.append(float(a_top2))
+        isotrieve_margins.append(float(a_top1 - a_top2))
 
     print(f"  Ceiling top-1 scores:  mean={np.mean(ceil_top1_scores):.4f}, "
           f"median={np.median(ceil_top1_scores):.4f}, std={np.std(ceil_top1_scores):.4f}")
-    print(f"  AECP top-1 scores:     mean={np.mean(aecp_top1_scores):.4f}, "
-          f"median={np.median(aecp_top1_scores):.4f}, std={np.std(aecp_top1_scores):.4f}")
-    print(f"  Score compression:     {np.mean(ceil_top1_scores):.4f} → {np.mean(aecp_top1_scores):.4f} "
-          f"(Δ={np.mean(aecp_top1_scores)-np.mean(ceil_top1_scores):+.4f})")
+    print(f"  Isotrieve top-1 scores:     mean={np.mean(isotrieve_top1_scores):.4f}, "
+          f"median={np.median(isotrieve_top1_scores):.4f}, std={np.std(isotrieve_top1_scores):.4f}")
+    print(f"  Score compression:     {np.mean(ceil_top1_scores):.4f} → {np.mean(isotrieve_top1_scores):.4f} "
+          f"(Δ={np.mean(isotrieve_top1_scores)-np.mean(ceil_top1_scores):+.4f})")
 
     print(f"\n  Ceiling margins (rank1 - rank2): mean={np.mean(ceil_margins):.4f}, "
           f"std={np.std(ceil_margins):.4f}")
-    print(f"  AECP margins (rank1 - rank2):    mean={np.mean(aecp_margins):.4f}, "
-          f"std={np.std(aecp_margins):.4f}")
-    print(f"  Margin compression:    {np.mean(ceil_margins):.4f} → {np.mean(aecp_margins):.4f} "
-          f"(Δ={np.mean(aecp_margins)-np.mean(ceil_margins):+.4f})")
+    print(f"  Isotrieve margins (rank1 - rank2):    mean={np.mean(isotrieve_margins):.4f}, "
+          f"std={np.std(isotrieve_margins):.4f}")
+    print(f"  Margin compression:    {np.mean(ceil_margins):.4f} → {np.mean(isotrieve_margins):.4f} "
+          f"(Δ={np.mean(isotrieve_margins)-np.mean(ceil_margins):+.4f})")
 
-    # How many queries have compressed margin (AECP margin < ceiling margin)?
-    n_compressed = sum(1 for i in range(len(ceil_margins)) if aecp_margins[i] < ceil_margins[i])
+    # How many queries have compressed margin (Isotrieve margin < ceiling margin)?
+    n_compressed = sum(1 for i in range(len(ceil_margins)) if isotrieve_margins[i] < ceil_margins[i])
     print(f"  Queries with compressed margin: {n_compressed}/{len(ceil_margins)} "
           f"({100*n_compressed/len(ceil_margins):.1f}%)")
 
     # Score range for threshold setting
     print(f"\n  Score calibration range:")
     print(f"    Ceiling: [{np.percentile(ceil_top1_scores, 5):.4f}, {np.percentile(ceil_top1_scores, 95):.4f}]")
-    print(f"    AECP:    [{np.percentile(aecp_top1_scores, 5):.4f}, {np.percentile(aecp_top1_scores, 95):.4f}]")
+    print(f"    Isotrieve:    [{np.percentile(isotrieve_top1_scores, 5):.4f}, {np.percentile(isotrieve_top1_scores, 95):.4f}]")
 
     # Plot
     fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
     ax = axes[0]
     ax.hist(ceil_top1_scores, bins=30, alpha=0.6, color="#2196F3", label="Ceiling", density=True)
-    ax.hist(aecp_top1_scores, bins=30, alpha=0.6, color="#F44336", label="AECP", density=True)
+    ax.hist(isotrieve_top1_scores, bins=30, alpha=0.6, color="#F44336", label="Isotrieve", density=True)
     ax.set_xlabel("Top-1 cosine score")
     ax.set_ylabel("Density")
     ax.set_title("Q10: Top-1 score distribution")
@@ -667,7 +667,7 @@ def q10_score_distribution(doc_src, doc_tgt, qry_tgt, doc_ids, query_ids, qrels)
 
     ax = axes[1]
     ax.hist(ceil_margins, bins=30, alpha=0.6, color="#2196F3", label="Ceiling", density=True)
-    ax.hist(aecp_margins, bins=30, alpha=0.6, color="#F44336", label="AECP", density=True)
+    ax.hist(isotrieve_margins, bins=30, alpha=0.6, color="#F44336", label="Isotrieve", density=True)
     ax.axvline(x=0, color="gray", linestyle="--", alpha=0.5)
     ax.set_xlabel("Margin (rank1 - rank2 cosine)")
     ax.set_ylabel("Density")
@@ -675,12 +675,12 @@ def q10_score_distribution(doc_src, doc_tgt, qry_tgt, doc_ids, query_ids, qrels)
     ax.legend()
 
     ax = axes[2]
-    ax.scatter(ceil_margins, aecp_margins, s=5, alpha=0.3, c="black")
-    lims = [min(min(ceil_margins), min(aecp_margins))-0.01,
-            max(max(ceil_margins), max(aecp_margins))+0.01]
+    ax.scatter(ceil_margins, isotrieve_margins, s=5, alpha=0.3, c="black")
+    lims = [min(min(ceil_margins), min(isotrieve_margins))-0.01,
+            max(max(ceil_margins), max(isotrieve_margins))+0.01]
     ax.plot(lims, lims, "r--", alpha=0.5, label="y=x (no change)")
     ax.set_xlabel("Ceiling margin")
-    ax.set_ylabel("AECP margin")
+    ax.set_ylabel("Isotrieve margin")
     ax.set_title("Q10: Margin change per query")
     ax.legend()
 
@@ -688,7 +688,7 @@ def q10_score_distribution(doc_src, doc_tgt, qry_tgt, doc_ids, query_ids, qrels)
     plt.savefig(OUT_DIR / "q10_scores.png", dpi=150, bbox_inches="tight")
     print(f"  Plot → {OUT_DIR / 'q10_scores.png'}")
 
-    return ceil_margins, aecp_margins
+    return ceil_margins, isotrieve_margins
 
 
 # ══════════════════════════════════════════════════════════════════════

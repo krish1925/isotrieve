@@ -12,10 +12,10 @@ import sys
 import os
 import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "aecp-python"))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "isotrieve-python"))
 
-from aecp import AECP
-from aecp.adapters import LocalModelAdapter
+from isotrieve import Isotrieve
+from isotrieve.adapters import LocalModelAdapter
 from sentence_transformers import SentenceTransformer
 from sklearn.cluster import KMeans
 
@@ -23,8 +23,8 @@ def main():
     print("--- Multi-Agent RAG Pipeline ---")
     
     # Setup
-    researcher = AECP(LocalModelAdapter(SentenceTransformer('all-MiniLM-L6-v2')))
-    analyst = AECP(LocalModelAdapter(SentenceTransformer('all-mpnet-base-v2')))
+    researcher = Isotrieve(LocalModelAdapter(SentenceTransformer('all-MiniLM-L6-v2')))
+    analyst = Isotrieve(LocalModelAdapter(SentenceTransformer('all-mpnet-base-v2')))
     
     print("Calibrating agents...")
     researcher.calibrate_with(analyst)
@@ -79,7 +79,7 @@ def main():
     
     # We expect perfect separation of Backend vs Frontend topics
     # solely based on the transferred vectors.
-    print("\nIf the clusters are thematically consistent, AECP worked!")
+    print("\nIf the clusters are thematically consistent, Isotrieve worked!")
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,16 @@
+{
+  "name": "custom-adapter-plugin-example",
+  "version": "1.0.0",
+  "description": "Example of creating custom Isotrieve adapters using the plugin system",
+  "main": "index.ts",
+  "scripts": {
+    "start": "ts-node index.ts"
+  },
+  "dependencies": {
+    "@isotrieve/core": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0"
+  }
+}

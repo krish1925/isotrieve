@@ -1,0 +1,164 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "isotrieve"
+version = "0.2.1"
+description = "Migrate a vector database to a new embedding model without re-embedding the corpus. Fits a linear map from ~2K calibration texts; 87-91% retrieval retention measured on BEIR."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [
+    { name = "Isotrieve Contributors" },
+]
+keywords = [
+    "embedding-migration",
+    "vector-database",
+    "re-embedding",
+    "ada-002",
+    "text-embedding-3",
+    "model-deprecation",
+    "qdrant",
+    "pgvector",
+    "chroma",
+    "ridge-regression",
+    "embedding-model",
+    "retrieval",
+    "beir",
+    "nDCG",
+    "vector-search",
+    "simsearch",
+    "embedding-alignment",
+    "dimension-mismatch",
+    "openai-embeddings",
+    "sentence-transformers",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Database",
+    "Topic :: Text Processing :: Indexing",
+    "Typing :: Typed",
+]
+dependencies = [
+    "numpy>=1.24",
+    "scikit-learn>=1.3",
+    "typer>=0.12",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+sentence-transformers = ["sentence-transformers>=2.2"]
+openai = ["openai>=1.0"]
+voyage = ["voyageai>=0.2"]
+cohere = ["cohere>=5.0"]
+gemini = ["google-generativeai>=0.5"]
+qdrant = ["qdrant-client>=1.7"]
+pgvector = ["psycopg[binary]>=3.1"]
+chroma = ["chromadb>=0.4"]
+langchain = ["langchain-core>=0.3"]
+llamaindex = ["llama-index-core>=0.10"]
+pinecone = ["pinecone-client>=2.0"]
+parquet = ["pyarrow>=14.0"]
+mlp = ["torch>=2.0"]
+benchmarks = [
+    "sentence-transformers>=2.2",
+    "datasets>=2.14",
+    "ir-datasets>=0.5",
+]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "mypy>=1.8",
+    "sentence-transformers>=2.2",
+]
+all = [
+    "isotrieve[sentence-transformers,openai,voyage,cohere,gemini,qdrant,pgvector,chroma,langchain,parquet,mlp,dev]",
+]
+
+[project.scripts]
+isotrieve = "isotrieve.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/krish1925/AECP"
+Documentation = "https://github.com/krish1925/AECP#readme"
+Repository = "https://github.com/krish1925/AECP"
+Issues = "https://github.com/krish1925/AECP/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/isotrieve"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/isotrieve" = "isotrieve"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/isotrieve", "README.md", "LICENSE", "DECISIONS.md", "CLAIMS.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: tests that need dockerized services",
+    "slow: longer-running tests",
+    "benchmark: local-model benchmark smoke tests",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = [
+    "B008",   # typer.Option() in function defaults — standard typer pattern
+    "B904",   # raise ... from err — pre-existing, clean up separately
+    "B905",   # zip() without strict= — pre-existing, clean up separately
+    "E501",   # line too long — enforced by formatter, not linter
+    "E402",   # module-level import not at top — CLI registration pattern
+    "SIM105", # contextlib.suppress vs try-except-pass — pre-existing
+    "SIM108", # ternary vs if-else — pre-existing
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/isotrieve/mapping/__init__.py" = ["F401"]  # re-exports for public API
+"tests/*" = ["E731"]  # lambda in tests is fine
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["isotrieve"]
+mypy_path = "src"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "isotrieve.mapping.mlp",
+    "isotrieve.mapping.linear",
+    "isotrieve.mapping.registry",
+    "isotrieve.stores.qdrant_store",
+    "isotrieve.stores.numpy_files",
+    "isotrieve.adapters.*",
+    "isotrieve.wrappers.*",
+    "isotrieve.providers.*",
+    "isotrieve.serve",
+    "isotrieve.reranking",
+    "isotrieve.recalibration",
+]
+ignore_errors = true
+
+[tool.coverage.run]
+source = ["isotrieve"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 0
+show_missing = true
+omit = ["*/cli.py"]

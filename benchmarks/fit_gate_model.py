@@ -197,7 +197,7 @@ def main():
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path(__file__).parent.parent / "src" / "aecp" / "quality" / "gate_model_v1.json",
+        default=Path(__file__).parent.parent / "src" / "isotrieve" / "quality" / "gate_model_v1.json",
     )
     args = parser.parse_args()
 

@@ -9,7 +9,7 @@
 ## Checklist
 
 - [ ] Tests pass (`python -m pytest tests/ -q`)
-- [ ] Ruff passes (`ruff check aecp-python/src/ aecp-python/tests/`)
+- [ ] Ruff passes (`ruff check isotrieve-python/src/ isotrieve-python/tests/`)
 - [ ] CLAIMS.md updated (if benchmark numbers changed)
 - [ ] CHANGELOG.md updated (if user-facing change)
 - [ ] Docs updated (if API/behavior change)

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""AECP benchmark harness — supports local + API models, K-sweep, calibration modes.
+"""Isotrieve benchmark harness — supports local + API models, K-sweep, calibration modes.
 
 Protocol (per product contract §5):
   1. Embed corpus with source; queries with target (post-migration reality).
   2. Floor: target queries vs raw source vectors (expect near-zero / impossible if dims differ).
   3. Ceiling: target queries vs true target-embedded corpus.
-  4. AECP: map source corpus → retrieve with target queries.
-  5. Report nDCG@10 / Recall@10 retention = AECP / ceiling.
+  4. Isotrieve: map source corpus → retrieve with target queries.
+  5. Report nDCG@10 / Recall@10 retention = Isotrieve / ceiling.
   6. K-sweep: vary K to understand quality-vs-cost tradeoff.
   7. Calibration modes: in-domain (from corpus) vs generic (external vocabulary).
   8. 3 seeds; mean ± std (embeddings cached; only fit/eval re-run per seed).
@@ -28,11 +28,11 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "aecp-python" / "src"))
+sys.path.insert(0, str(ROOT / "isotrieve-python" / "src"))
 
-from aecp.mapping.base import l2_normalize  # noqa: E402
-from aecp.mapping.linear import RidgeMapping  # noqa: E402
-from aecp.providers.factory import create_embedder  # noqa: E402
+from isotrieve.mapping.base import l2_normalize  # noqa: E402
+from isotrieve.mapping.linear import RidgeMapping  # noqa: E402
+from isotrieve.providers.factory import create_embedder  # noqa: E402
 from beir_loaders import load_beir_dataset  # noqa: E402
 
 # Model-specific prefixes required for correct embeddings.
@@ -272,7 +272,7 @@ def load_or_embed(
 
 
 def _embed_api(model_id: str, texts: list[str], batch_size: int = 128) -> np.ndarray:
-    """Embed texts using AECP provider adapters (with disk cache)."""
+    """Embed texts using Isotrieve provider adapters (with disk cache)."""
     embedder = create_embedder(model_id, cached=True)
     all_vecs = []
     for i in range(0, len(texts), batch_size):
@@ -290,7 +290,7 @@ def create_mapping(
     seed: int,
 ) -> "Mapping":
     """Create a mapping adapter by name."""
-    from aecp.mapping.linear import (
+    from isotrieve.mapping.linear import (
         LowRankAffineMapping,
         OrthogonalProcrustesMapping,
         ProcrustesDiagMapping,
@@ -313,10 +313,10 @@ def create_mapping(
         return LowRankAffineMapping(alpha="auto", rank=min(256, d_src, d_tgt), seed=seed)
     elif adapter_name == "mlp":
         try:
-            from aecp.mapping.mlp import ResidualMLPMapping
+            from isotrieve.mapping.mlp import ResidualMLPMapping
             return ResidualMLPMapping(seed=seed)
         except ImportError:
-            raise ImportError("ResidualMLPMapping requires torch (pip install aecp[mlp])")
+            raise ImportError("ResidualMLPMapping requires torch (pip install isotrieve[mlp])")
     else:
         raise ValueError(f"Unknown adapter: {adapter_name!r}")
 
@@ -385,7 +385,7 @@ def run_seed(
             "note": "dims differ; floor set to 0 (cross-space raw retrieval impossible)",
         }
 
-    aecp_metrics = evaluate(
+    isotrieve_metrics = evaluate(
         retrieve(qry_tgt, doc_mapped, doc_ids), query_ids, qrels
     )
     ceiling_metrics = evaluate(
@@ -436,15 +436,15 @@ def run_seed(
         "transform_vectors_per_s": throughput,
         "validation": val,
         "floor": floor_metrics,
-        "aecp": aecp_metrics,
+        "isotrieve": isotrieve_metrics,
         "ceiling": ceiling_metrics,
         "retention": {
-            "nDCG@10": retention(aecp_metrics["nDCG@10"], ceiling_metrics["nDCG@10"]),
+            "nDCG@10": retention(isotrieve_metrics["nDCG@10"], ceiling_metrics["nDCG@10"]),
             "Recall@10": retention(
-                aecp_metrics["Recall@10"], ceiling_metrics["Recall@10"]
+                isotrieve_metrics["Recall@10"], ceiling_metrics["Recall@10"]
             ),
             "Recall@100": retention(
-                aecp_metrics["Recall@100"], ceiling_metrics["Recall@100"]
+                isotrieve_metrics["Recall@100"], ceiling_metrics["Recall@100"]
             ),
         },
         "calibration_calls": 2 * k_cal,
@@ -483,7 +483,7 @@ def run_seed(
     print(
         f"seed={seed} retention nDCG@10={result['retention']['nDCG@10']} "
         f"floor={floor_metrics['nDCG@10']:.4f} "
-        f"aecp={aecp_metrics['nDCG@10']:.4f} "
+        f"isotrieve={isotrieve_metrics['nDCG@10']:.4f} "
         f"ceiling={ceiling_metrics['nDCG@10']:.4f}"
     )
     return result

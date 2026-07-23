@@ -37,7 +37,7 @@
     "n_eval": 300,
     "note": "dims differ; floor set to 0 (cross-space raw retrieval impossible)"
   },
-  "aecp": {
+  "isotrieve": {
     "nDCG@10": 0.45574914977941194,
     "Recall@10": 0.6127222222222222,
     "Recall@100": 0.8504999999999999,

@@ -1,10 +1,10 @@
-# AECP — Embedding migration without re-embedding
+# Isotrieve — Embedding migration without re-embedding
 
-[![PyPI](https://img.shields.io/pypi/v/aecp)](https://pypi.org/project/aecp/)
-[![CI](https://github.com/krish1925/AECP/actions/workflows/ci.yml/badge.svg)](https://github.com/krish1925/AECP/actions/workflows/ci.yml)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](aecp-python/LICENSE)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](aecp-python/)
-[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://krish1925.github.io/AECP/)
+[![PyPI](https://img.shields.io/pypi/v/isotrieve)](https://pypi.org/project/isotrieve/)
+[![CI](https://github.com/krish1925/Isotrieve/actions/workflows/ci.yml/badge.svg)](https://github.com/krish1925/Isotrieve/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](isotrieve-python/LICENSE)
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](isotrieve-python/)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://krish1925.github.io/Isotrieve/)
 
 Open-source toolkit to switch embedding models **without re-embedding your corpus**.
 Learn a mapping from a small calibration sample, transform stored vectors in place,
@@ -17,7 +17,7 @@ normally means re-embedding the entire corpus, re-indexing, and hoping nothing
 breaks downstream. For any non-trivial vector store, that's an engineering project
 nobody wants to own — not a config change. Most teams just... don't upgrade.
 
-AECP learns a lightweight transform between the old and new embedding spaces from
+Isotrieve learns a lightweight transform between the old and new embedding spaces from
 a small calibration sample, applies it to your existing vectors, and reports the
 retrieval retention (Recall@k, MRR) *before* you commit to the migration. If
 retention doesn't clear your threshold, the gate fails and nothing ships.
@@ -53,16 +53,16 @@ flowchart LR
    touching the source text or calling the new embedding model on the full corpus.
 4. **Gate** — measure retrieval retention against a held-out query set. The
    migration only proceeds if retention clears a configurable threshold; otherwise
-   AECP reports why and falls back safely — your index is never left in a
+   Isotrieve reports why and falls back safely — your index is never left in a
    half-migrated state.
 
 ## Project structure
 
 ```
-AECP/
-├── aecp-python/          # Maintained Python package (PyPI: aecp)
-├── aecp-npm/             # Historical NPM protocol package (experimental)
-├── aecp-website/         # GitHub Pages site
+Isotrieve/
+├── isotrieve-python/          # Maintained Python package (PyPI: isotrieve)
+├── isotrieve-npm/             # Historical NPM protocol package (experimental)
+├── isotrieve-website/         # GitHub Pages site
 ├── benchmarks/           # Benchmark harness and results
 ├── spec/                 # Protocol specification (RFC-001)
 ├── docs/                 # Technical overview, protocol spec
@@ -70,28 +70,28 @@ AECP/
 └── AGENTS.md             # Development contract for AI agents
 ```
 
-**Which package is current?** `aecp` on PyPI is the actively maintained, benchmark-validated package. The NPM package (`aecp-npm/`) is historical/experimental.
+**Which package is current?** `isotrieve` on PyPI is the actively maintained, benchmark-validated package. The NPM package (`isotrieve-npm/`) is historical/experimental.
 
 ## Package
 
-[`aecp-python/`](aecp-python/) — pip-installable as `aecp`.
+[`isotrieve-python/`](isotrieve-python/) — pip-installable as `isotrieve`.
 
 ```bash
-pip install aecp
+pip install isotrieve
 ```
 
-See [`aecp-python/README.md`](aecp-python/README.md) for the full quickstart,
+See [`isotrieve-python/README.md`](isotrieve-python/README.md) for the full quickstart,
 CLI usage, and adapter-specific guides.
 
 ## Vector store adapters
 
-AECP separates the transform logic (store-agnostic) from the adapter layer
+Isotrieve separates the transform logic (store-agnostic) from the adapter layer
 (store-specific read/write), so the same learned mapping can be applied to
 whatever you're actually running in production:
 
 ```mermaid
 flowchart TB
-    subgraph Core["aecp core (store-agnostic)"]
+    subgraph Core["isotrieve core (store-agnostic)"]
         direction LR
         Calib[Calibration + fit]
         Xform[Transform]
@@ -101,7 +101,7 @@ flowchart TB
 
     Core --> Chroma[(ChromaDB<br/>supported)]
     Core --> PGV[(pgvector<br/>supported)]
-    Core --> LC[LangChain<br/>AECPEmbeddings<br/>query-time wrapper]
+    Core --> LC[LangChain<br/>IsotrieveEmbeddings<br/>query-time wrapper]
     Core --> LI[(LlamaIndex<br/>in progress)]
     Core -.-> QD[(Qdrant<br/>hook-only)]
     Core -.-> PC[(Pinecone<br/>hook-only)]
@@ -125,7 +125,7 @@ only a hook or example is available. See the status table for detail:
 |---|---|
 | ChromaDB | Supported |
 | pgvector | Supported |
-| LangChain (`AECPEmbeddings`) | Supported (query-time wrapper, store-agnostic) |
+| LangChain (`IsotrieveEmbeddings`) | Supported (query-time wrapper, store-agnostic) |
 | LlamaIndex | In progress |
 | Qdrant | Hook-only |
 | Pinecone | Hook-only |
@@ -136,13 +136,13 @@ only a hook or example is available. See the status table for detail:
 
 Quantitative performance claims in this repo appear **only** when backed by
 committed artifacts under [`benchmarks/results/`](benchmarks/results/) and listed
-in [`aecp-python/CLAIMS.md`](aecp-python/CLAIMS.md). If a number isn't in `CLAIMS.md` with a linked artifact, treat it
+in [`isotrieve-python/CLAIMS.md`](isotrieve-python/CLAIMS.md). If a number isn't in `CLAIMS.md` with a linked artifact, treat it
 as unverified — that also means: don't take our word for it, rerun the gate on
 your own corpus and model pair before you migrate.
 
 ## Prior art
 
-AECP builds on [vec2vec](https://arxiv.org/abs/2505.12540), mini-vec2vec,
+Isotrieve builds on [vec2vec](https://arxiv.org/abs/2505.12540), mini-vec2vec,
 Drift-Adapter, and the Platonic Representation Hypothesis. Our contribution is
 engineering — library, CLI, quality gate, adapters, and benchmarks — not
 algorithmic novelty. If you're citing the underlying technique, cite that prior
@@ -155,4 +155,4 @@ Early-stage, actively developed. APIs may change between minor versions until
 
 ## License
 
-Apache-2.0 (Python package). See [`aecp-python/LICENSE`](aecp-python/LICENSE).
+Apache-2.0 (Python package). See [`isotrieve-python/LICENSE`](isotrieve-python/LICENSE).

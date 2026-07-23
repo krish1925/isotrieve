@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest a new feature for AECP
+about: Suggest a new feature for Isotrieve
 labels: enhancement
 ---
 

@@ -1,0 +1,15 @@
+{
+  "name": "isotrieve-example-basic-transfer",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@isotrieve/core": "^1.0.0",
+    "@isotrieve/adapters-openai": "^1.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0"
+  }
+}

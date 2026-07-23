@@ -17,9 +17,9 @@ jobs:
       - name: Install dependencies
         run: pip install ruff mypy
       - name: Ruff check
-        run: ruff check aecp-python/src/ aecp-python/tests/
+        run: ruff check isotrieve-python/src/ isotrieve-python/tests/
       - name: Ruff format check
-        run: ruff format --check aecp-python/src/ aecp-python/tests/
+        run: ruff format --check isotrieve-python/src/ isotrieve-python/tests/
 
   test:
     runs-on: ubuntu-latest
@@ -32,10 +32,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install package
-        working-directory: aecp-python
+        working-directory: isotrieve-python
         run: pip install -e ".[dev]"
       - name: Run tests
-        working-directory: aecp-python
+        working-directory: isotrieve-python
         run: python -m pytest tests/ -q --tb=short
 
   typecheck:
@@ -46,8 +46,8 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install package with types
-        working-directory: aecp-python
+        working-directory: isotrieve-python
         run: pip install -e ".[dev]" mypy
       - name: Mypy strict (core)
-        working-directory: aecp-python
-        run: mypy src/aecp/ --ignore-missing-imports
+        working-directory: isotrieve-python
+        run: mypy src/isotrieve/ --ignore-missing-imports

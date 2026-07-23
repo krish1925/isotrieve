@@ -3,16 +3,16 @@ import sys
 import os
 import time
 
-# Add parent directory to path to import aecp if installed locally
+# Add parent directory to path to import isotrieve if installed locally
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "aecp-python"))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "isotrieve-python"))
 
 try:
-    from aecp import AECP
-    from aecp.adapters import LocalModelAdapter
+    from isotrieve import Isotrieve
+    from isotrieve.adapters import LocalModelAdapter
     from sentence_transformers import SentenceTransformer
 except ImportError:
-    print("Please install requirements: pip install sentence-transformers aecp")
+    print("Please install requirements: pip install sentence-transformers isotrieve")
     sys.exit(1)
 
 def type_effect(text, delay=0.03):
@@ -23,16 +23,16 @@ def type_effect(text, delay=0.03):
     print()
 
 def main():
-    print("\n AECP: Agent Embedding Communication Protocol")
+    print("\n Isotrieve: Agent Embedding Communication Protocol")
     print("---------------------------------------------")
     type_effect("Initializing Agent A (Source)...")
     model_a_name = 'all-MiniLM-L6-v2'
-    agent_a = AECP(LocalModelAdapter(SentenceTransformer(model_a_name)))
+    agent_a = Isotrieve(LocalModelAdapter(SentenceTransformer(model_a_name)))
     print(f" Agent A ready ({model_a_name})")
 
     type_effect("Initializing Agent B (Target)...")
     model_b_name = 'all-mpnet-base-v2'
-    agent_b = AECP(LocalModelAdapter(SentenceTransformer(model_b_name)))
+    agent_b = Isotrieve(LocalModelAdapter(SentenceTransformer(model_b_name)))
     print(f" Agent B ready ({model_b_name})")
 
     print("\n Requesting Calibration...")
@@ -54,7 +54,7 @@ def main():
         start_t = time.time()
         vec_transferred = agent_a.transfer_to(agent_b, vec_a)
         duration = (time.time() - start_t) * 1000
-        print(f"[AECP] Transferred to Agent B space in {duration:.2f}ms ")
+        print(f"[Isotrieve] Transferred to Agent B space in {duration:.2f}ms ")
 
         # 3. Validation (Agent B checks against its own truth)
         vec_truth = agent_b.embed(query)

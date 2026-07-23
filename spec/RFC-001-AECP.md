@@ -1,4 +1,4 @@
-# RFC-001: Agent Embedding Communication Protocol (AECP)
+# RFC-001: Agent Embedding Communication Protocol (Isotrieve)
 
 | Field | Value |
 | :--- | :--- |
@@ -10,7 +10,7 @@
 
 ## 1. Abstract
 
-The Agent Embedding Communication Protocol (AECP) defines a standard method for autonomous agents to exchange semantic information via vector embeddings, regardless of the underlying embedding models they use. It specifies the handshake process for learning a linear transfer matrix between two embedding spaces and the wire format for transmitting transformed vectors.
+The Agent Embedding Communication Protocol (Isotrieve) defines a standard method for autonomous agents to exchange semantic information via vector embeddings, regardless of the underlying embedding models they use. It specifies the handshake process for learning a linear transfer matrix between two embedding spaces and the wire format for transmitting transformed vectors.
 
 ## 2. Terminology
 
@@ -29,7 +29,7 @@ Before exchanging data, agents may optionally perform a handshake to calibrate t
 
 **Phase 1: Anchor Exchange**
 Agents must agree on a set of calibration anchors $\mathcal{V}$.
-*   **Standard**: The protocol defines a SHA-256 hash of the "Standard AECP Vocabulary v1" (30,000 diverse English phrases).
+*   **Standard**: The protocol defines a SHA-256 hash of the "Standard Isotrieve Vocabulary v1" (30,000 diverse English phrases).
 *   **Custom**: Agents may negotiate a custom vocabulary subset.
 
 **Phase 2: Matrix Computation**
@@ -39,14 +39,14 @@ Agents must agree on a set of calibration anchors $\mathcal{V}$.
 
 ### 3.2 Wire Format
 
-AECP messages are JSON objects.
+Isotrieve messages are JSON objects.
 
 #### 3.2.1 Transfer Message
 When Agent A sends a vector to Agent B:
 
 ```json
 {
-  "aecp_version": "1.0",
+  "isotrieve_version": "1.0",
   "type": "transfer",
   "payload": {
     "vector": [0.123, -0.456, ...],  // The TRANSFORMED vector (in B's space)
@@ -78,9 +78,9 @@ Where:
 
 ## 5. Security Considerations
 
-*   **Privacy**: AECP allows sharing semantic meaning without sharing raw text. However, inversion attacks on embeddings are possible. AECP does not claim to differ privacy-wise from sharing raw embeddings.
+*   **Privacy**: Isotrieve allows sharing semantic meaning without sharing raw text. However, inversion attacks on embeddings are possible. Isotrieve does not claim to differ privacy-wise from sharing raw embeddings.
 *   **adversarial Attacks**: A malicious Agent A could send vectors that "mean" something harmless in text but decode to a jailbreak vector in Agent B's space. Receiver validation is recommended.
 
 ## 6. Reference Implementation
 
-The official reference implementation is maintained in the `aecp` Python package.
+The official reference implementation is maintained in the `isotrieve` Python package.

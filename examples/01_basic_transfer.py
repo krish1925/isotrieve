@@ -2,7 +2,7 @@
 """
 01_basic_transfer.py
 --------------------
-Demonstrates the core AECP workflow:
+Demonstrates the core Isotrieve workflow:
 1. Setup two agents with different models.
 2. Calibrate them (learning the transfer matrix).
 3. Transfer a vector from A to B.
@@ -10,12 +10,12 @@ Demonstrates the core AECP workflow:
 
 import sys
 import os
-# Add parent directory to path to import aecp if installed locally
+# Add parent directory to path to import isotrieve if installed locally
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "aecp-python"))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "isotrieve-python"))
 
-from aecp import AECP
-from aecp.adapters import LocalModelAdapter
+from isotrieve import Isotrieve
+from isotrieve.adapters import LocalModelAdapter
 from sentence_transformers import SentenceTransformer
 import numpy as np
 
@@ -23,8 +23,8 @@ def main():
     # 1. Initialize Agents
     # We use small models for the example to run fast.
     print("Initialize Agents...")
-    agent_a = AECP(LocalModelAdapter(SentenceTransformer('all-MiniLM-L6-v2')))
-    agent_b = AECP(LocalModelAdapter(SentenceTransformer('all-mpnet-base-v2')))
+    agent_a = Isotrieve(LocalModelAdapter(SentenceTransformer('all-MiniLM-L6-v2')))
+    agent_b = Isotrieve(LocalModelAdapter(SentenceTransformer('all-mpnet-base-v2')))
 
     # 2. Calibrate
     # In production, you would save this matrix and load it later.

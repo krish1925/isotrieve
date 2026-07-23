@@ -1,9 +1,9 @@
-name: "AECP Gate"
-description: "Run AECP quality gate on embedding config changes"
+name: "Isotrieve Gate"
+description: "Run Isotrieve quality gate on embedding config changes"
 
 inputs:
   mapping-path:
-    description: "Path to .aecp mapping file"
+    description: "Path to .isotrieve mapping file"
     required: true
   source-vectors:
     description: "Path to source embedding NPY"
@@ -23,15 +23,15 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Install AECP
+    - name: Install Isotrieve
       shell: bash
-      run: pip install aecp
+      run: pip install isotrieve
 
     - name: Run gate
       shell: bash
       run: |
         set +e
-        aecp gate \
+        isotrieve gate \
           --mapping ${{ inputs.mapping-path }} \
           --source-vectors ${{ inputs.source-vectors }} \
           --target-vectors ${{ inputs.target-vectors }} \
@@ -40,10 +40,10 @@ runs:
         EXIT_CODE=$?
 
         if [ "${{ inputs.fail-on-warn }}" = "true" ] && [ $EXIT_CODE -ne 0 ]; then
-          echo "::error::AECP gate did not PASS (exit code $EXIT_CODE)"
+          echo "::error::Isotrieve gate did not PASS (exit code $EXIT_CODE)"
           exit 1
         elif [ $EXIT_CODE -eq 1 ]; then
-          echo "::warning::AECP gate returned WARN — migration may reduce quality"
+          echo "::warning::Isotrieve gate returned WARN — migration may reduce quality"
           exit 0
         fi
         exit $EXIT_CODE

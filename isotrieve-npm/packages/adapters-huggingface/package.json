@@ -1,0 +1,26 @@
+{
+  "name": "@isotrieve/adapters-huggingface",
+  "version": "1.0.0",
+  "description": "HuggingFace adapter for Isotrieve (browser and Node.js)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "test": "echo \"Skipping tests for @isotrieve/adapters-huggingface\""
+  },
+  "keywords": ["isotrieve", "huggingface", "embeddings", "transformers"],
+  "license": "MIT",
+  "dependencies": {
+    "@isotrieve/core": "^1.0.0",
+    "@xenova/transformers": "^2.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "@isotrieve/core": "^1.0.0"
+  },
+  "files": ["dist", "README.md"]
+}

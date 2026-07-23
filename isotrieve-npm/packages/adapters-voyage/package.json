@@ -1,0 +1,25 @@
+{
+  "name": "@isotrieve/adapters-voyage",
+  "version": "1.0.0",
+  "description": "Voyage AI adapter for Isotrieve",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "test": "echo \"Skipping tests for @isotrieve/adapters-voyage\""
+  },
+  "keywords": ["isotrieve", "voyage", "embeddings"],
+  "license": "MIT",
+  "dependencies": {
+    "@isotrieve/core": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "@isotrieve/core": "^1.0.0"
+  },
+  "files": ["dist", "README.md"]
+}

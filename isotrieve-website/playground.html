@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Isotrieve Playground - Try Embedding Migration</title>
+    <meta name="description" content="Interactive playground to try Isotrieve embedding migration. Test ridge regression mapping between embedding models in your browser.">
+    <meta property="og:title" content="Isotrieve Playground - Try Embedding Migration">
+    <meta property="og:description" content="Interactive playground to test ridge regression mapping between embedding models.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://krish1925.github.io/Isotrieve/playground.html">
+    <link rel="canonical" href="https://krish1925.github.io/Isotrieve/playground.html">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/playground.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <i class="fas fa-network-wired"></i>
+                <span>Isotrieve</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="protocol.html">Protocol</a></li>
+                <li><a href="performance.html">Performance</a></li>
+                <li><a href="playground.html" class="active">Playground</a></li>
+                <li><a href="docs.html">Docs</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="playground-hero">
+        <div class="container">
+            <h1>Interactive Playground</h1>
+            <p class="subtitle">Experiment with Isotrieve embedding transfers in real-time</p>
+        </div>
+    </section>
+
+    <section class="playground-content">
+        <div class="container">
+            <!-- Quick Start Guide -->
+            <div class="quick-guide">
+                <h3><i class="fas fa-rocket"></i> Quick Start</h3>
+                <ol>
+                    <li>Choose embedding models for Agent A and Agent B</li>
+                    <li>Enter text to transfer between agents</li>
+                    <li>Click "Calibrate Agents" to compute transfer matrices</li>
+                    <li>Click "Transfer Embedding" to see the results</li>
+                    <li>Compare with text-based transfer to see the difference</li>
+                </ol>
+            </div>
+
+            <!-- Main Playground -->
+            <div class="playground-grid">
+                <!-- Left Panel: Agent Configuration -->
+                <div class="playground-panel">
+                    <h2><i class="fas fa-cog"></i> Agent Configuration</h2>
+                    
+                    <div class="agent-config">
+                        <h3>Agent A</h3>
+                        <div class="form-group">
+                            <label>Embedding Model:</label>
+                            <select id="agentAModel" class="model-select">
+                                <option value="384">all-MiniLM-L6-v2 (384d)</option>
+                                <option value="768">all-mpnet-base-v2 (768d)</option>
+                                <option value="1536">OpenAI text-embedding-3-small (1536d)</option>
+                                <option value="3072">OpenAI text-embedding-3-large (3072d)</option>
+                            </select>
+                        </div>
+                        <div class="agent-info">
+                            <span class="info-label">Dimensions:</span>
+                            <span id="agentADims" class="info-value">384</span>
+                        </div>
+                    </div>
+
+                    <div class="agent-config">
+                        <h3>Agent B</h3>
+                        <div class="form-group">
+                            <label>Embedding Model:</label>
+                            <select id="agentBModel" class="model-select">
+                                <option value="384">all-MiniLM-L6-v2 (384d)</option>
+                                <option value="768" selected>all-mpnet-base-v2 (768d)</option>
+                                <option value="1536">OpenAI text-embedding-3-small (1536d)</option>
+                                <option value="3072">OpenAI text-embedding-3-large (3072d)</option>
+                            </select>
+                        </div>
+                        <div class="agent-info">
+                            <span class="info-label">Dimensions:</span>
+                            <span id="agentBDims" class="info-value">768</span>
+                        </div>
+                    </div>
+
+                    <div class="calibration-section">
+                        <h3>Calibration</h3>
+                        <div class="form-group">
+                            <label>Vocabulary Size:</label>
+                            <select id="vocabSize" class="vocab-select">
+                                <option value="100">100 (Fast demo)</option>
+                                <option value="500" selected>500 (Recommended)</option>
+                                <option value="1000">1,000 (High quality)</option>
+                                <option value="5000">5,000 (Production)</option>
+                            </select>
+                        </div>
+                        <button id="calibrateBtn" class="btn btn-primary">
+                            <i class="fas fa-sync"></i> Calibrate Agents
+                        </button>
+                        <div id="calibrationStatus" class="status-message"></div>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Transfer Testing -->
+                <div class="playground-panel">
+                    <h2><i class="fas fa-exchange-alt"></i> Transfer Testing</h2>
+                    
+                    <div class="form-group">
+                        <label>Input Text:</label>
+                        <textarea id="inputText" class="text-input" rows="4" placeholder="Enter text to transfer between agents...">machine learning and neural networks enable artificial intelligence systems to learn from data</textarea>
+                    </div>
+
+                    <div class="quick-examples">
+                        <label>Quick Examples:</label>
+                        <div class="example-buttons">
+                            <button class="btn-example" data-text="machine learning and neural networks">ML & AI</button>
+                            <button class="btn-example" data-text="quantum computing and cryptography">Quantum</button>
+                            <button class="btn-example" data-text="climate change and renewable energy">Climate</button>
+                            <button class="btn-example" data-text="The patient shows symptoms of respiratory infection requiring immediate treatment">Medical</button>
+                        </div>
+                    </div>
+
+                    <div class="transfer-buttons">
+                        <button id="transferBtn" class="btn btn-primary" disabled>
+                            <i class="fas fa-arrow-right"></i> Transfer with Isotrieve
+                        </button>
+                        <button id="textTransferBtn" class="btn btn-secondary" disabled>
+                            <i class="fas fa-font"></i> Transfer as Text (Baseline)
+                        </button>
+                    </div>
+
+                    <div id="transferStatus" class="status-message"></div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <h2><i class="fas fa-chart-line"></i> Transfer Results</h2>
+                
+                <div class="results-grid">
+                    <!-- Isotrieve Transfer Results -->
+                    <div class="result-card isotrieve-result">
+                        <h3><i class="fas fa-network-wired"></i> Isotrieve Transfer</h3>
+                        <div class="result-metrics">
+                            <div class="metric">
+                                <span class="metric-label">Semantic Similarity:</span>
+                                <span id="isotrieveSimilarity" class="metric-value">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Information Preserved:</span>
+                                <span id="isotrievePreserved" class="metric-value">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Transfer Latency:</span>
+                                <span id="isotrieveLatency" class="metric-value">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Quality Score:</span>
+                                <div id="isotrieveQuality" class="quality-bar">
+                                    <div class="quality-fill"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="embedding-preview">
+                            <h4>Embedding Vector (first 10 dimensions):</h4>
+                            <div id="isotrieveEmbedding" class="embedding-values"></div>
+                        </div>
+                    </div>
+
+                    <!-- Text Transfer Results -->
+                    <div class="result-card text-result">
+                        <h3><i class="fas fa-font"></i> Text Transfer (Baseline)</h3>
+                        <div class="result-metrics">
+                            <div class="metric">
+                                <span class="metric-label">Semantic Similarity:</span>
+                                <span id="textSimilarity" class="metric-value">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Information Preserved:</span>
+                                <span id="textPreserved" class="metric-value">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Transfer Latency:</span>
+                                <span id="textLatency" class="metric-value">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Quality Score:</span>
+                                <div id="textQuality" class="quality-bar">
+                                    <div class="quality-fill"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="embedding-preview">
+                            <h4>Embedding Vector (first 10 dimensions):</h4>
+                            <div id="textEmbedding" class="embedding-values"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison Chart -->
+                <div class="comparison-section">
+                    <h3>Performance Comparison</h3>
+                    <div class="comparison-chart">
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
+                    <div class="comparison-summary">
+                        <div class="summary-card">
+                            <h4>Isotrieve Advantage</h4>
+                            <div id="isotrieveAdvantage" class="advantage-value">-</div>
+                            <p>Better semantic preservation</p>
+                        </div>
+                        <div class="summary-card">
+                            <h4>Speed Improvement</h4>
+                            <div id="speedImprovement" class="advantage-value">-</div>
+                            <p>Faster transfer time</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visualization -->
+                <div class="visualization-section">
+                    <h3>Embedding Space Visualization</h3>
+                    <p class="viz-description">Visual representation of how embeddings are transformed between agent spaces</p>
+                    <canvas id="embeddingViz"></canvas>
+                    <div class="viz-legend">
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: #2563eb;"></span>
+                            <span>Original (Agent A)</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: #10b981;"></span>
+                            <span>Isotrieve Transfer (Agent B)</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: #ef4444;"></span>
+                            <span>Text Transfer (Agent B)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Options -->
+            <div class="advanced-section">
+                <details>
+                    <summary><i class="fas fa-sliders-h"></i> Advanced Options</summary>
+                    <div class="advanced-content">
+                        <div class="form-group">
+                            <label>Quality Threshold:</label>
+                            <input type="range" id="qualityThreshold" min="0.5" max="1.0" step="0.05" value="0.75">
+                            <span id="thresholdValue">0.75</span>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="showDebug">
+                                Show debug information
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="autoRecalibrate">
+                                Auto-recalibrate on model change
+                            </label>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Educational Section -->
+            <div class="educational-section">
+                <h2><i class="fas fa-graduation-cap"></i> Understanding the Results</h2>
+                <div class="edu-grid">
+                    <div class="edu-card">
+                        <h3>Semantic Similarity</h3>
+                        <p>Measures how well the transferred embedding preserves the original meaning. Higher is better.</p>
+                        <ul>
+                            <li><strong>&gt;90%:</strong> Excellent preservation</li>
+                            <li><strong>80-90%:</strong> Good quality</li>
+                            <li><strong>75-80%:</strong> Acceptable</li>
+                            <li><strong>&lt;75%:</strong> Poor quality</li>
+                        </ul>
+                    </div>
+                    <div class="edu-card">
+                        <h3>Information Preserved</h3>
+                        <p>Percentage of semantic information retained after round-trip transfer (A→B→A).</p>
+                        <p><strong>Isotrieve typically achieves 86%</strong> vs 43% for text-based transfers.</p>
+                    </div>
+                    <div class="edu-card">
+                        <h3>Transfer Latency</h3>
+                        <p>Time taken to transfer the embedding between agents.</p>
+                        <p><strong>Isotrieve:</strong> &lt;1ms (matrix multiplication)<br>
+                        <strong>Text:</strong> 150ms+ (re-embedding)</p>
+                    </div>
+                    <div class="edu-card">
+                        <h3>Why Isotrieve is Better</h3>
+                        <p>Text serialization loses semantic nuances. Isotrieve preserves the high-dimensional semantic representation directly.</p>
+                        <p><strong>Result:</strong> 2x better information preservation with 150x faster transfers.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Code Example -->
+            <div class="code-section">
+                <h2><i class="fas fa-code"></i> Try It Yourself</h2>
+                <p>Here's how to implement what you just tested:</p>
+                
+                <div class="code-tabs">
+                    <button class="code-tab active" data-lang="python">Python</button>
+                    <button class="code-tab" data-lang="typescript">TypeScript</button>
+                    <button class="code-tab" data-lang="curl">cURL</button>
+                </div>
+
+                <pre class="code-block active" data-lang="python"><code>from isotrieve import Isotrieve
+from isotrieve.adapters import OpenAIAdapter, VoyageAdapter
+
+# Create agents
+agent_a = Isotrieve(OpenAIAdapter(api_key="sk-..."))
+agent_b = Isotrieve(VoyageAdapter(api_key="pa-..."))
+
+# Calibrate (one-time setup)
+result = agent_a.calibrate_with(agent_b)
+print(f"Calibration quality: {result.validation_similarity:.2%}")
+
+# Transfer embeddings
+text = "machine learning and neural networks"
+transfer = agent_a.transfer_to(agent_b.agent_id, text)
+
+print(f"Similarity: {transfer.expected_similarity:.2%}")
+print(f"Latency: {transfer.latency_ms:.2f}ms")</code></pre>
+
+                <pre class="code-block" data-lang="typescript"><code>import { Isotrieve } from '@isotrieve/core';
+import { OpenAIAdapter } from '@isotrieve/adapters-openai';
+import { VoyageAdapter } from '@isotrieve/adapters-voyage';
+
+// Create agents
+const agentA = new Isotrieve({
+  embedder: new OpenAIAdapter({ apiKey: 'sk-...' })
+});
+const agentB = new Isotrieve({
+  embedder: new VoyageAdapter({ apiKey: 'pa-...' })
+});
+
+// Calibrate (one-time setup)
+const result = await agentA.calibrateWith(agentB);
+console.log(`Calibration quality: ${result.qualityMetrics.meanSimilarity}`);
+
+// Transfer embeddings
+const text = "machine learning and neural networks";
+const transfer = await agentA.transferTo(agentB.agentId, text);
+
+console.log(`Similarity: ${transfer.expectedSimilarity}`);
+console.log(`Latency: ${transfer.latencyMs}ms`);</code></pre>
+
+                <pre class="code-block" data-lang="curl"><code># Calibrate agents
+curl -X POST https://api.isotrieve.dev/v1/calibrate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_a": {"model": "text-embedding-3-small", "dimensions": 1536},
+    "agent_b": {"model": "voyage-2", "dimensions": 1024},
+    "vocabulary_size": 1000
+  }'
+
+# Transfer embedding
+curl -X POST https://api.isotrieve.dev/v1/transfer \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from_agent": "agent_a",
+    "to_agent": "agent_b",
+    "text": "machine learning and neural networks"
+  }'</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer" style="margin-top: 0;">
+        <div class="container">
+            <p>&copy; 2026 Isotrieve. MIT License.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/playground.js"></script>
+</body>
+</html>

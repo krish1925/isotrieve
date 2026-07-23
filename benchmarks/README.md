@@ -1,6 +1,6 @@
 # Benchmarks
 
-Credibility engine for AECP. Results live in [`results/`](results/) as one JSON
+Credibility engine for Isotrieve. Results live in [`results/`](results/) as one JSON
 per run. The README results table must be generated from those files — never
 hand-edited.
 
@@ -8,7 +8,7 @@ hand-edited.
 
 ```bash
 # from repo root (needs network once for SciFact + model weights)
-pip install -e "aecp-python/[benchmarks]"
+pip install -e "isotrieve-python/[benchmarks]"
 python benchmarks/run_benchmark.py \
   --source-model sentence-transformers/all-MiniLM-L6-v2 \
   --target-model BAAI/bge-large-en-v1.5 \

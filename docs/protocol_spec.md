@@ -1,8 +1,8 @@
-# Agent Embedding Communication Protocol (AECP) v1.0
+# Agent Embedding Communication Protocol (Isotrieve) v1.0
 
 ## Overview
 
-The Agent Embedding Communication Protocol (AECP) defines a standardized method for agents with different embedding models to communicate semantic information directly through learned transfer matrices, bypassing lossy text serialization.
+The Agent Embedding Communication Protocol (Isotrieve) defines a standardized method for agents with different embedding models to communicate semantic information directly through learned transfer matrices, bypassing lossy text serialization.
 
 ## Protocol Design
 

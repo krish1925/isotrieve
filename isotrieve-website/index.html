@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Isotrieve - Migrate Vector DB Embeddings Without Re-embedding</title>
+    <meta name="description" content="Migrate a vector database to a new embedding model without re-embedding the corpus. Fits a linear map from ~2K calibration texts; 87-91% retrieval retention on BEIR benchmarks.">
+    <meta property="og:title" content="Isotrieve - Embedding Migration Without Re-embedding">
+    <meta property="og:description" content="Migrate a vector database to a new embedding model without re-embedding the corpus. Fits a linear map from ~2K calibration texts; 87-91% retrieval retention on BEIR.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://krish1925.github.io/Isotrieve/">
+    <meta property="og:site_name" content="Isotrieve">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Isotrieve - Embedding Migration Without Re-embedding">
+    <meta name="twitter:description" content="Migrate a vector database to a new embedding model without re-embedding the corpus. Fits a linear map from ~2K calibration texts; 87-91% retrieval retention on BEIR.">
+    <link rel="canonical" href="https://krish1925.github.io/Isotrieve/">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="brand"><span class="brand-dot"></span>Isotrieve</a>
+            <ul class="nav-links">
+                <li><a href="index.html" class="on">Home</a></li>
+                <li><a href="protocol.html">How It Works</a></li>
+                <li><a href="integrations.html">Integrations</a></li>
+                <li><a href="performance.html">Benchmarks</a></li>
+                <li><a href="docs.html">Docs</a></li>
+            </ul>
+            <div class="nav-right">
+                <a href="https://github.com/krish1925/Isotrieve" class="nav-gh" target="_blank">GitHub</a>
+                <button class="theme-btn" id="themeToggle" title="Toggle theme">&#9681;</button>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="wrap">
+            <h1>Embedding Migration<br>Without Re-embedding</h1>
+            <p>Migrate a vector database to a new embedding model by fitting a linear map from ~2K calibration texts. 87–91% retrieval retention on BEIR.</p>
+            <div class="grid4" style="margin-bottom:2rem">
+                <div class="card"><div class="big">91%</div><div class="label">Retrieval Retention</div><div class="detail">bge-large &rarr; e5-large, SciFact K=2000</div></div>
+                <div class="card"><div class="big">87%</div><div class="label">Rectangular Pair</div><div class="detail">MiniLM (384d) &rarr; bge-large (1024d)</div></div>
+                <div class="card"><div class="big">~0</div><div class="label">Corpus Writes</div><div class="detail">Serve mode: map queries on-the-fly</div></div>
+                <div class="card"><div class="big">2K</div><div class="label">Calibration Texts</div><div class="detail">Minimum for PASS gate verdict</div></div>
+            </div>
+            <div class="actions">
+                <a href="docs.html" class="btn primary">Quick Start</a>
+                <a href="performance.html" class="btn">View Benchmarks</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="wrap">
+            <div class="st">The Problem</div>
+            <div class="grid3">
+                <div class="card">
+                    <h3>Incompatible Embedding Spaces</h3>
+                    <p>Different models produce vectors in different geometric spaces. Raw cross-space nDCG@10 = <strong>0.0</strong>.</p>
+                    <p class="note">1024d from bge &ne; 1024d from e5</p>
+                </div>
+                <div class="card">
+                    <h3>Re-embedding Is Expensive</h3>
+                    <p>Switching models means re-embedding every document. 1M docs = hundreds of dollars.</p>
+                    <p class="note">Cost scales linearly with corpus size</p>
+                </div>
+                <div class="card">
+                    <h3>Model Deprecation Looms</h3>
+                    <p>OpenAI deprecated ada-002. New models are better, but migrating means rebuilding from scratch.</p>
+                    <p class="note">ada-002 &rarr; text-embedding-3: same story</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="wrap">
+            <div class="st">How Isotrieve Solves This</div>
+            <p>Fits a ridge regression from ~2K paired calibration texts. The learned mapping transforms stored vectors, or maps new-model queries into the legacy space.</p>
+            <ul class="fl">
+                <li><span class="ck">&gt;</span><strong>87–91% retrieval retention</strong> — measured on BEIR SciFact, 3 seeds</li>
+                <li><span class="ck">&gt;</span><strong>Score recalibration</strong> — isotonic regression makes threshold decisions reliable</li>
+                <li><span class="ck">&gt;</span><strong>Confidence flags</strong> — per-query high/medium/low with adaptive margins</li>
+                <li><span class="ck">&gt;</span><strong>ChromaDB + LangChain adapters</strong> — drop-in wrappers for popular vector DBs</li>
+                <li><span class="ck">&gt;</span><strong>Quality gate</strong> — data-driven PASS/WARN/FAIL from a trained model</li>
+            </ul>
+            <a href="protocol.html" class="btn primary">See How It Works</a>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="wrap">
+            <div class="grid4">
+                <a href="protocol.html" class="card" style="text-decoration:none;color:inherit"><h3>How It Works</h3><p class="note">Architecture and math</p></a>
+                <a href="integrations.html" class="card" style="text-decoration:none;color:inherit"><h3>Integrations</h3><p class="note">ChromaDB, LangChain, Qdrant</p></a>
+                <a href="performance.html" class="card" style="text-decoration:none;color:inherit"><h3>Benchmarks</h3><p class="note">Real numbers, no fakes</p></a>
+                <a href="docs.html" class="card" style="text-decoration:none;color:inherit"><h3>Documentation</h3><p class="note">API reference + guides</p></a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer"><div class="wrap"><p>&copy; 2026 Isotrieve. Apache-2.0 License.</p></div></footer>
+    <script src="js/main.js"></script>
+</body>
+</html>

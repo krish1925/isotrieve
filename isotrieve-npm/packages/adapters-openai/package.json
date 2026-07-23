@@ -1,0 +1,35 @@
+{
+  "name": "@isotrieve/adapters-openai",
+  "version": "1.0.0",
+  "description": "OpenAI adapter for Isotrieve",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "test": "echo \"Skipping tests for @isotrieve/adapters-openai\"",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "isotrieve",
+    "openai",
+    "embeddings"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@isotrieve/core": "^1.0.0",
+    "openai": "^4.28.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "@isotrieve/core": "^1.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}

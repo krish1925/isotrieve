@@ -2,7 +2,7 @@ version: 2
 updates:
   # Python dependencies
   - package-ecosystem: "pip"
-    directory: "/aecp-python"
+    directory: "/isotrieve-python"
     schedule:
       interval: "weekly"
     labels:

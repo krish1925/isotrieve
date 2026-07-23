@@ -24,10 +24,10 @@ import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parents[1]
 import sys
-sys.path.insert(0, str(ROOT / "aecp-python" / "src"))
+sys.path.insert(0, str(ROOT / "isotrieve-python" / "src"))
 
-from aecp.mapping.base import l2_normalize
-from aecp.mapping.linear import RidgeMapping
+from isotrieve.mapping.base import l2_normalize
+from isotrieve.mapping.linear import RidgeMapping
 
 CACHE_DIR = ROOT / "benchmarks" / ".embed_cache"
 OUT_DIR = ROOT / "benchmarks"
@@ -133,8 +133,8 @@ def main():
     # Compute similarity matrices
     # Ceiling: qry_tgt vs doc_tgt (target queries vs target docs)
     ceiling_sims = qry_tgt_n @ doc_tgt_n.T  # (n_queries, n_docs)
-    # AECP: qry_tgt vs doc_mapped (target queries vs mapped docs)
-    aecp_sims = qry_tgt_n @ doc_mapped_n.T  # (n_queries, n_docs)
+    # Isotrieve: qry_tgt vs doc_mapped (target queries vs mapped docs)
+    isotrieve_sims = qry_tgt_n @ doc_mapped_n.T  # (n_queries, n_docs)
 
     # Per-query analysis
     results = []
@@ -153,31 +153,31 @@ def main():
         ceiling_sorted = np.argsort(-ceiling_row)
         ceiling_ranks = {did: int(np.where(ceiling_sorted == di)[0][0]) for di, did in enumerate(doc_ids) if did in rel}
 
-        # AECP: rank of each relevant doc
-        aecp_row = aecp_sims[qi]
-        aecp_sorted = np.argsort(-aecp_row)
-        aecp_ranks = {did: int(np.where(aecp_sorted == di)[0][0]) for di, did in enumerate(doc_ids) if did in rel}
+        # Isotrieve: rank of each relevant doc
+        isotrieve_row = isotrieve_sims[qi]
+        isotrieve_sorted = np.argsort(-isotrieve_row)
+        isotrieve_ranks = {did: int(np.where(isotrieve_sorted == di)[0][0]) for di, did in enumerate(doc_ids) if did in rel}
 
         # True top-1 in ceiling space
         true_top1_idx = rel_indices[0]
         # Actually, find the relevant doc with highest ceiling similarity
         best_rel_idx = max(rel_indices, key=lambda di: ceiling_row[di])
         true_top1_ceiling_rank = ceiling_ranks[doc_ids[best_rel_idx]]
-        true_top1_aecp_rank = aecp_ranks[doc_ids[best_rel_idx]]
+        true_top1_isotrieve_rank = isotrieve_ranks[doc_ids[best_rel_idx]]
 
         # Cosine to true target
-        cos_mapped_to_true = float(aecp_row[best_rel_idx])
+        cos_mapped_to_true = float(isotrieve_row[best_rel_idx])
         cos_ceiling_to_true = float(ceiling_row[best_rel_idx])
 
         # Margin: cosine to true top-1 minus cosine to nearest non-relevant
         non_rel_mask = np.ones(n_docs, dtype=bool)
         for ri in rel_indices:
             non_rel_mask[ri] = False
-        max_non_rel_cos = float(np.max(aecp_row[non_rel_mask])) if np.any(non_rel_mask) else 0.0
+        max_non_rel_cos = float(np.max(isotrieve_row[non_rel_mask])) if np.any(non_rel_mask) else 0.0
         margin = cos_mapped_to_true - max_non_rel_cos
 
         # Is this a failure? (true top-1 not in top-10 after mapping)
-        is_failure = true_top1_aecp_rank >= 10
+        is_failure = true_top1_isotrieve_rank >= 10
 
         # Also check: ceiling top-1 rank (should be ~1 for relevant docs)
         ceiling_top1_for_query = int(ceiling_sorted[0])
@@ -186,7 +186,7 @@ def main():
         results.append({
             "query_id": qid,
             "ceiling_rank": true_top1_ceiling_rank,
-            "aecp_rank": true_top1_aecp_rank,
+            "isotrieve_rank": true_top1_isotrieve_rank,
             "cos_mapped_to_true": cos_mapped_to_true,
             "cos_ceiling_to_true": cos_ceiling_to_true,
             "margin": margin,
@@ -283,10 +283,10 @@ def main():
 
     # Also print the top-10 worst failures
     if failures:
-        print(f"\n--- Top-10 worst failures (by aecp_rank) ---")
-        worst = sorted(failures, key=lambda f: -f["aecp_rank"])[:10]
+        print(f"\n--- Top-10 worst failures (by isotrieve_rank) ---")
+        worst = sorted(failures, key=lambda f: -f["isotrieve_rank"])[:10]
         for f in worst:
-            print(f"  qid={f['query_id']:>10s}  aecp_rank={f['aecp_rank']:>3d}  ceiling_rank={f['ceiling_rank']:>2d}  "
+            print(f"  qid={f['query_id']:>10s}  isotrieve_rank={f['isotrieve_rank']:>3d}  ceiling_rank={f['ceiling_rank']:>2d}  "
                   f"cos_mapped={f['cos_mapped_to_true']:.4f}  margin={f['margin']:.4f}")
 
 
