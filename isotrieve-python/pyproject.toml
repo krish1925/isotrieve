@@ -89,10 +89,10 @@ all = [
 isotrieve = "isotrieve.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/krish1925/AECP"
-Documentation = "https://github.com/krish1925/AECP#readme"
-Repository = "https://github.com/krish1925/AECP"
-Issues = "https://github.com/krish1925/AECP/issues"
+Homepage = "https://github.com/krish1925/isotrieve"
+Documentation = "https://github.com/krish1925/isotrieve#readme"
+Repository = "https://github.com/krish1925/isotrieve"
+Issues = "https://github.com/krish1925/isotrieve/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/isotrieve"]
