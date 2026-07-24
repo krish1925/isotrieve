@@ -23,7 +23,7 @@ Optional extras:
 
 Zero writes to your vector store. Map new-model queries into legacy space on-the-fly. Fully reversible.
 
-### LlamaIndex
+### LlamaIndex (beta)
 
 ```python
 from isotrieve.wrappers.llamaindex import IsotrieveEmbedding
@@ -38,7 +38,7 @@ wrapper = IsotrieveEmbedding(
 # Queries are mapped; document embeddings raise IsotrieveWrapperUsageError
 ```
 
-### OpenAI client
+### OpenAI client (beta)
 
 ```python
 import openai
@@ -50,7 +50,7 @@ response = shim.embeddings.create(input=["query text"], model="text-embedding-3-
 # response.data[0].embedding is now in legacy-model space
 ```
 
-### LangChain
+### LangChain (beta)
 
 ```python
 from isotrieve.adapters.langchain import IsotrieveEmbeddings
@@ -109,10 +109,10 @@ legacy_vec = qa.map_query(new_model_embed(query))
 | Store | Serve mode | Offline migration | Status |
 |-------|-----------|-------------------|--------|
 | ChromaDB | `IsotrieveChromaFunction` | `migrate_collection()` | Supported |
-| LangChain | `IsotrieveEmbeddings` | via store adapter | Supported |
-| LlamaIndex | `IsotrieveEmbedding` wrapper | via store adapter | Query wrapper |
-| OpenAI | `IsotrieveOpenAI` shim | N/A | Query shim |
-| Qdrant | `QdrantStore` | checkpointed in-place | Supported |
+| LangChain | `IsotrieveEmbeddings` | via store adapter | Beta |
+| LlamaIndex | `IsotrieveEmbedding` wrapper | via store adapter | Beta |
+| OpenAI | `IsotrieveOpenAI` shim | N/A | Beta |
+| Qdrant | `QdrantStore` | checkpointed in-place | Beta |
 | Pinecone | — | shadow-namespace | Planned |
 
 ## Claims policy
@@ -184,7 +184,7 @@ Same dimension ≠ same space. e5 models require "query: "/"passage: " prefixes;
 | **OrthogonalProcrustesMapping** | Square dims. Best when source/target are similar spaces. | Yes | ✅ |
 | **ProcrustesDiagMapping** | Square dims. Axis-aligned transform. | Yes | ✅ |
 | **LowRankAffineMapping** | High-dim with limited calibration data. | No | ✅ |
-| **ResidualMLPMapping** | Non-linear transforms (requires torch). | Yes | ✅ |
+| **ResidualMLPMapping** | Non-linear transforms (requires torch). Beta. | Yes | ✅ |
 
 ## CLI commands
 
