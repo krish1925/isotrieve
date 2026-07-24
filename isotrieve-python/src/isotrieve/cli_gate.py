@@ -78,8 +78,22 @@ def register_gate_command(app: typer.Typer) -> None:
                     f"[red]Target vectors not found: {target_vectors}[/red]"
                 )
                 raise typer.Exit(1)
-            X_sample = np.load(source_vectors)
-            Y_sample = np.load(target_vectors)
+            try:
+                X_sample = np.load(source_vectors)
+            except Exception as exc:
+                console.print(
+                    f"[red]Failed to load source vectors: {exc}[/red]\n"
+                    f"  Ensure {source_vectors} is a valid .npy file."
+                )
+                raise typer.Exit(1) from exc
+            try:
+                Y_sample = np.load(target_vectors)
+            except Exception as exc:
+                console.print(
+                    f"[red]Failed to load target vectors: {exc}[/red]\n"
+                    f"  Ensure {target_vectors} is a valid .npy file."
+                )
+                raise typer.Exit(1) from exc
         elif queries is not None and corpus is not None:
             if not queries.exists():
                 console.print(f"[red]Queries file not found: {queries}[/red]")
@@ -89,8 +103,22 @@ def register_gate_command(app: typer.Typer) -> None:
                 raise typer.Exit(1)
             # Queries-only mode: use query embeddings as source,
             # corpus embeddings as target
-            X_sample = np.load(queries)
-            Y_sample = np.load(corpus)
+            try:
+                X_sample = np.load(queries)
+            except Exception as exc:
+                console.print(
+                    f"[red]Failed to load queries file: {exc}[/red]\n"
+                    f"  Ensure {queries} is a valid .npy file."
+                )
+                raise typer.Exit(1) from exc
+            try:
+                Y_sample = np.load(corpus)
+            except Exception as exc:
+                console.print(
+                    f"[red]Failed to load corpus file: {exc}[/red]\n"
+                    f"  Ensure {corpus} is a valid .npy file."
+                )
+                raise typer.Exit(1) from exc
         else:
             console.print(
                 "[red]Provide --source-vectors/--target-vectors OR "
@@ -98,18 +126,55 @@ def register_gate_command(app: typer.Typer) -> None:
             )
             raise typer.Exit(2)
 
+        # Validate vector dimensions and emptiness
+        if len(X_sample) == 0 or len(Y_sample) == 0:
+            console.print(
+                "[red]Vector file is empty — need at least one vector.[/red]"
+            )
+            raise typer.Exit(1)
+        if X_sample.shape[1] != mapping.d_src:
+            console.print(
+                f"[red]Source vector dim mismatch: expected {mapping.d_src} "
+                f"(source model dim), got {X_sample.shape[1]}.[/red]\n"
+                f"  Vectors must be from the source embedding model."
+            )
+            raise typer.Exit(1)
+
         # Run gate
         gate = QualityGate()
-        report = gate.evaluate(mapping, X_sample, Y_sample)
+        try:
+            report = gate.evaluate(mapping, X_sample, Y_sample)
+        except ValueError as exc:
+            msg = str(exc)
+            if "NaN" in msg or "Inf" in msg:
+                console.print(
+                    f"[red]Vectors contain NaN or Inf values.[/red]\n"
+                    f"  Check your source/target vector files for corrupt data."
+                )
+            elif "Dimension" in msg or "dim" in msg.lower():
+                console.print(f"[red]{msg}[/red]")
+            else:
+                console.print(f"[red]Gate evaluation failed: {exc}[/red]")
+            raise typer.Exit(1) from exc
+        except Exception as exc:
+            console.print(f"[red]Gate evaluation failed: {exc}[/red]")
+            raise typer.Exit(1) from exc
 
         # Bootstrap confidence intervals on retention metrics
-        ci = _bootstrap_retention_ci(
-            mapping,
-            X_sample,
-            Y_sample,
-            n_resamples=bootstrap_resamples,
-            seed=seed,
-        )
+        try:
+            ci = _bootstrap_retention_ci(
+                mapping,
+                X_sample,
+                Y_sample,
+                n_resamples=bootstrap_resamples,
+                seed=seed,
+            )
+        except Exception as exc:
+            console.print(
+                f"[yellow]Warning: bootstrap CI failed ({exc}). "
+                f"Showing point estimates only.[/yellow]"
+            )
+            ci = {}
 
         # Format output
         if output_format == "json":
