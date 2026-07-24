@@ -202,7 +202,25 @@ def calibrate_cmd(
         raise typer.Exit(2)
 
     mapping = RidgeMapping(alpha="auto", seed=seed)
-    mapping.fit(X, Y)
+    try:
+        mapping.fit(X, Y)
+    except ValueError as exc:
+        msg = str(exc)
+        if "NaN" in msg or "Inf" in msg:
+            console.print(
+                f"[red]Calibration vectors contain NaN or Inf values.[/red]\n"
+                f"  Check your source/target vector files for corrupt data."
+            )
+        elif "Need at least 2" in msg:
+            console.print(f"[red]{msg}[/red]")
+        elif "zero samples" in msg.lower():
+            console.print(f"[red]{msg}[/red]")
+        else:
+            console.print(f"[red]Calibration failed: {exc}[/red]")
+        raise typer.Exit(1) from exc
+    except Exception as exc:
+        console.print(f"[red]Calibration failed: {exc}[/red]")
+        raise typer.Exit(1) from exc
 
     # Fit score recalibrator from holdout calibration data
     from isotrieve.mapping.base import l2_normalize
@@ -328,7 +346,19 @@ def transform_cmd(
     def gen():
         for batch in src.iter_vectors(batch_size=batch_size):
             vecs = np.stack([r.vector for r in batch], axis=0)
-            mapped = mapping.transform(vecs)
+            try:
+                mapped = mapping.transform(vecs)
+            except ValueError as exc:
+                msg = str(exc)
+                if "Dimension" in msg or "dim" in msg.lower():
+                    console.print(f"[red]Transform failed: {msg}[/red]")
+                elif "NaN" in msg or "Inf" in msg:
+                    console.print(
+                        f"[red]Stored vectors contain NaN or Inf values.[/red]"
+                    )
+                else:
+                    console.print(f"[red]Transform failed: {exc}[/red]")
+                raise typer.Exit(1) from exc
             yield [
                 VectorRecord(
                     id=batch[i].id,
@@ -339,7 +369,13 @@ def transform_cmd(
                 for i in range(len(batch))
             ]
 
-    n = dst.write_vectors(gen(), batch_size=batch_size)
+    try:
+        n = dst.write_vectors(gen(), batch_size=batch_size)
+    except SystemExit:
+        raise
+    except Exception as exc:
+        console.print(f"[red]Write failed: {exc}[/red]")
+        raise typer.Exit(1) from exc
     if as_json:
         _print_json({"written": n, "target_dir": str(target_dir)})
         return
