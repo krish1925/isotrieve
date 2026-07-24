@@ -69,11 +69,12 @@ class QdrantAdapter(VectorStoreAdapter):
         mapped = self._map_queries(query_vectors)
         results = []
         for vec in mapped:
-            hits = self._client.search(
+            response = self._client.query_points(
                 collection_name=self._collection,
-                query_vector=vec.tolist(),
+                query=vec.tolist(),
                 limit=k,
             )
+            hits = response.points
             results.append(
                 [
                     {
@@ -106,20 +107,16 @@ class QdrantAdapter(VectorStoreAdapter):
             report.rows_processed = info.points_count or 0
             return report
 
-        # Create target collection with correct dimension
+        # Create target collection with mapping's target dimension
         try:
             self._client.get_collection(target)
         except Exception:
-            info = self._client.get_collection(self._collection)
-            dim = 128  # default
-            if info.config.params.vectors:
-                if isinstance(info.config.params.vectors, dict):
-                    dim = next(iter(info.config.params.vectors.values())).size
-                else:
-                    dim = info.config.params.vectors.size
+            dim = self._mapping.d_tgt
+            from qdrant_client.models import VectorParams, Distance
+
             self._client.create_collection(
                 collection_name=target,
-                vectors_config=dim,
+                vectors_config=VectorParams(size=dim, distance=Distance.COSINE),
             )
 
         # Scroll through source collection

@@ -118,9 +118,7 @@ class TestIsotrieveEmbeddings:
         ae = IsotrieveEmbeddings(m, base)
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(
-            ae.aembed_documents(["hello"])
-        )
+        result = asyncio.run(ae.aembed_documents(["hello"]))
         assert isinstance(result, list)
         assert len(result) == 1
         assert len(result[0]) == 8
@@ -134,6 +132,6 @@ class TestIsotrieveEmbeddings:
         ae = IsotrieveEmbeddings(m, base)
         import asyncio
 
-        result = asyncio.get_event_loop().run_until_complete(ae.aembed_query("hello"))
+        result = asyncio.run(ae.aembed_query("hello"))
         assert isinstance(result, list)
         assert len(result) == 8
