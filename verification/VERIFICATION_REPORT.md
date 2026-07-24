@@ -151,6 +151,10 @@
 Model pair: all-MiniLM-L6-v2 (384d) → all-mpnet-base-v2 (768d)
 Corpus: 1000 synthetic texts across 10 topics
 
+**Note:** These results use a synthetic corpus and are only valid for verifying the gate's
+internal consistency, not for claiming real-world retention. Real benchmarks use SciFact
+with real qrels via `benchmarks/run_benchmark.py`.
+
 ## Stress Test Results
 
 All CLI commands tested with intentionally corrupted/edge-case inputs. **Zero raw tracebacks** after fixes.
@@ -183,68 +187,3 @@ All CLI commands tested with intentionally corrupted/edge-case inputs. **Zero ra
 | Raw traceback on bad .npy file | gate | Wrapped np.load in try/except |
 | Raw traceback on dim mismatch in transform | transform | Wrapped mapping.transform in generator |
 | Raw traceback on NaN in calibrate | calibrate | Wrapped mapping.fit in try/except |
-
-## Cross-Domain Benchmark
-
-**Model pair:** all-MiniLM-L6-v2 (384d) → all-mpnet-base-v2 (768d)
-**Corpus:** 500 texts across 10 domains (medical, legal, code, finance, science, news, philosophy, cooking, math, travel)
-
-### Embedding Stability (Number Preservation)
-
-| Check | Result |
-|-------|--------|
-| Source self-retrieval R@1 | 100.0% |
-| Target self-retrieval R@1 | 100.0% |
-| Re-embed exact match (source) | True (max diff: 0.00e+00) |
-| Re-embed exact match (target) | True (max diff: 0.00e+00) |
-
-**Conclusion:** Embeddings are perfectly deterministic. Same input → same vector, zero drift.
-
-### Mapping Fidelity
-
-| Metric | Value |
-|--------|-------|
-| Mapped vs target cosine (mean) | 0.9985 |
-| Mapped vs target cosine (p5) | 0.9967 |
-| Mapped vs target cosine (min) | 0.9919 |
-
-Per-domain cosine (all > 0.997):
-
-| Domain | Cosine |
-|--------|--------|
-| medical_abstracts | 0.9987 |
-| legal_contracts | 0.9987 |
-| code_reviews | 0.9984 |
-| financial_reports | 0.9985 |
-| scientific_papers | 0.9986 |
-| news_articles | 0.9989 |
-| philosophy_texts | 0.9980 |
-| cooking_recipes | 0.9984 |
-| math_problems | 0.9979 |
-| travel_guides | 0.9987 |
-
-### Cross-Domain Query Retrieval (K=500)
-
-| Domain | Mapped R@1 | Mapped R@10 | Ceiling R@1 | Retention |
-|--------|-----------|-------------|-------------|-----------|
-| medical_abstracts | 1 | 1 | 1 | 100% |
-| legal_contracts | 1 | 1 | 1 | 100% |
-| code_reviews | 1 | 1 | 1 | 100% |
-| financial_reports | 1 | 1 | 1 | 100% |
-| scientific_papers | 1 | 1 | 1 | 100% |
-| news_articles | 1 | 1 | 1 | 100% |
-| philosophy_texts | 1 | 1 | 1 | 100% |
-| cooking_recipes | 1 | 1 | 1 | 100% |
-| math_problems | 1 | 1 | 1 | 100% |
-| travel_guides | 1 | 1 | 1 | 100% |
-
-### Gate Verdict
-
-Gate predicts WARN (0.838) because the synthetic corpus is cleaner than real-world data. Actual measured retention is 100% across all domains. The gate is conservative — correct behavior for production use.
-
-### Mapping Type Comparison
-
-| Type | Gate | R@1 | R@10 |
-|------|------|-----|------|
-| Ridge | WARN | 1.000 | 1.000 |
-| LowRankAffine | WARN | 1.000 | 1.000 |
