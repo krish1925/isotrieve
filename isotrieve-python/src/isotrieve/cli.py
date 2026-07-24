@@ -92,6 +92,22 @@ def plan_cmd(
     )
 
 
+def _load_npy(path: Path, label: str) -> np.ndarray:
+    """Load a .npy file with a clear error message on failure."""
+    if not path.exists():
+        console.print(f"[red]{label}: file not found: {path}[/red]")
+        console.print(
+            f"  Hint: provide a valid .npy file with shape (K, d). "
+            f"Generate one with: np.save('{path}', embeddings)"
+        )
+        raise typer.Exit(1)
+    try:
+        return np.load(path)
+    except Exception as exc:
+        console.print(f"[red]{label}: failed to load {path}: {exc}[/red]")
+        raise typer.Exit(1) from exc
+
+
 @app.command("calibrate")
 def calibrate_cmd(
     source_vectors: Path | None = typer.Option(
@@ -137,14 +153,14 @@ def calibrate_cmd(
                 "[red]--queries-only requires --queries (NPY) and --target-vectors (NPY)[/red]"
             )
             raise typer.Exit(2)
-        X = np.load(queries_file)
-        Y = np.load(target_vectors)
+        X = _load_npy(queries_file, "queries")
+        Y = _load_npy(target_vectors, "target-vectors")
         src_id = source_model or "query-source"
         tgt_id = target_model or "query-target"
         texts = None  # Skip text-based calibration
     elif source_vectors is not None and target_vectors is not None:
-        X = np.load(source_vectors)
-        Y = np.load(target_vectors)
+        X = _load_npy(source_vectors, "source-vectors")
+        Y = _load_npy(target_vectors, "target-vectors")
         src_id = source_model or "source"
         tgt_id = target_model or "target"
         texts = None  # Not needed for NPY-based calibration
@@ -281,8 +297,32 @@ def transform_cmd(
     """Stream-transform a NumpyFileStore into a new directory."""
     from isotrieve.mapping.registry import load_mapping
 
-    mapping = load_mapping(mapping_path)
-    src = NumpyFileStore(source_dir)
+    if not mapping_path.exists():
+        console.print(
+            f"[red]Mapping file not found: {mapping_path}[/red]\n"
+            f"  Run [bold]isotrieve calibrate[/bold] first to create a mapping."
+        )
+        raise typer.Exit(1)
+
+    try:
+        mapping = load_mapping(mapping_path)
+    except (ValueError, FileNotFoundError) as exc:
+        console.print(f"[red]Failed to load mapping: {exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    if not source_dir.exists():
+        console.print(
+            f"[red]Source directory not found: {source_dir}[/red]\n"
+            f"  Provide a directory containing vectors.npy and ids.npy."
+        )
+        raise typer.Exit(1)
+
+    try:
+        src = NumpyFileStore(source_dir)
+    except FileNotFoundError as exc:
+        console.print(f"[red]Source store invalid: {exc}[/red]")
+        raise typer.Exit(1) from exc
+
     dst = NumpyFileStore(target_dir, create=True)
 
     def gen():
@@ -312,7 +352,23 @@ def inspect_cmd(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """Pretty-print the header of a ``.isotrieve`` mapping file."""
-    header = read_isotrieve_header(mapping_path)
+    if not mapping_path.exists():
+        console.print(
+            f"[red]File not found: {mapping_path}[/red]\n"
+            f"  Provide a valid .isotrieve mapping file.\n"
+            f"  Create one with: [bold]isotrieve calibrate[/bold]"
+        )
+        raise typer.Exit(1)
+
+    try:
+        header = read_isotrieve_header(mapping_path)
+    except ValueError as exc:
+        console.print(f"[red]Invalid mapping file: {exc}[/red]")
+        raise typer.Exit(1) from exc
+    except Exception as exc:
+        console.print(f"[red]Failed to read mapping: {exc}[/red]")
+        raise typer.Exit(1) from exc
+
     if as_json:
         _print_json(header)
         return

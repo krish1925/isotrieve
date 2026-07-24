@@ -120,7 +120,7 @@ class TestIsotrieveChromaFunction:
         ef = IsotrieveChromaFunction(
             m, new_model_embedder=lambda t: np.zeros((len(t), 12))
         )
-        assert ef.name() == "isotrieve_chroma"
+        assert ef.name == "isotrieve_chroma"
 
     def test_get_config(self):
         m = _make_mapping(d_src=8, d_tgt=12)

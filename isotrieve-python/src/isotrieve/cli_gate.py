@@ -52,13 +52,41 @@ def register_gate_command(app: typer.Typer) -> None:
         from isotrieve.mapping.registry import load_mapping
         from isotrieve.quality.gate import QualityGate
 
-        mapping = load_mapping(mapping_path)
+        # Validate mapping file exists
+        if not mapping_path.exists():
+            console.print(
+                f"[red]Mapping file not found: {mapping_path}[/red]\n"
+                f"  Run [bold]isotrieve calibrate[/bold] first to create a mapping."
+            )
+            raise typer.Exit(1)
+
+        try:
+            mapping = load_mapping(mapping_path)
+        except (ValueError, FileNotFoundError) as exc:
+            console.print(f"[red]Failed to load mapping: {exc}[/red]")
+            raise typer.Exit(1) from exc
 
         # Resolve gate inputs
         if source_vectors is not None and target_vectors is not None:
+            if not source_vectors.exists():
+                console.print(
+                    f"[red]Source vectors not found: {source_vectors}[/red]"
+                )
+                raise typer.Exit(1)
+            if not target_vectors.exists():
+                console.print(
+                    f"[red]Target vectors not found: {target_vectors}[/red]"
+                )
+                raise typer.Exit(1)
             X_sample = np.load(source_vectors)
             Y_sample = np.load(target_vectors)
         elif queries is not None and corpus is not None:
+            if not queries.exists():
+                console.print(f"[red]Queries file not found: {queries}[/red]")
+                raise typer.Exit(1)
+            if not corpus.exists():
+                console.print(f"[red]Corpus file not found: {corpus}[/red]")
+                raise typer.Exit(1)
             # Queries-only mode: use query embeddings as source,
             # corpus embeddings as target
             X_sample = np.load(queries)

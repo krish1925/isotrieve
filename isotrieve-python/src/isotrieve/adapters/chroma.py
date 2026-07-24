@@ -98,6 +98,7 @@ class IsotrieveChromaFunction:
     def default_space(self) -> str:
         return "cosine"
 
+    @property
     def name(self) -> str:
         return "isotrieve_chroma"
 
@@ -200,7 +201,7 @@ def migrate_collection(
     first_batch = src.get(
         limit=batch_size, include=["embeddings", "metadatas", "documents"]
     )
-    if not first_batch["embeddings"]:
+    if src.count() == 0:
         report.errors.append("Source collection is empty")
         return report
 
@@ -224,7 +225,7 @@ def migrate_collection(
         batch = src.get(
             offset=offset,
             limit=batch_size,
-            include=["embeddings", "metadatas", "documents", "ids"],
+            include=["embeddings", "metadatas", "documents"],
         )
         if not batch["ids"]:
             break

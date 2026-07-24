@@ -1,0 +1,78 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/kpatel/Desktop/agent-communication/isotrieve-python
+configfile: pyproject.toml
+plugins: cov-7.1.0, anyio-4.14.2
+collected 123 items / 1 skipped
+
+tests/test_cached.py ......                                              [  4%]
+tests/test_chroma_adapter.py .......sssss.                               [ 15%]
+tests/test_cli.py ....                                                   [ 18%]
+tests/test_cli_new_commands.py .....                                     [ 22%]
+tests/test_gate.py .........                                             [ 30%]
+tests/test_llamaindex_wrapper.py ........                                [ 36%]
+tests/test_mapping.py .....................                              [ 53%]
+tests/test_migrate.py ....                                               [ 56%]
+tests/test_openai_shim.py ......                                         [ 61%]
+tests/test_quality.py .....                                              [ 65%]
+tests/test_recalibration.py .......                                      [ 71%]
+tests/test_release.py ................                                   [ 84%]
+tests/test_reranking.py .....                                            [ 88%]
+tests/test_serve.py .......                                              [ 94%]
+tests/test_stores.py ..                                                  [ 95%]
+tests/test_telemetry.py .....                                            [100%]
+
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.14.3-final-0 _______________
+
+Name                                               Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------------------------
+src/isotrieve/__init__.py                              4      0      0      0   100%
+src/isotrieve/adapters/__init__.py                     0      0      0      0   100%
+src/isotrieve/adapters/base.py                        44      9      0      0    80%   74-75, 79, 83, 90-93, 97, 101
+src/isotrieve/adapters/chroma.py                     109     77     26      0    25%   25-31, 114-117, 158-281
+src/isotrieve/adapters/langchain.py                   45     45      6      0     0%   10-113
+src/isotrieve/adapters/llamaindex_store.py            67     67     24      0     0%   7-208
+src/isotrieve/adapters/pinecone.py                    74     74     20      0     0%   10-180
+src/isotrieve/adapters/qdrant.py                      70     70     16      0     0%   7-173
+src/isotrieve/calibration/__init__.py                  3      0      0      0   100%
+src/isotrieve/calibration/calib_v1.py                 34     34      4      0     0%   7-150
+src/isotrieve/calibration/corpus.py                   33     26     10      0    16%   40-52, 62-72, 77-81
+src/isotrieve/calibration/planner.py                  36      0      4      1    98%   37->41
+src/isotrieve/cli_doctor.py                           79     29     24      9    61%   53, 82, 84, 88, 95-112, 117-129, 135, 145, 154, 156, 158
+src/isotrieve/cli_gate.py                             91     33     22      3    59%   89-92, 96, 148-149, 155-184, 189-194, 198-205
+src/isotrieve/cli_report.py                           23     16      4      0    26%   22-52
+src/isotrieve/mapping/__init__.py                      9      2      0      0    78%   28-29
+src/isotrieve/mapping/base.py                        185     29     54     20    78%   45-48, 88, 93, 99, 104, 133, 155->159, 161, 163, 165, 173->176, 177, 179, 199, 234, 236-237, 247->249, 265-267, 275-276, 285, 299, 309->319, 323-330
+src/isotrieve/mapping/linear.py                      225     21     42     10    87%   29, 34, 45, 47, 51, 68, 159-160, 190-196, 225, 465-466, 533-540
+src/isotrieve/mapping/mlp.py                         161    148     28      0     7%   50-60, 63-204, 210-223, 226-240, 243-265, 269-316
+src/isotrieve/mapping/registry.py                    110     54     20      5    50%   20, 22, 44-45, 56, 70->74, 80-82, 102-165
+src/isotrieve/migrate.py                              76      8     14      3    88%   92-99, 101->113, 120-121
+src/isotrieve/providers/__init__.py                    4      0      0      0   100%
+src/isotrieve/providers/base.py                       13      0      0      0   100%
+src/isotrieve/providers/cached.py                     77      5     18      2    91%   20-23, 52, 91->95
+src/isotrieve/providers/cohere.py                     37     37      6      0     0%   6-68
+src/isotrieve/providers/factory.py                    39     32     18      0    12%   32-35, 39-89
+src/isotrieve/providers/gemini.py                     35     35      4      0     0%   6-64
+src/isotrieve/providers/openai.py                     46     46     12      0     0%   7-84
+src/isotrieve/providers/sentence_transformers.py      25     25      2      0     0%   3-52
+src/isotrieve/providers/voyage.py                     36     36      6      0     0%   6-61
+src/isotrieve/quality/__init__.py                      2      0      0      0   100%
+src/isotrieve/quality/gate.py                        119     11     26     11    85%   31, 43, 105, 107->exit, 128, 186-187, 193-194, 209->212, 269, 276, 283
+src/isotrieve/quality/metrics.py                     102     29     30      8    66%   20, 27, 36, 40, 52, 80, 101-121, 138, 140, 192-193
+src/isotrieve/recalibration.py                       106     30     16      1    70%   170-207, 225->227, 231-232, 237-238
+src/isotrieve/reporting/__init__.py                    0      0      0      0   100%
+src/isotrieve/reporting/html_report.py                13     13      4      0     0%   3-22
+src/isotrieve/reranking.py                            77     23     18      1    68%   50-53, 56-65, 86-97, 170-171
+src/isotrieve/serve.py                                73     12     14      2    82%   38-44, 85, 87, 97, 105, 120-124
+src/isotrieve/stores/__init__.py                       3      0      0      0   100%
+src/isotrieve/stores/base.py                          19      0      0      0   100%
+src/isotrieve/stores/numpy_files.py                  109      4     44      5    94%   64, 70, 75->73, 146, 152
+src/isotrieve/stores/qdrant_store.py                  78     78     16      0     0%   6-181
+src/isotrieve/wrappers/__init__.py                     4      0      0      0   100%
+src/isotrieve/wrappers/llamaindex.py                  58      4      4      1    92%   76-77, 90, 135
+src/isotrieve/wrappers/openai_shim.py                 42      1      4      1    96%   69
+src/isotrieve/wrappers/telemetry.py                   36      1     10      1    96%   23, 62->60
+----------------------------------------------------------------------------------------------
+TOTAL                                               2631   1164    570     84    53%
+======================== 118 passed, 6 skipped in 3.80s ========================

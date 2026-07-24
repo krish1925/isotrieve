@@ -63,6 +63,12 @@ def _validate_xy(X: np.ndarray, Y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
             stacklevel=3,
         )
 
+    if X.shape[0] < 2:
+        raise ValueError(
+            f"Need at least 2 calibration pairs, got {X.shape[0]}. "
+            f"Provide more calibration texts or vectors."
+        )
+
     rank = int(np.linalg.matrix_rank(X, tol=1e-8))
     if rank < min(X.shape):
         warnings.warn(

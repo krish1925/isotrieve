@@ -102,22 +102,35 @@ class NumpyFileStore(VectorStore):
         batch_size: int = 1024,
     ) -> int:
         self.path.mkdir(parents=True, exist_ok=True)
-        if (
-            isinstance(records, list)
-            and records
-            and isinstance(records[0], VectorRecord)
-        ):
-            batches: list[list[VectorRecord]] = []
-            buf: list[VectorRecord] = []
-            for r in records:  # type: ignore[assignment]
-                assert isinstance(r, VectorRecord)
-                buf.append(r)
-                if len(buf) >= batch_size:
+        if isinstance(records, list) and records:
+            # Convert dicts to VectorRecords
+            first = records[0]
+            if isinstance(first, dict):
+                records = [
+                    VectorRecord(
+                        id=r["id"],
+                        vector=np.asarray(r["vector"]),
+                        text=r.get("text"),
+                        payload=r.get("payload"),
+                    )
+                    for r in records
+                ]
+                first = records[0]
+
+            if isinstance(first, VectorRecord):
+                batches: list[list[VectorRecord]] = []
+                buf: list[VectorRecord] = []
+                for r in records:  # type: ignore[assignment]
+                    assert isinstance(r, VectorRecord)
+                    buf.append(r)
+                    if len(buf) >= batch_size:
+                        batches.append(buf)
+                        buf = []
+                if buf:
                     batches.append(buf)
-                    buf = []
-            if buf:
-                batches.append(buf)
-            record_iter: Iterator[list[VectorRecord]] = iter(batches)
+                record_iter: Iterator[list[VectorRecord]] = iter(batches)
+            else:
+                record_iter = records  # type: ignore[assignment]
         else:
             record_iter = records  # type: ignore[assignment]
 

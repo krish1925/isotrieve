@@ -176,6 +176,29 @@ Same dimension ≠ same space. e5 models require "query: "/"passage: " prefixes;
 - Do not skip the quality gate
 - Do not use MLP adapter (0.727 vs 0.871 for Ridge, same cost)
 
+## Mapping types
+
+| Type | Use case | Inverse | Save/Load |
+|------|----------|---------|-----------|
+| **RidgeMapping** | Default. Unequal dims, noise robust. | No | ✅ |
+| **OrthogonalProcrustesMapping** | Square dims. Best when source/target are similar spaces. | Yes | ✅ |
+| **ProcrustesDiagMapping** | Square dims. Axis-aligned transform. | Yes | ✅ |
+| **LowRankAffineMapping** | High-dim with limited calibration data. | No | ✅ |
+| **ResidualMLPMapping** | Non-linear transforms (requires torch). | Yes | ✅ |
+
+## CLI commands
+
+| Command | What it does |
+|---------|-------------|
+| `isotrieve plan` | Estimate cost: API calls, storage, time |
+| `isotrieve calibrate` | Fit mapping from calibration vectors |
+| `isotrieve transform` | Transform stored vectors to new space |
+| `isotrieve gate` | Evaluate retrieval quality (PASS/WARN/FAIL) |
+| `isotrieve inspect` | Show mapping metadata and validation report |
+| `isotrieve report` | Render migration report as markdown |
+| `isotrieve doctor` | Check environment and dependencies |
+| `isotrieve version` | Show version |
+
 ## How it works
 
 1. Embed K texts with source and target models → matrices X, Y

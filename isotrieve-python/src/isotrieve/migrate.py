@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -94,7 +95,7 @@ def migrate_store(
                 json.loads(manifest_path.read_text())
             )
             start_idx = manifest.batch_end
-            print(f"Resuming from batch {start_idx}")
+            logging.info("Resuming from batch %d", start_idx)
         except Exception:
             pass
 
