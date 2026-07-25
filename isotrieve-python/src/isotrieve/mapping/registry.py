@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
+
 from isotrieve.mapping.base import Mapping, load_isotrieve_payload
 
 _REGISTRY: dict[str, type[Mapping]] = {}
@@ -48,12 +50,16 @@ def _ensure_builtins() -> None:
 def load_mapping(path: str | Path) -> Mapping:
     """Load any registered mapping from a ``.isotrieve`` file."""
     _ensure_builtins()
+
+    # Quick peek at mapping_type for special-case dispatch
+    from isotrieve.mapping.base import read_isotrieve_header
+
+    peek = read_isotrieve_header(path)
+    if peek["mapping_type"] == "residual_mlp":
+        return _load_mlp_mapping(peek)
+
     header, W, W_inv, extra = load_isotrieve_payload(path)
     mapping_type = header["mapping_type"]
-
-    # Special handling for ResidualMLP (torch-based, state in separate file)
-    if mapping_type == "residual_mlp":
-        return _load_mlp_mapping(header)
 
     cls = get_mapping_class(mapping_type)
     obj = cls.__new__(cls)
@@ -122,8 +128,12 @@ def _load_mlp_mapping(header: dict) -> Mapping:
     obj._fitted = True
     obj._meta = dict(header.get("meta") or {})
     obj._hidden_dim = state.get("hidden_dim")
+    # MLP uses _model, not _W; set a dummy so _require_fitted passes
+    obj._W = np.zeros((obj._d_src, obj._d_tgt), dtype=np.float64)
+    obj._W_inv = np.zeros((obj._d_tgt, obj._d_src), dtype=np.float64)
     object.__setattr__(obj, "_normalize_output", True)
     object.__setattr__(obj, "_holdout_fraction", 0.1)
+    object.__setattr__(obj, "_device_str", None)  # auto-detect on load
 
     val = header.get("validation")
     if val is not None:
@@ -144,6 +154,7 @@ def _load_mlp_mapping(header: dict) -> Mapping:
     class ResidualMLP(nn.Module):
         def __init__(self, d_in, d_out, h):
             super().__init__()
+            self.is_residual = d_in == d_out
             self.net = nn.Sequential(
                 nn.Linear(d_in, h),
                 nn.GELU(),
@@ -151,7 +162,9 @@ def _load_mlp_mapping(header: dict) -> Mapping:
             )
 
         def forward(self, x):
-            return x + self.net(x)
+            if self.is_residual:
+                return x + self.net(x)
+            return self.net(x)
 
     model = ResidualMLP(d_src, d_tgt, hidden)
     model.load_state_dict(state["model"])

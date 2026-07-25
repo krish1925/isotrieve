@@ -33,6 +33,10 @@ class ResidualMLPMapping(Mapping):
         Training epochs.
     rank:
         If set, project to lower rank before MLP (compression).
+    device:
+        PyTorch device string (``"cpu"``, ``"mps"``, ``"cuda"``).
+        ``None`` (default) auto-detects: MPS on Apple Silicon, else CPU.
+        MPS gives ~3-5x speedup on M1/M2/M3 Macs for training.
     """
 
     mapping_type = "residual_mlp"
@@ -46,6 +50,7 @@ class ResidualMLPMapping(Mapping):
         seed: int = 0,
         normalize_output: bool = True,
         holdout_fraction: float = 0.1,
+        device: str | None = None,
     ) -> None:
         super().__init__()
         self._hidden_dim = hidden_dim
@@ -55,9 +60,26 @@ class ResidualMLPMapping(Mapping):
         self._seed = seed
         self._normalize_output = normalize_output
         self._holdout_fraction = holdout_fraction
+        self._device_str = device
         self._model = None
         self._d_src_int: int = 0
         self._d_tgt_int: int = 0
+
+    def _resolve_device(self):
+        """Resolve the PyTorch device from user preference or auto-detect."""
+        import torch
+
+        if self._device_str is not None:
+            return torch.device(self._device_str)
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return torch.device("mps")
+        return torch.device("cpu")
+
+    def _get_model_device(self):
+        """Return the device the model is on."""
+        if self._model is None:
+            return self._resolve_device()
+        return next(self._model.parameters()).device
 
     def fit(self, X: np.ndarray, Y: np.ndarray) -> ResidualMLPMapping:
         try:
@@ -104,7 +126,7 @@ class ResidualMLPMapping(Mapping):
         d_tgt = Y_train.shape[1]
         hidden = self._hidden_dim or min(256, d_src)
 
-        device = torch.device("cpu")
+        device = self._resolve_device()
 
         class ResidualMLP(nn.Module):
             def __init__(self, d_in: int, d_out: int, h: int):
@@ -231,10 +253,11 @@ class ResidualMLPMapping(Mapping):
         self._require_fitted()
         V, single = self._validate_input(V, self._d_src, "forward")
 
+        device = self._get_model_device()
         self._model.eval()
         with torch.no_grad():
-            V_t = torch.from_numpy(V)
-            out = self._model(V_t).numpy().astype(np.float64)
+            V_t = torch.from_numpy(V).to(device)
+            out = self._model(V_t).cpu().numpy().astype(np.float64)
         if self._normalize_output:
             out = l2_normalize(out)
         return out.ravel() if single else out
@@ -256,10 +279,11 @@ class ResidualMLPMapping(Mapping):
 
         V, single = self._validate_input(V, self._d_tgt, "inverse")
 
+        device = self._get_model_device()
         inv_model.eval()
         with torch.no_grad():
-            V_t = torch.from_numpy(V)
-            out = inv_model(V_t).numpy().astype(np.float64)
+            V_t = torch.from_numpy(V).to(device)
+            out = inv_model(V_t).cpu().numpy().astype(np.float64)
         if self._normalize_output:
             out = l2_normalize(out)
         return out.ravel() if single else out
@@ -283,6 +307,7 @@ class ResidualMLPMapping(Mapping):
             "d_src": self._d_src,
             "d_tgt": self._d_tgt,
             "hidden_dim": self._hidden_dim,
+            "device": str(self._resolve_device()),
         }
         # Save state dict as .pt and header as .json
         torch.save(state, str(path) + ".pt")
@@ -305,6 +330,7 @@ class ResidualMLPMapping(Mapping):
             "has_inverse": True,
             "meta": self._meta,
             "torch_state_file": str(path) + ".pt",
+            "matrix_shape": [self._d_src, self._d_tgt],
             "validation": self._validation_report.to_dict()
             if self._validation_report
             else None,
