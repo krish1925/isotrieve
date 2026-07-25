@@ -99,7 +99,7 @@ def _inspect_chroma(url: str | None, collection: str | None) -> dict:
         col = client.get_collection(collection or "default")
         count = col.count()
         sample = col.get(limit=1, include=["embeddings", "metadatas"])
-        dim = len(sample["embeddings"][0]) if sample.get("embeddings") else None
+        dim = len(sample["embeddings"][0]) if sample.get("embeddings") else None  # type: ignore[index]
         has_isotrieve = False
         if sample.get("metadatas") and sample["metadatas"]:
             has_isotrieve = "isotrieve_mapping_id" in sample["metadatas"][0]
@@ -122,7 +122,7 @@ def _inspect_qdrant(url: str | None, collection: str | None) -> dict:
         return {
             "vector_count": info.points_count,
             "dimension": (
-                info.config.params.vectors.size if info.config.params.vectors else None
+                info.config.params.vectors.size if info.config.params.vectors else None  # type: ignore[union-attr]
             ),
         }
     except Exception as e:

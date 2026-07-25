@@ -208,12 +208,10 @@ def calibrate_cmd(
         msg = str(exc)
         if "NaN" in msg or "Inf" in msg:
             console.print(
-                f"[red]Calibration vectors contain NaN or Inf values.[/red]\n"
-                f"  Check your source/target vector files for corrupt data."
+                "[red]Calibration vectors contain NaN or Inf values.[/red]\n"
+                "  Check your source/target vector files for corrupt data."
             )
-        elif "Need at least 2" in msg:
-            console.print(f"[red]{msg}[/red]")
-        elif "zero samples" in msg.lower():
+        elif "Need at least 2" in msg or "zero samples" in msg.lower():
             console.print(f"[red]{msg}[/red]")
         else:
             console.print(f"[red]Calibration failed: {exc}[/red]")
@@ -354,7 +352,7 @@ def transform_cmd(
                     console.print(f"[red]Transform failed: {msg}[/red]")
                 elif "NaN" in msg or "Inf" in msg:
                     console.print(
-                        f"[red]Stored vectors contain NaN or Inf values.[/red]"
+                        "[red]Stored vectors contain NaN or Inf values.[/red]"
                     )
                 else:
                     console.print(f"[red]Transform failed: {exc}[/red]")

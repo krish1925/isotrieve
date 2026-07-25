@@ -197,10 +197,6 @@ def migrate_collection(
         )
 
     # Create target collection with correct dimensions
-    # Read first batch to determine dims
-    first_batch = src.get(
-        limit=batch_size, include=["embeddings", "metadatas", "documents"]
-    )
     if src.count() == 0:
         report.errors.append("Source collection is empty")
         return report

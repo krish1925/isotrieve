@@ -69,14 +69,10 @@ def register_gate_command(app: typer.Typer) -> None:
         # Resolve gate inputs
         if source_vectors is not None and target_vectors is not None:
             if not source_vectors.exists():
-                console.print(
-                    f"[red]Source vectors not found: {source_vectors}[/red]"
-                )
+                console.print(f"[red]Source vectors not found: {source_vectors}[/red]")
                 raise typer.Exit(1)
             if not target_vectors.exists():
-                console.print(
-                    f"[red]Target vectors not found: {target_vectors}[/red]"
-                )
+                console.print(f"[red]Target vectors not found: {target_vectors}[/red]")
                 raise typer.Exit(1)
             try:
                 X_sample = np.load(source_vectors)
@@ -128,9 +124,7 @@ def register_gate_command(app: typer.Typer) -> None:
 
         # Validate vector dimensions and emptiness
         if len(X_sample) == 0 or len(Y_sample) == 0:
-            console.print(
-                "[red]Vector file is empty — need at least one vector.[/red]"
-            )
+            console.print("[red]Vector file is empty — need at least one vector.[/red]")
             raise typer.Exit(1)
         if X_sample.shape[1] != mapping.d_src:
             console.print(
@@ -148,8 +142,8 @@ def register_gate_command(app: typer.Typer) -> None:
             msg = str(exc)
             if "NaN" in msg or "Inf" in msg:
                 console.print(
-                    f"[red]Vectors contain NaN or Inf values.[/red]\n"
-                    f"  Check your source/target vector files for corrupt data."
+                    "[red]Vectors contain NaN or Inf values.[/red]\n"
+                    "  Check your source/target vector files for corrupt data."
                 )
             elif "Dimension" in msg or "dim" in msg.lower():
                 console.print(f"[red]{msg}[/red]")

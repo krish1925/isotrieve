@@ -112,7 +112,7 @@ class QdrantAdapter(VectorStoreAdapter):
             self._client.get_collection(target)
         except Exception:
             dim = self._mapping.d_tgt
-            from qdrant_client.models import VectorParams, Distance
+            from qdrant_client.models import Distance, VectorParams
 
             self._client.create_collection(
                 collection_name=target,
