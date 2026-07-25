@@ -1,5 +1,7 @@
 # isotrieve
 
+[![CI](https://github.com/krish1925/isotrieve/actions/workflows/ci.yml/badge.svg)](https://github.com/krish1925/isotrieve/actions/workflows/ci.yml)
+
 Embedding providers deprecate models constantly — ada-002 is gone, text-embedding-3 is next. When that happens, you either re-embed your entire corpus (expensive, slow, risky) or get stuck on a dead model. Isotrieve lets you switch without re-embedding: fit a lightweight linear transform from ~2K calibration texts, apply it to stored vectors, and gate the migration on measured retrieval retention. 87-91% retention on BEIR benchmarks.
 
 ## Install
@@ -50,7 +52,7 @@ response = shim.embeddings.create(input=["query text"], model="text-embedding-3-
 # response.data[0].embedding is now in legacy-model space
 ```
 
-### LangChain (beta)
+### LangChain
 
 ```python
 from isotrieve.adapters.langchain import IsotrieveEmbeddings
@@ -106,14 +108,14 @@ legacy_vec = qa.map_query(new_model_embed(query))
 
 ## Adapter status
 
-| Store | Serve mode | Offline migration | Status |
-|-------|-----------|-------------------|--------|
-| ChromaDB | `IsotrieveChromaFunction` | `migrate_collection()` | Supported |
-| LangChain | `IsotrieveEmbeddings` | via store adapter | Beta |
-| LlamaIndex | `IsotrieveEmbedding` wrapper | via store adapter | Beta |
-| OpenAI | `IsotrieveOpenAI` shim | N/A | Beta |
-| Qdrant | `QdrantStore` | checkpointed in-place | Beta |
-| Pinecone | — | shadow-namespace | Planned |
+| Store | Query | Migrate | Dry run | Status |
+|-------|-------|---------|---------|--------|
+| ChromaDB | `IsotrieveChromaFunction` | `migrate_collection()` | Yes | Supported |
+| Qdrant | `QdrantAdapter.query()` | `QdrantAdapter.migrate()` | Yes | Supported |
+| Pinecone | `PineconeAdapter.query()` | `PineconeAdapter.migrate()` | Yes | Supported |
+| LangChain | `IsotrieveEmbeddings` | via store adapter | — | Supported |
+| LlamaIndex | wrapper | `migrate_llamaindex_store()` | Yes | Beta |
+| OpenAI | `IsotrieveOpenAI` shim | N/A | — | Beta |
 
 ## Claims policy
 

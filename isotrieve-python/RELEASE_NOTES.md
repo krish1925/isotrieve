@@ -1,3 +1,30 @@
+# isotrieve 0.3.0
+
+Compatibility update: modern Qdrant/ChromaDB support, hardened CLI, CI pipeline, and demo notebooks.
+
+## What's new in v0.3
+
+- **Qdrant v1.18+ compatibility** — migrated from removed `search()` to `query_points()` API; minimum `qdrant-client>=1.12`
+- **ChromaDB v1.0+ compatibility** — updated empty-collection check and `include=` parameter; minimum `chromadb>=1.0`
+- **MLP device selection** — `ResidualMLPMapping(device=)` parameter for MPS/CUDA auto-detection; ~3-5x training speedup on Apple Silicon
+- **MLP rectangular dims** — fixed residual connection for non-square source/target dimensions
+- **MLP load fix** — registry now peeks header before full load, preventing numpy parse errors on `.pt` state dicts
+- **Zero raw tracebacks** — all CLI commands (`calibrate`, `transform`, `inspect`, `gate`) wrapped in try/except with user-friendly error messages
+- **6 demo notebooks** — quickstart, ChromaDB migration, Qdrant migration, adapter intermediary, cross-architecture dims, recalibration
+- **CI pipeline** — GitHub Actions: ruff lint, mypy typecheck, pytest matrix (3.10-3.12), claims linter
+- **Claims linter** — `scripts/lint_claims.py` validates CLAIMS.md artifact references against `benchmarks/results/`
+- **Visual assets** — pipeline flow diagram, benchmark recall chart (SVG + PNG)
+- **Qdrant integration tests** — 8 in-memory tests (serve, migrate, dry run, empty, double-migrate, k-limit, MigrationReport)
+- **CLI gate tests** — `gate` command with `--format json`, `calibrate --queries-only` mode
+
+## Migration notes
+
+- `qdrant-client` minimum bumped from `>=1.7` to `>=1.12` (required for `query_points()`)
+- `chromadb` minimum bumped from `>=0.4` to `>=1.0` (required for updated API)
+- MLP `save()` now includes `"device"` and `"matrix_shape"` in header metadata (backward-compatible)
+
+---
+
 # isotrieve 0.2.0
 
 Embedding migration with vector DB adapters, score recalibration, and confidence scoring.
@@ -59,9 +86,8 @@ All numbers from `benchmarks/results/`, verified by `benchmarks/audit_configs.py
 
 ## What's next
 
-- API model pair benchmarks (ada-002→te3-large)
-- pgvector adapter
-- LlamaIndex adapter
+- API model pair benchmarks (ada-002->te3-large)
+- pgvector adapter (planned, no adapter yet)
 - MCP wrapper for agent frameworks
 
 ## License

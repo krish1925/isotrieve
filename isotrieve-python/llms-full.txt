@@ -19,7 +19,7 @@ Optional extras:
 - `pip install isotrieve[langchain]` - LangChain embeddings shim
 - `pip install isotrieve[sentence-transformers]` - local models
 - `pip install isotrieve[qdrant]` - Qdrant vector DB
-- `pip install isotrieve[pgvector]` - PostgreSQL pgvector
+- `pip install isotrieve[pgvector]` - PostgreSQL pgvector (adapter planned)
 - `pip install isotrieve[openai]` - OpenAI embeddings
 - `pip install isotrieve[voyage]` - Voyage embeddings
 - `pip install isotrieve[cohere]` - Cohere embeddings

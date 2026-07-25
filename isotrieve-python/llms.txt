@@ -8,7 +8,7 @@ pip install isotrieve
 
 Python >= 3.10. Core deps: numpy, scikit-learn, typer, rich.
 
-Optional extras: [chroma], [langchain], [sentence-transformers], [qdrant], [pgvector], [openai], [voyage], [cohere], [gemini], [mlp], [all].
+Optional extras: [chroma], [langchain], [sentence-transformers], [qdrant], [openai], [voyage], [cohere], [gemini], [mlp], [all]. Planned: pgvector.
 
 ## API
 
