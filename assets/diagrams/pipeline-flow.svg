@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 260" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="960" height="260" fill="#ffffff" rx="0"/>
+
+  <!-- Step 1: CALIBRATE -->
+  <rect x="30" y="60" width="180" height="90" rx="8" fill="#f0f9ff" stroke="#3b82f6" stroke-width="2"/>
+  <text x="120" y="96" text-anchor="middle" font-size="15" font-weight="700" fill="#1e3a5f">1. CALIBRATE</text>
+  <text x="120" y="118" text-anchor="middle" font-size="11.5" fill="#64748b">Embed K texts with</text>
+  <text x="120" y="134" text-anchor="middle" font-size="11.5" fill="#64748b">both source &amp; target</text>
+
+  <!-- Arrow 1->2 -->
+  <line x1="218" y1="105" x2="252" y2="105" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Step 2: FIT -->
+  <rect x="260" y="60" width="180" height="90" rx="8" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+  <text x="350" y="96" text-anchor="middle" font-size="15" font-weight="700" fill="#14532d">2. FIT</text>
+  <text x="350" y="118" text-anchor="middle" font-size="11.5" fill="#64748b">Learn linear map</text>
+  <text x="350" y="134" text-anchor="middle" font-size="11.5" fill="#64748b">Y = [X | 1] W (Ridge)</text>
+
+  <!-- Arrow 2->3 -->
+  <line x1="448" y1="105" x2="482" y2="105" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Step 3: TRANSFORM -->
+  <rect x="490" y="60" width="180" height="90" rx="8" fill="#fefce8" stroke="#eab308" stroke-width="2"/>
+  <text x="580" y="96" text-anchor="middle" font-size="15" font-weight="700" fill="#713f12">3. TRANSFORM</text>
+  <text x="580" y="118" text-anchor="middle" font-size="11.5" fill="#64748b">Map stored vectors</text>
+  <text x="580" y="134" text-anchor="middle" font-size="11.5" fill="#64748b">in-place, ~300K/sec</text>
+
+  <!-- Arrow 3->4 -->
+  <line x1="678" y1="105" x2="712" y2="105" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Step 4: GATE -->
+  <rect x="720" y="60" width="210" height="90" rx="8" fill="#fef2f2" stroke="#ef4444" stroke-width="2"/>
+  <text x="825" y="96" text-anchor="middle" font-size="15" font-weight="700" fill="#7f1d1d">4. GATE</text>
+  <text x="825" y="118" text-anchor="middle" font-size="11.5" fill="#64748b">Measure retrieval retention</text>
+  <text x="825" y="134" text-anchor="middle" font-size="11.5" fill="#64748b">PASS / WARN / FAIL</text>
+
+  <!-- Bottom labels -->
+  <text x="120" y="190" text-anchor="middle" font-size="11" fill="#94a3b8" font-style="italic">~4K calibration texts</text>
+  <text x="350" y="190" text-anchor="middle" font-size="11" fill="#94a3b8" font-style="italic">alpha via GCV</text>
+  <text x="580" y="190" text-anchor="middle" font-size="11" fill="#94a3b8" font-style="italic">streaming batch write</text>
+  <text x="825" y="190" text-anchor="middle" font-size="11" fill="#94a3b8" font-style="italic">isotonic regression gate</text>
+
+  <!-- Tagline -->
+  <text x="480" y="235" text-anchor="middle" font-size="13" fill="#cbd5e1" font-weight="500">no re-embedding required</text>
+</svg>
