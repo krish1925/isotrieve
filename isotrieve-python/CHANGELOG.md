@@ -17,7 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Self-contained HTML gate report
 - GitHub Actions composite action for gate
 - `isotrieve.toml` configuration file for gate thresholds
-- `isotrieve calibrate --queries-only` mode
 - Pinecone adapter (shadow-namespace strategy)
 - Qdrant adapter promoted to `VectorStoreAdapter`
 - LlamaIndex storage-context migration path
@@ -27,6 +26,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - README restructured: problem → wrapper quickstart → gate → migration → adapters → claims → prior art
+
+## [0.3.0] - 2026-07-25
+
+### Added
+- Qdrant v1.18+ support: migrated from removed `search()` to `query_points()` API
+- ChromaDB v1.0+ support: updated empty-collection check and `include=` parameter
+- `ResidualMLPMapping(device=)` for MPS/CUDA auto-detection (~3-5x training speedup on Apple Silicon)
+- Rectangular dimension support for MLP (`d_in != d_out`)
+- Registry header peek before full model load (prevents numpy parse errors on `.pt` state dicts)
+- `_load_npy()` helper for safe `.npy` file loading with validation
+- `calibrate --queries-only` mode for query-side calibration
+- 8 in-memory Qdrant integration tests
+- 15 MLP mapping tests (fit/transform, rectangular, inverse, save/load, device, determinism)
+- 2 calibrate `--queries-only` tests
+- 6 self-contained demo notebooks (Quickstart, ChromaDB, Qdrant, Adapter-as-Intermediary, Cross-Architecture, Recalibration)
+- GitHub Actions CI workflow: ruff lint, mypy typecheck, pytest matrix (3.10–3.12), claims linter
+- `scripts/lint_claims.py` validates CLAIMS.md artifact references
+- Pipeline flow diagram and benchmark recall chart (SVG + PNG)
+- `.gitignore` for isotrieve-python/
+
+### Changed
+- `qdrant-client` minimum bumped `>=1.7` → `>=1.12`
+- `chromadb` minimum bumped `>=0.4` → `>=1.0`
+- MLP `save()` includes `"device"` and `"matrix_shape"` in header metadata (backward-compatible)
+- README rewritten: "Migration CI for vector stores" framing, verified adapter table, PyPI/CI/license badges
+- All CLI commands (`calibrate`, `transform`, `inspect`, `gate`) wrapped in try/except with friendly error messages
+- Version tests made dynamic (no hardcoded version strings)
+
+### Fixed
+- MLP residual connection crash on dimension mismatch (`x + net(x)` when `d_in != d_out`)
+- Registry loading `.pt` state dicts without peeking header first
+- CLI traceback leaks — all commands now catch errors and display actionable hints
+- Notebook `pass_realloc` undefined variable bug
+- Lambda and unused import lint violations
 
 ## [0.2.0] - 2026-07-19
 
