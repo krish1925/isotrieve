@@ -1,0 +1,18 @@
+{
+  "device": "mps",
+  "n_epochs": 200,
+  "n_samples": 2000,
+  "d_src": 384,
+  "d_tgt": 384,
+  "fit_time_mean_s": 0.261,
+  "fit_time_std_s": 0.001,
+  "transform_time_mean_s": 0.0031,
+  "quality_mean": {
+    "top1_retention": 1.0,
+    "cosine_mean": 0.7909
+  },
+  "quality_std": {
+    "top1_retention": 0.0,
+    "cosine_mean": 0.0002
+  }
+}
