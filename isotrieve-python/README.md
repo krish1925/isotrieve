@@ -1,125 +1,103 @@
-# isotrieve
+# Isotrieve
 
+**Migration CI for vector stores.**
+
+Switch embedding models without re-embedding your corpus — and know, before you cut over, exactly what it costs you in retrieval quality.
+
+[![PyPI](https://img.shields.io/pypi/v/isotrieve)](https://pypi.org/project/isotrieve/)
 [![CI](https://github.com/krish1925/isotrieve/actions/workflows/ci.yml/badge.svg)](https://github.com/krish1925/isotrieve/actions/workflows/ci.yml)
-
-Embedding providers deprecate models constantly — ada-002 is gone, text-embedding-3 is next. When that happens, you either re-embed your entire corpus (expensive, slow, risky) or get stuck on a dead model. Isotrieve lets you switch without re-embedding: fit a lightweight linear transform from ~2K calibration texts, apply it to stored vectors, and gate the migration on measured retrieval retention. 87-91% retention on BEIR benchmarks.
-
-## Install
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/pypi/pyversions/isotrieve)](https://pypi.org/project/isotrieve/)
 
 ```bash
 pip install isotrieve
 ```
 
-Python >= 3.10. Core deps: numpy, scikit-learn, typer, rich.
+---
 
-Optional extras:
-- `pip install isotrieve[chroma]` — ChromaDB adapter
-- `pip install isotrieve[langchain]` — LangChain embeddings shim
-- `pip install isotrieve[llamaindex]` — LlamaIndex query wrapper
-- `pip install isotrieve[sentence-transformers]` — local model support
-- `pip install isotrieve[qdrant]` — Qdrant store adapter
-- `pip install isotrieve[openai]` — OpenAI client shim
-- `pip install isotrieve[all]` — everything above
+## Nobody upgrades their embedding model
 
-## 5-minute trial: query-time wrapper
+Not because they don't want to. Because the upgrade path is a migration project.
 
-Zero writes to your vector store. Map new-model queries into legacy space on-the-fly. Fully reversible.
+A better model ships. You want it. Then you price it out: re-embed the entire corpus, re-index, re-tune every downstream threshold, and pray retrieval quality survives. For a corpus of any real size, that's a quarter of engineering time and a compute bill, with no way to know whether it was worth it until it's already done.
 
-### LlamaIndex (beta)
+So the model in production is the model you picked when you started. Everyone knows it's not the best one anymore. Nobody has a safe way to change it.
 
-```python
-from isotrieve.wrappers.llamaindex import IsotrieveEmbedding
-from isotrieve.mapping.registry import load_mapping
+**The problem was never the transform. It was the risk.**
 
-mapping = load_mapping("mapping.isotrieve")
-wrapper = IsotrieveEmbedding(
-    new_model_embedder=your_llamaindex_embedder,
-    transform_artifact_path="mapping.isotrieve",
-)
-# Use wrapper anywhere LlamaIndex expects a BaseEmbedding
-# Queries are mapped; document embeddings raise IsotrieveWrapperUsageError
-```
+Techniques for mapping one embedding space onto another have existed in the literature for years. What hasn't existed is the thing that makes a migration shippable: a way to measure what you're about to lose, and a way to stop the migration if the answer is "too much."
 
-### OpenAI client (beta)
+That's Isotrieve.
 
-```python
-import openai
-from isotrieve.wrappers.openai_shim import IsotrieveOpenAI
+## How it works
 
-client = openai.OpenAI()
-shim = IsotrieveOpenAI(client, "mapping.isotrieve")
-response = shim.embeddings.create(input=["query text"], model="text-embedding-3-small")
-# response.data[0].embedding is now in legacy-model space
-```
+**1. Calibrate** — Embed a small sample of *your* corpus with both models. Hundreds of documents, not millions. No full-corpus embedding bill.
 
-### LangChain
+**2. Fit** — Learn a transform between the two spaces: Orthogonal Procrustes, ridge/affine, or a small residual model. Cross-dimension is supported (384 → 1536 works).
 
-```python
-from isotrieve.adapters.langchain import IsotrieveEmbeddings
-from langchain_openai import OpenAIEmbeddings
+**3. Transform** — Apply the mapping to your stored vectors, in place, in your store. Your source text is never touched. The new model is never called on the full corpus.
 
-mapping = Mapping.load("mapping.isotrieve")
-base = OpenAIEmbeddings(model="text-embedding-3-small")
-ae = IsotrieveEmbeddings(mapping, base)
+**4. Gate** — Measure retrieval retention (Recall@k, MRR) against a held-out query set. Clears your threshold, it ships. Doesn't, it fails loudly with a report explaining why — and your index is never left half-migrated.
 
-from langchain_chroma import Chroma
-db = Chroma.from_documents(docs, embedding=ae)
-results = db.similarity_search("query", k=10)
-```
+Step 4 is the product. Steps 1–3 are how it earns the right to exist.
 
-## Quality gate
-
-Before migrating anything, verify the transform preserves retrieval quality:
+## Quickstart
 
 ```bash
-isotrieve gate --mapping mapping.isotrieve \
-          --source-vectors X_sample.npy \
-          --target-vectors Y_sample.npy
+# Fit a mapping from calibration vectors
+isotrieve calibrate \
+  --source old_vectors.npy \
+  --target new_vectors.npy \
+  --method ridge \
+  --out mapping.isotrieve
+
+# Check retention before you touch anything
+isotrieve gate \
+  --mapping mapping.isotrieve \
+  --queries held_out_queries.npy \
+  --threshold 0.95 \
+  --format json
+
+# Exit code 0 = safe to migrate. Exit code 1 = don't.
 ```
 
-Output: retention table (Recall@1/5/10, MRR), bootstrap confidence intervals, per-metric pass/fail, and a one-line verdict. Exit code 0 for PASS, 1 for WARN/FAIL — use it in CI.
+Wire that gate into CI and an embedding upgrade becomes a pull request instead of a project.
 
-## Full migration
+Full walkthroughs live in [`notebooks/`](notebooks/) — six self-contained demos, Colab-ready, including cross-architecture dimension changes and drift recalibration.
 
-```bash
-# 1. Plan cost
-isotrieve plan --source-model ada-002 --target-model te3-large --corpus-size 1000000
+## Vector store support
 
-# 2. Calibrate
-isotrieve calibrate --source-vectors X.npy --target-vectors Y.npy -o mapping.isotrieve
+Isotrieve separates the transform (store-agnostic) from the adapter layer (store-specific), so one learned mapping applies to whatever you're actually running.
 
-# 3. Gate
-isotrieve gate --mapping mapping.isotrieve --source-vectors X.npy --target-vectors Y.npy
+| Store | Query | Migrate in place | Dry run |
+|---|---|---|---|
+| ChromaDB | ✅ `IsotrieveChromaFunction` | ✅ `migrate_collection()` | ✅ |
+| Qdrant | ✅ `QdrantAdapter.query()` | ✅ `QdrantAdapter.migrate()` | ✅ |
+| Pinecone | ✅ `PineconeAdapter.query()` | ✅ `PineconeAdapter.migrate()` | ✅ |
+| LangChain | ✅ `IsotrieveEmbeddings` | — | — |
+| LlamaIndex | — | ✅ `migrate_llamaindex_store()` | ✅ |
+| pgvector | planned | planned | — |
+| Weaviate | hook only | — | — |
+| FAISS | example only | — | — |
 
-# 4. Migrate
-isotrieve transform --mapping mapping.isotrieve --source-dir ./old_store --target-dir ./new_store
-```
+## How this differs from embedding adapter libraries
 
-### Serve mode (zero corpus writes)
+Several libraries translate between embedding spaces using pretrained, general-purpose adapters for popular model pairs. They're good at what they do. They solve a different problem.
 
-Map queries on-the-fly without touching stored data:
+| | Adapter libraries | Isotrieve |
+|---|---|---|
+| Mapping source | Pretrained on general data | Fit on **your** corpus |
+| Where vectors live | Translated at query time | Migrated **in place**, in your store |
+| Failure mode | You find out in production | Gate fails the build |
+| Domain corpora | General-purpose fit | Calibrated to your distribution |
 
-```python
-from isotrieve.serve import QueryAdapter
+If you want to query an existing index with a different model today, use an adapter library. If you want to *permanently move* your index to a new model and be able to prove it didn't degrade, that's this.
 
-qa = QueryAdapter.load("mapping.isotrieve")
-legacy_vec = qa.map_query(new_model_embed(query))
-```
+## Claims and benchmarks
 
-## Adapter status
+Every quantitative claim in this repo links to a committed artifact under `benchmarks/results/` and is listed in [`CLAIMS.md`](isotrieve-python/CLAIMS.md). CI enforces it — a claim without a resolvable artifact fails the build.
 
-| Store | Query | Migrate | Dry run | Status |
-|-------|-------|---------|---------|--------|
-| ChromaDB | `IsotrieveChromaFunction` | `migrate_collection()` | Yes | Supported |
-| Qdrant | `QdrantAdapter.query()` | `QdrantAdapter.migrate()` | Yes | Supported |
-| Pinecone | `PineconeAdapter.query()` | `PineconeAdapter.migrate()` | Yes | Supported |
-| LangChain | `IsotrieveEmbeddings` | via store adapter | — | Supported |
-| LlamaIndex | wrapper | `migrate_llamaindex_store()` | Yes | Beta |
-| OpenAI | `IsotrieveOpenAI` shim | N/A | — | Beta |
-
-## Claims policy
-
-Every quantitative claim in this README or docs references a committed artifact in `benchmarks/results/` and a row in `isotrieve-python/CLAIMS.md`. No exceptions. If a number isn't in CLAIMS.md, it isn't a claim.
+Retention numbers are corpus- and model-pair specific. Yours will differ from ours. That's what the gate is for.
 
 ### Adapter comparison (SciFact, MiniLM→bge-large, K=4000, 3 seeds)
 
@@ -148,20 +126,6 @@ Every quantitative claim in this README or docs references a committed artifact 
 | Retention | 0.923 ± 0.010 |
 
 Same dimension ≠ same space. e5 models require "query: "/"passage: " prefixes; without them ceiling drops to 0.36.
-
-### Confidence flags (predictive across both pairs)
-
-| Pair | High-conf R@10 | Low-conf R@10 | Gap |
-|------|---------------|---------------|-----|
-| bge→e5 | 0.955 | 0.637 | 0.318 |
-| MiniLM→bge | 0.875 | 0.651 | 0.224 |
-
-### Score recalibration (MiniLM→bge, rectangular)
-
-| Threshold | Raw recall | + Recalibration | Δ |
-|-----------|-----------|-----------------|---|
-| τ = 0.60 | 78% | 100% | +22% |
-| τ = 0.70 | 27% | 67% | +40% |
 
 ## When NOT to use Isotrieve
 
@@ -194,6 +158,7 @@ Same dimension ≠ same space. e5 models require "query: "/"passage: " prefixes;
 |---------|-------------|
 | `isotrieve plan` | Estimate cost: API calls, storage, time |
 | `isotrieve calibrate` | Fit mapping from calibration vectors |
+| `isotrieve calibrate --queries-only` | Fit mapping from query-side calibration only |
 | `isotrieve transform` | Transform stored vectors to new space |
 | `isotrieve gate` | Evaluate retrieval quality (PASS/WARN/FAIL) |
 | `isotrieve inspect` | Show mapping metadata and validation report |
@@ -201,25 +166,28 @@ Same dimension ≠ same space. e5 models require "query: "/"passage: " prefixes;
 | `isotrieve doctor` | Check environment and dependencies |
 | `isotrieve version` | Show version |
 
-## How it works
-
-1. Embed K texts with source and target models → matrices X, Y
-2. Fit ridge map Y = [X | 1] W (handles unequal dims)
-3. Hold out 10% to estimate quality
-4. Transform corpus: V' = normalize(V @ W) (streaming batches)
-5. Write to new collection; keep old as rollback
-
 ## Prior art
 
-Engineering, not research. Built on:
-- vec2vec (Jha et al., 2025)
-- Drift-Adapter (EMNLP 2025)
-- Platonic Representation Hypothesis (Huh et al., 2024)
+Isotrieve builds on [vec2vec](https://arxiv.org/abs/2505.12540), mini-vec2vec, Drift-Adapter, and the Platonic Representation Hypothesis. The contribution here is engineering — library, CLI, quality gate, store adapters, reproducible benchmarks — not algorithmic novelty. Citing the technique? Cite that work. Citing the tool? Cite this repo.
 
-## Security
+## Project structure
 
-Embedding translation enables inversion-style attacks. Treat mapped vectors with same sensitivity as source text.
+```
+isotrieve/
+├── isotrieve-python/     # Maintained Python package (PyPI: isotrieve)
+├── notebooks/            # Six self-contained demos
+├── benchmarks/           # Harness and committed results
+├── verification/         # Audit reports, coverage, test baselines
+├── assets/               # Diagrams and visual assets
+└── .github/              # CI, issue templates, gate action
+```
+
+## Status
+
+Actively developed, pre-1.0. APIs may change between minor versions until 1.0. Beta-marked adapters are functional but not yet load-tested.
+
+Issues and PRs welcome — see [CONTRIBUTING.md](isotrieve-python/CONTRIBUTING.md).
 
 ## License
 
-Apache-2.0
+Apache-2.0. See [LICENSE](isotrieve-python/LICENSE).

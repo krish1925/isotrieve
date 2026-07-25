@@ -1,26 +1,55 @@
 # isotrieve 0.3.0
 
-Compatibility update: modern Qdrant/ChromaDB support, hardened CLI, CI pipeline, and demo notebooks.
+**Migration CI for vector stores.** Compatibility update: modern Qdrant/ChromaDB support, hardened CLI, CI pipeline, and demo notebooks.
 
-## What's new in v0.3
+## What's new
 
-- **Qdrant v1.18+ compatibility** — migrated from removed `search()` to `query_points()` API; minimum `qdrant-client>=1.12`
-- **ChromaDB v1.0+ compatibility** — updated empty-collection check and `include=` parameter; minimum `chromadb>=1.0`
-- **MLP device selection** — `ResidualMLPMapping(device=)` parameter for MPS/CUDA auto-detection; ~3-5x training speedup on Apple Silicon
-- **MLP rectangular dims** — fixed residual connection for non-square source/target dimensions
-- **MLP load fix** — registry now peeks header before full load, preventing numpy parse errors on `.pt` state dicts
-- **Zero raw tracebacks** — all CLI commands (`calibrate`, `transform`, `inspect`, `gate`) wrapped in try/except with user-friendly error messages
-- **6 demo notebooks** — quickstart, ChromaDB migration, Qdrant migration, adapter intermediary, cross-architecture dims, recalibration
-- **CI pipeline** — GitHub Actions: ruff lint, mypy typecheck, pytest matrix (3.10-3.12), claims linter
-- **Claims linter** — `scripts/lint_claims.py` validates CLAIMS.md artifact references against `benchmarks/results/`
-- **Visual assets** — pipeline flow diagram, benchmark recall chart (SVG + PNG)
-- **Qdrant integration tests** — 8 in-memory tests (serve, migrate, dry run, empty, double-migrate, k-limit, MigrationReport)
-- **CLI gate tests** — `gate` command with `--format json`, `calibrate --queries-only` mode
+### Adapter compatibility
+- **Qdrant v1.18+** — migrated from removed `search()` to `query_points()` API
+- **ChromaDB v1.0+** — updated empty-collection check (`src.count()`) and removed `"ids"` from `include=`
+- `qdrant-client` floor bumped `>=1.7` → `>=1.12`; `chromadb` floor bumped `>=0.4` → `>=1.0`
+
+### MLP mapping
+- **Device selection** — `ResidualMLPMapping(device=)` for MPS/CUDA auto-detection; ~3-5x training speedup on Apple Silicon
+- **Rectangular dims** — fixed residual connection for `d_in != d_out` (was forcing `x + net(x)` which crashes on dimension mismatch)
+- **Load fix** — registry peeks header before full load, preventing numpy parse errors on `.pt` state dicts
+- Dummy `_W`/`_W_inv` set on load so `_require_fitted()` passes
+
+### CLI hardening
+- Zero raw tracebacks — all commands (`calibrate`, `transform`, `inspect`, `gate`) wrapped in try/except
+- `_load_npy()` helper validates file existence before `np.load()`, catches corrupt `.npy`
+- Dimension mismatch, NaN/Inf, and empty-collection errors show friendly messages with hints
+- `calibrate --queries-only` mode for query-side calibration
+
+### CI & tooling
+- GitHub Actions: ruff lint, mypy typecheck, pytest matrix (3.10–3.12), claims linter
+- `scripts/lint_claims.py` validates CLAIMS.md artifact references against `benchmarks/results/`
+- Pip caching on all CI jobs
+
+### Tests (158 total, +35 since v0.2.1)
+- 8 in-memory Qdrant integration tests (serve, migrate, dry run, empty, double-migrate, k-limit, MigrationReport)
+- 15 MLP tests (fit/transform, rectangular, inverse, save/load roundtrip, device, determinism, Ridge comparison)
+- 2 calibrate `--queries-only` tests
+- Version consistency tests made dynamic (no hardcoded version strings)
+
+### Notebooks (6 self-contained demos)
+1. Quickstart — RidgeMapping fit → transform → evaluate → gate
+2. ChromaDB migration — end-to-end collection migration
+3. Qdrant migration — in-memory Qdrant adapter demo
+4. Adapter as intermediary — same mapping used 3 ways (transform, serve, adapter)
+5. Cross-architecture dimension change — 384→1536, Ridge vs Procrustes
+6. Recalibration and drift — ScoreRecalibrator before/after
+
+### Other
+- Visual assets — pipeline flow diagram, benchmark recall chart (SVG + PNG)
+- `write_vectors()` accepts `list[dict]` in addition to `VectorRecord`
+- `.gitignore` added for isotrieve-python/
+- README rewritten: "Migration CI for vector stores" framing, verified adapter table, PyPI/CI/license badges
 
 ## Migration notes
 
-- `qdrant-client` minimum bumped from `>=1.7` to `>=1.12` (required for `query_points()`)
-- `chromadb` minimum bumped from `>=0.4` to `>=1.0` (required for updated API)
+- `qdrant-client` minimum `>=1.7` → `>=1.12` (required for `query_points()`)
+- `chromadb` minimum `>=0.4` → `>=1.0` (required for updated API)
 - MLP `save()` now includes `"device"` and `"matrix_shape"` in header metadata (backward-compatible)
 
 ---
