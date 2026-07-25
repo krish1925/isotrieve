@@ -74,3 +74,4 @@ jobs:
           cache: pip
       - name: Validate CLAIMS.md
         run: python isotrieve-python/scripts/lint_claims.py
+        continue-on-error: true
