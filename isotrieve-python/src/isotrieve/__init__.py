@@ -12,7 +12,7 @@ a reproducible benchmark harness. See README "Prior Art & Research Basis".
 from isotrieve.mapping.base import Mapping, ValidationReport
 from isotrieve.mapping.linear import OrthogonalProcrustesMapping, RidgeMapping
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 __all__ = [
     "Mapping",
     "RidgeMapping",
