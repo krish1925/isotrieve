@@ -38,12 +38,11 @@ class TestGateCommand:
                 "json",
             ],
         )
-        # Should not crash (exit 0 or 1 depending on gate verdict)
+        # Should not crash (exit 0 = pass, exit 1 = gate raised)
         assert result.exit_code in (0, 1)
-        # JSON output should be valid
-        if result.exit_code == 0:
-            data = json.loads(result.output)
-            assert "verdict" in data
+        # JSON output should be valid in both cases
+        data = json.loads(result.output)
+        assert "verdict" in data
 
     def test_gate_requires_vectors(self, tmp_path):
         m = make_mapping(d_src=8, d_tgt=12, k=200)
@@ -82,6 +81,45 @@ class TestGateCommand:
             ],
         )
         assert result.exit_code in (0, 1)
+
+
+class TestCalibrateQueriesOnly:
+    def test_queries_only_success(self, tmp_path):
+        rng = np.random.default_rng(42)
+        queries = rng.normal(size=(200, 8))
+        target = rng.normal(size=(200, 12))
+        np.save(tmp_path / "queries.npy", queries)
+        np.save(tmp_path / "target.npy", target)
+
+        result = runner.invoke(
+            app,
+            [
+                "calibrate",
+                "--queries-only",
+                "--queries",
+                str(tmp_path / "queries.npy"),
+                "--target-vectors",
+                str(tmp_path / "target.npy"),
+                "-o",
+                str(tmp_path / "out.isotrieve"),
+                "--k",
+                "200",
+            ],
+        )
+        assert result.exit_code == 0
+        assert (tmp_path / "out.isotrieve").exists()
+
+    def test_queries_only_requires_queries(self, tmp_path):
+        result = runner.invoke(
+            app,
+            [
+                "calibrate",
+                "--queries-only",
+                "-o",
+                str(tmp_path / "out.isotrieve"),
+            ],
+        )
+        assert result.exit_code == 2
 
 
 class TestDoctorCommand:

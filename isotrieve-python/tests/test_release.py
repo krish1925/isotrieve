@@ -22,7 +22,7 @@ class TestPackageImport:
     def test_import_isotrieve(self):
         import isotrieve
 
-        assert isotrieve.__version__ == "0.2.1"
+        assert isotrieve.__version__  # non-empty
 
     def test_import_mapping(self):
         from isotrieve.mapping.linear import RidgeMapping
@@ -148,7 +148,9 @@ class TestCLI:
     def test_cli_version(self):
         result = _run_isotrieve("version")
         assert result.returncode == 0
-        assert "0.2.1" in result.stdout
+        import isotrieve
+
+        assert isotrieve.__version__ in result.stdout
 
     def test_cli_help(self):
         result = _run_isotrieve("--help")
@@ -173,11 +175,15 @@ class TestVersionConsistency:
     """Verify version is consistent across the package."""
 
     def test_version_in_pyproject(self):
+        import isotrieve
+
         pyproject = Path(__file__).parent.parent / "pyproject.toml"
         content = pyproject.read_text()
-        assert 'version = "0.2.1"' in content
+        assert f'version = "{isotrieve.__version__}"' in content
 
     def test_version_in_init(self):
+        import isotrieve
+
         init = Path(__file__).parent.parent / "src" / "isotrieve" / "__init__.py"
         content = init.read_text()
-        assert "0.2.1" in content
+        assert isotrieve.__version__ in content
