@@ -1,6 +1,7 @@
 """Embedding-space mappings."""
 
 from isotrieve.mapping.base import Mapping, ValidationReport, read_isotrieve_header
+from isotrieve.mapping.external import ExternalMapping, load_external_callable
 from isotrieve.mapping.linear import (
     LowRankAffineMapping,
     OrthogonalProcrustesMapping,
@@ -16,6 +17,8 @@ __all__ = [
     "OrthogonalProcrustesMapping",
     "ProcrustesDiagMapping",
     "LowRankAffineMapping",
+    "ExternalMapping",
+    "load_external_callable",
     "load_mapping",
     "read_isotrieve_header",
 ]

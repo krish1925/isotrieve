@@ -19,8 +19,13 @@ def register_gate_command(app: typer.Typer) -> None:
 
     @app.command("gate")
     def gate_cmd(
-        mapping_path: Path = typer.Option(
-            ..., "--mapping", help="Path to .isotrieve file"
+        mapping_path: Path | None = typer.Option(
+            None, "--mapping", help="Path to .isotrieve file"
+        ),
+        mapping_external: str | None = typer.Option(
+            None,
+            "--mapping-external",
+            help="External callable as module:callable (e.g. my_lib:my_transform)",
         ),
         source_vectors: Path | None = typer.Option(
             None, "--source-vectors", help="NPY of source embeddings (K, d_src)"
@@ -48,23 +53,52 @@ def register_gate_command(app: typer.Typer) -> None:
         """Evaluate a mapping against sample data and report retention.
 
         Exit code 0 = PASS, 1 = WARN or FAIL.
+
+        Use --mapping for .isotrieve files or --mapping-external for
+        external callables (module:callable).
         """
-        from isotrieve.mapping.registry import load_mapping
         from isotrieve.quality.gate import QualityGate
 
-        # Validate mapping file exists
-        if not mapping_path.exists():
-            console.print(
-                f"[red]Mapping file not found: {mapping_path}[/red]\n"
-                f"  Run [bold]isotrieve calibrate[/bold] first to create a mapping."
-            )
-            raise typer.Exit(1)
+        # Resolve mapping from one of three sources
+        mapping = None
+        if mapping_path is not None:
+            from isotrieve.mapping.registry import load_mapping
 
-        try:
-            mapping = load_mapping(mapping_path)
-        except (ValueError, FileNotFoundError) as exc:
-            console.print(f"[red]Failed to load mapping: {exc}[/red]")
-            raise typer.Exit(1) from exc
+            if not mapping_path.exists():
+                console.print(
+                    f"[red]Mapping file not found: {mapping_path}[/red]\n"
+                    f"  Run [bold]isotrieve calibrate[/bold] first to create a mapping."
+                )
+                raise typer.Exit(1)
+            try:
+                mapping = load_mapping(mapping_path)
+            except (ValueError, FileNotFoundError) as exc:
+                console.print(f"[red]Failed to load mapping: {exc}[/red]")
+                raise typer.Exit(1) from exc
+
+        elif mapping_external is not None:
+            from isotrieve.mapping.external import (
+                ExternalMapping,
+                load_external_callable,
+            )
+
+            try:
+                fn, spec = load_external_callable(mapping_external)
+            except (ValueError, ImportError, AttributeError) as exc:
+                console.print(
+                    f"[red]Failed to load external callable: {exc}[/red]\n"
+                    f"  Expected format: module:callable (e.g. my_lib:my_transform)"
+                )
+                raise typer.Exit(1) from exc
+            console.print(f"[dim]Loaded external callable: {spec}[/dim]")
+            mapping = ExternalMapping(fn)
+
+        else:
+            console.print(
+                "[red]Provide --mapping (for .isotrieve files) or "
+                "--mapping-external (for external callables).[/red]"
+            )
+            raise typer.Exit(2)
 
         # Resolve gate inputs
         if source_vectors is not None and target_vectors is not None:
@@ -126,9 +160,14 @@ def register_gate_command(app: typer.Typer) -> None:
         if len(X_sample) == 0 or len(Y_sample) == 0:
             console.print("[red]Vector file is empty — need at least one vector.[/red]")
             raise typer.Exit(1)
-        if X_sample.shape[1] != mapping.d_src:
+        # d_src may be None for ExternalMapping (inferred on first transform)
+        try:
+            expected_src_dim = mapping.d_src
+        except RuntimeError:
+            expected_src_dim = None
+        if expected_src_dim is not None and X_sample.shape[1] != expected_src_dim:
             console.print(
-                f"[red]Source vector dim mismatch: expected {mapping.d_src} "
+                f"[red]Source vector dim mismatch: expected {expected_src_dim} "
                 f"(source model dim), got {X_sample.shape[1]}.[/red]\n"
                 f"  Vectors must be from the source embedding model."
             )

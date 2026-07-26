@@ -41,35 +41,37 @@ Ship the gate as the product. Every feature decision points back to: does this m
 
 ## Milestone roadmap
 
-### v0.3.0 — "The gate is the product" (target: 2026-08-31)
-Plays 1, 2, and 5.
+### v0.3.0 — "The gate is the product" (shipped 2026-07-25)
+Plays 1, 2, and 5. Remaining open items carry to v0.4.0.
 
 | Issue | What | Status |
 |-------|------|--------|
 | #13 | CI workflow | Done |
 | #14 | Claims linter | Done |
-| #15 | pgvector honesty fix | Open |
+| #15 | pgvector honesty fix | Carries → v0.4.0 |
 | #17 | Qdrant tests | Done |
 | #18 | CONTRIBUTING.md rewrite | Done |
-| #19 | Docs split-brain resolution | Open |
-| #20 | GitHub Action for gate | Open |
+| #19 | Docs split-brain resolution | Carries → v0.4.0 |
+| #20 | GitHub Action for gate | Carries → v0.4.0 |
 | #21 | `calibrate --queries-only` | Done |
-| #58 | BYOT gate (ExternalMapping) | Open |
-| #60 | "Why a gate" comparison page | Open |
-| #61 | Release cadence + changelog | Open |
 
-### v0.4.0 — "Prove it" (target: 2026-09-30)
-Plays 3 and 4.
+### v0.4.0 — "The gate is the product, part 2" (target: 2026-09-30)
+Plays 1, 2, 3, 4, and 5. BYOT gate + carry-overs from v0.3.0 + prove-it work.
 
 | Issue | What | Status |
 |-------|------|--------|
+| #15 | pgvector honesty fix | Open (carry) |
+| #19 | Docs split-brain resolution | Open (carry) |
+| #20 | GitHub Action for gate | Open (carry) |
 | #22 | pgvector adapter | Open |
 | #23 | Post-migration revalidation | Open |
 | #24 | Manifest/rollback CLI | Open |
 | #35 | Hubness correction (P0) | Open |
 | #36 | Seed-sensitivity analysis | Open |
 | #37 | Domain matrix benchmark | Open |
-| #59 | Head-to-head benchmark | Open |
+| #58 | BYOT gate (ExternalMapping) | Open |
+| #60 | "Why a gate" comparison page | Open |
+| #61 | Release cadence + changelog | Open |
 
 ### v0.4.1 — Opportunistic
 Timed to deprecation events, not calendar.
@@ -79,8 +81,15 @@ Timed to deprecation events, not calendar.
 | #26 | Gate threshold presets |
 | #27 | Cohere/Voyage playbooks |
 
-### v0.5.0 — Differentiation (target: 2026-11-30)
-Multi-tenant, confidence hooks, ensemble transforms.
+### v0.5.0 — Prove it (target: 2026-11-30)
+Head-to-head benchmark + multi-tenant, confidence hooks, ensemble transforms.
+
+| Issue | What |
+|-------|------|
+| #59 | Head-to-head benchmark (depends on #58, #37) |
+| #28 | Multi-tenant loop |
+| #29 | Recalibration hooks |
+| #30 | Ensemble transform |
 
 ### Icebox (not touched)
 #45, #39, #38, #32, #46 — job-search-brain features, not competitive features.
