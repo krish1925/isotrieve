@@ -1,0 +1,6 @@
+{
+  "pass_retention": 0.75,
+  "warn_retention": 0.55,
+  "max_optimism_gap": 0.20,
+  "provisional": true
+}

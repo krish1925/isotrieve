@@ -1,7 +1,7 @@
 {
   "name": "@isotrieve/core",
-  "version": "1.0.0",
-  "description": "Core Isotrieve protocol implementation",
+  "version": "0.1.0",
+  "description": "Embedding migration without re-embedding — learn a mapping between embedding spaces, transform stored vectors in place, gate on retrieval retention.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -15,11 +15,17 @@
   "keywords": [
     "isotrieve",
     "embeddings",
-    "agent-communication",
-    "semantic-transfer"
+    "embedding-migration",
+    "vector-store",
+    "ridge-regression",
+    "procrustes",
+    "quality-gate"
   ],
   "author": "",
   "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@types/node": "^20.11.0"
   },
