@@ -1,21 +1,9 @@
-/**
- * Orthogonal Procrustes and Procrustes+Diagonal mappings.
- *
- * Procrustes finds the best orthogonal rotation R that aligns source to target:
- *   min ||X R - Y||_F  subject to  R^T R = I
- *
- * ProcrustesDiag adds a per-dimension diagonal scaling:
- *   Y ≈ diag(s) · X · R
- */
-
 import { Mapping } from './base';
-import { transpose, matrixMultiply, svd, vectorMatrixMultiply, zeros, shape } from '../math/linalg';
+import { transpose, matrixMultiply, svd, vectorMatrixMultiply, TypedMatrix, toTypedMatrix, SingleOrBatch } from '../math/linalg';
 import { l2Normalize, checkFinite } from '../math/normalize';
 import { pairwiseCosineStats, topkRetention } from '../math/metrics';
 import { trainTestSplit } from '../math/random';
 import type { MappingType, ValidationReport } from '../types';
-
-// ── Shared holdout metrics helper ────────────────────────────────
 
 function computeHoldoutMetrics(
   mapping: Mapping,
@@ -41,8 +29,6 @@ function computeHoldoutMetrics(
   };
 }
 
-// ── Validate paired input ────────────────────────────────────────
-
 function validateXY(X: Float64Array[], Y: Float64Array[]): void {
   if (X.length !== Y.length) {
     throw new Error(`Sample counts must match: X has ${X.length}, Y has ${Y.length}`);
@@ -60,14 +46,6 @@ function validateXY(X: Float64Array[], Y: Float64Array[]): void {
   checkFinite('Y', Y);
 }
 
-// ── OrthogonalProcrustesMapping ──────────────────────────────────
-
-/**
- * Orthogonal Procrustes mapping (square dims only).
- *
- * Preserves pairwise geometry exactly under the orthogonal constraint.
- * Only available when d_src == d_target.
- */
 export class OrthogonalProcrustesMapping extends Mapping {
   static readonly mappingType: MappingType = 'orthogonal_procrustes';
 
@@ -80,20 +58,19 @@ export class OrthogonalProcrustesMapping extends Mapping {
     this._holdoutFraction = options.holdoutFraction ?? 0.1;
   }
 
-  /**
-   * Fit the orthogonal Procrustes mapping.
-   *
-   * Solves min ||X R - Y||_F subject to R^T R = I via SVD of X^T Y.
-   */
-  fit(X: Float64Array[], Y: Float64Array[]): this {
-    validateXY(X, Y);
-    this._dSrc = X[0].length;
-    this._dTarget = Y[0].length;
+  fit(X: Float64Array[] | Float32Array[] | TypedMatrix, Y: Float64Array[] | Float32Array[] | TypedMatrix): this {
+    const Xrows = toTypedMatrix(X).toFloat64Arrays();
+    const Yrows = toTypedMatrix(Y).toFloat64Arrays();
+    validateXY(Xrows, Yrows);
+    this._dSrc = Xrows[0].length;
+    this._dTarget = Yrows[0].length;
 
-    const { XTrain, XTest, YTrain, YTest } = trainTestSplit(X, Y, this._holdoutFraction, this._seed);
+    const { XTrain, XTest, YTrain, YTest } = trainTestSplit(Xrows, Yrows, this._holdoutFraction, this._seed);
 
-    // Solve Procrustes: M = X^T Y, SVD(M) = U Σ V^T, R = U V^T
-    const M = matrixMultiply(transpose(XTrain), YTrain);
+    const XTM = TypedMatrix.fromRows(XTrain);
+    const YTM = TypedMatrix.fromRows(YTrain);
+
+    const M = matrixMultiply(transpose(XTM), YTM);
     const { U, Vt } = svd(M);
     const R = matrixMultiply(U, Vt);
 
@@ -117,7 +94,7 @@ export class OrthogonalProcrustesMapping extends Mapping {
     return this;
   }
 
-  transform(V: Float64Array | Float64Array[]): Float64Array | Float64Array[] {
+  transform(V: SingleOrBatch): Float64Array | Float64Array[] {
     this.requireFitted();
     return this.applyMapping(V, this._W!, this._dSrc!, {
       direction: 'forward',
@@ -126,7 +103,7 @@ export class OrthogonalProcrustesMapping extends Mapping {
     });
   }
 
-  inverseTransform(V: Float64Array | Float64Array[]): Float64Array | Float64Array[] {
+  inverseTransform(V: SingleOrBatch): Float64Array | Float64Array[] {
     this.requireFitted();
     return this.applyMapping(V, this._WInv!, this._dTarget!, {
       direction: 'inverse',
@@ -136,16 +113,6 @@ export class OrthogonalProcrustesMapping extends Mapping {
   }
 }
 
-// ── ProcrustesDiagMapping ────────────────────────────────────────
-
-/**
- * Orthogonal Procrustes + Diagonal Scaling (square dims only).
- *
- * First fits an orthogonal rotation via Procrustes, then learns a
- * per-dimension diagonal scaling to absorb magnitude differences.
- *
- * Y ≈ diag(s) · X · R  where R is orthogonal.
- */
 export class ProcrustesDiagMapping extends Mapping {
   static readonly mappingType: MappingType = 'procrustes_diag';
 
@@ -160,64 +127,59 @@ export class ProcrustesDiagMapping extends Mapping {
     this._holdoutFraction = options.holdoutFraction ?? 0.1;
   }
 
-  /**
-   * Fit the Procrustes + diagonal scaling mapping.
-   *
-   * Step 1: Procrustes rotation R = U V^T
-   * Step 2: Diagonal scaling s = (XR · Y) / (XR · XR) per dimension
-   * Combined: W = R * diag(s), W_inv = diag(s)^{-1} * R^T
-   */
-  fit(X: Float64Array[], Y: Float64Array[]): this {
-    validateXY(X, Y);
-    this._dSrc = X[0].length;
-    this._dTarget = Y[0].length;
+  fit(X: Float64Array[] | Float32Array[] | TypedMatrix, Y: Float64Array[] | Float32Array[] | TypedMatrix): this {
+    const Xrows = toTypedMatrix(X).toFloat64Arrays();
+    const Yrows = toTypedMatrix(Y).toFloat64Arrays();
+    validateXY(Xrows, Yrows);
+    this._dSrc = Xrows[0].length;
+    this._dTarget = Yrows[0].length;
 
-    const { XTrain, XTest, YTrain, YTest } = trainTestSplit(X, Y, this._holdoutFraction, this._seed);
+    const { XTrain, XTest, YTrain, YTest } = trainTestSplit(Xrows, Yrows, this._holdoutFraction, this._seed);
 
-    // Step 1: Procrustes rotation
-    const M = matrixMultiply(transpose(XTrain), YTrain);
+    const XTM = TypedMatrix.fromRows(XTrain);
+    const YTM = TypedMatrix.fromRows(YTrain);
+
+    const M = matrixMultiply(transpose(XTM), YTM);
     const { U, Vt } = svd(M);
     const R = matrixMultiply(U, Vt);
 
-    // Step 2: Diagonal scaling after rotation
-    const XR = matrixMultiply(XTrain, R); // (n, d)
-    const d = XR[0].length;
+    const XR = matrixMultiply(XTM, R);
+    const d = XR.cols;
 
     const s = new Float64Array(d);
     const sInv = new Float64Array(d);
+    const xrd = XR.data;
+    const ytd = YTM.data;
     for (let j = 0; j < d; j++) {
       let denom = 0;
       let numer = 0;
-      for (let i = 0; i < XR.length; i++) {
-        denom += XR[i][j] * XR[i][j];
-        numer += XR[i][j] * YTrain[i][j];
+      for (let i = 0; i < XR.rows; i++) {
+        denom += xrd[i * d + j] * xrd[i * d + j];
+        numer += xrd[i * d + j] * ytd[i * d + j];
       }
       s[j] = numer / Math.max(denom, 1e-8);
       sInv[j] = Math.abs(s[j]) > 1e-8 ? 1.0 / s[j] : 0.0;
     }
 
-    // Combined: W = R * diag(s)  =>  v_out = v_in @ R @ diag(s)
-    // W[i][j] = R[i][j] * s[j]
-    const W: Float64Array[] = new Array(d);
+    const rd = R.data;
+    const Wdata = new Float64Array(d * d);
     for (let i = 0; i < d; i++) {
-      W[i] = new Float64Array(d);
       for (let j = 0; j < d; j++) {
-        W[i][j] = R[i][j] * s[j];
+        Wdata[i * d + j] = rd[i * d + j] * s[j];
       }
     }
 
-    // Inverse: diag(s)^{-1} * R^T
     const Rt = transpose(R);
-    const WInv: Float64Array[] = new Array(d);
+    const rtd = Rt.data;
+    const WInvData = new Float64Array(d * d);
     for (let i = 0; i < d; i++) {
-      WInv[i] = new Float64Array(d);
       for (let j = 0; j < d; j++) {
-        WInv[i][j] = Rt[i][j] * sInv[j];
+        WInvData[i * d + j] = rtd[i * d + j] * sInv[j];
       }
     }
 
-    this._W = W;
-    this._WInv = WInv;
+    this._W = new TypedMatrix(Wdata, d, d);
+    this._WInv = new TypedMatrix(WInvData, d, d);
     this._scales = s;
     this._scalesInv = sInv;
     this._fitted = true;
@@ -238,7 +200,7 @@ export class ProcrustesDiagMapping extends Mapping {
     return this;
   }
 
-  transform(V: Float64Array | Float64Array[]): Float64Array | Float64Array[] {
+  transform(V: SingleOrBatch): Float64Array | Float64Array[] {
     this.requireFitted();
     return this.applyMapping(V, this._W!, this._dSrc!, {
       direction: 'forward',
@@ -247,7 +209,7 @@ export class ProcrustesDiagMapping extends Mapping {
     });
   }
 
-  inverseTransform(V: Float64Array | Float64Array[]): Float64Array | Float64Array[] {
+  inverseTransform(V: SingleOrBatch): Float64Array | Float64Array[] {
     this.requireFitted();
     return this.applyMapping(V, this._WInv!, this._dTarget!, {
       direction: 'inverse',

@@ -1,13 +1,4 @@
-/**
- * Ridge regression embedding-space mapping.
- *
- * Fits a ridge-regularized linear map between source and target embeddings.
- * When `alpha` is "auto", uses generalized cross-validation (GCV) to select
- * the optimal regularization strength. Supports optional dimensionality
- * reduction via truncated SVD and holdout validation.
- */
-
-import { Mapping } from './base';
+import { Mapping, ApplyMappingOptions } from './base';
 import {
   transpose,
   matrixMultiply,
@@ -15,44 +6,27 @@ import {
   svd,
   ridgeCv,
   leastSquares,
-  zeros,
-  shape,
+  TypedMatrix,
+  toTypedMatrix,
+  SingleOrBatch,
 } from '../math/linalg';
 import { augmentBias, checkFinite, l2Normalize } from '../math/normalize';
 import {
   pairwiseCosineStats,
   topkRetention,
-  holdoutRankCorrelation,
 } from '../math/metrics';
 import { trainTestSplit } from '../math/random';
 import type { MappingType, ValidationReport } from '../types';
 
-/**
- * Configuration options for RidgeMapping.
- */
 export interface RidgeMappingOptions {
-  /** Regularization strength. "auto" uses GCV. Default: "auto". */
   alpha?: 'auto' | number;
-  /** Whether to include a bias (intercept) term. Default: true. */
   bias?: boolean;
-  /** Random seed for train/test split. Default: 0. */
   seed?: number;
-  /** Whether to L2-normalize output vectors. Default: true. */
   normalizeOutput?: boolean;
-  /** Fraction of data to hold out for validation. Default: 0.1. */
   holdoutFraction?: number;
-  /** If set, truncate to this many singular components. null = no truncation. */
   rank?: number | null;
 }
 
-/**
- * Ridge regression mapping between embedding spaces.
- *
- * The mapping solves: W = argmin ||Y - X W||² + α||W||²
- *
- * When alpha is "auto", the optimal α is selected via generalized
- * cross-validation over a log-spaced grid.
- */
 export class RidgeMapping extends Mapping {
   static readonly mappingType: MappingType = 'ridge';
 
@@ -70,95 +44,83 @@ export class RidgeMapping extends Mapping {
     this._rank = options.rank ?? null;
   }
 
-  // ── Fit ────────────────────────────────────────────────────────
+  fit(X: Float64Array[] | Float32Array[] | TypedMatrix, Y: Float64Array[] | Float32Array[] | TypedMatrix): this {
+    const Xm = toTypedMatrix(X);
+    const Ym = toTypedMatrix(Y);
 
-  /**
-   * Fit the ridge regression mapping.
-   *
-   * Steps:
-   * 1. Validate input dimensions and finiteness.
-   * 2. Train/test split for holdout validation.
-   * 3. Augment bias column if enabled.
-   * 4. Fit forward ridge (GCV if auto, else fixed alpha).
-   * 5. Fit inverse ridge the same way.
-   * 6. Optionally compress via truncated SVD.
-   * 7. Compute holdout validation metrics.
-   *
-   * @param X - Source embedding vectors.
-   * @param Y - Target embedding vectors.
-   * @returns this (for chaining).
-   */
-  fit(X: Float64Array[], Y: Float64Array[]): this {
-    if (X.length < 2) {
+    if (Xm.rows < 2) {
       throw new Error('Need at least 2 samples to fit a mapping');
     }
 
-    // Set dimensions
-    this._dSrc = X[0].length;
-    this._dTarget = Y[0].length;
+    this._dSrc = Xm.cols;
+    this._dTarget = Ym.cols;
 
-    // Validate finiteness
-    checkFinite('X', X);
-    checkFinite('Y', Y);
+    checkFinite('X', Xm);
+    checkFinite('Y', Ym);
 
-    // Warn if K < 10 × min_dim
     const minDim = Math.min(this._dSrc, this._dTarget);
-    if (X.length < 10 * minDim) {
+    if (Xm.rows < 10 * minDim) {
       console.warn(
-        `Warning: K=${X.length} < 10×min_dim=${10 * minDim}. ` +
+        `Warning: K=${Xm.rows} < 10×min_dim=${10 * minDim}. ` +
         'Results may be unreliable; consider collecting more calibration pairs.',
       );
     }
 
-    // Train/test split
+    const XRows = Xm.toFloat64Arrays();
+    const YRows = Ym.toFloat64Arrays();
     const { XTrain, XTest, YTrain, YTest } = trainTestSplit(
-      X, Y, this._holdoutFraction, this._seed,
+      XRows, YRows, this._holdoutFraction, this._seed,
     );
 
-    // Augment bias for training (only augment X, NOT Y)
-    const XTrainAug = this._bias ? augmentBias(XTrain) : XTrain;
+    const XTrainM = TypedMatrix.fromRows(XTrain);
+    const YTrainM = TypedMatrix.fromRows(YTrain);
 
-    // Fit forward ridge
-    let W: Float64Array[];
+    let XTrainAugM: TypedMatrix;
+    if (this._bias) {
+      const augRows = augmentBias(XTrain);
+      XTrainAugM = TypedMatrix.fromRows(augRows);
+    } else {
+      XTrainAugM = XTrainM;
+    }
+
+    let W: TypedMatrix;
     let selectedAlpha: number;
 
     if (this._alpha === 'auto') {
-      const result = ridgeCv(XTrainAug, YTrain);
+      const result = ridgeCv(XTrainAugM, YTrainM);
       W = result.W;
       selectedAlpha = result.bestAlpha;
     } else {
-      W = leastSquares(XTrainAug, YTrain, this._alpha);
+      W = leastSquares(XTrainAugM, YTrainM, this._alpha);
       selectedAlpha = this._alpha;
     }
 
     this._selectedAlpha = selectedAlpha;
 
-    // Truncated SVD compression for forward mapping
     if (this._rank !== null && this._rank > 0) {
-      const truncated = this._truncateSvd(W, this._rank);
-      W = truncated;
+      W = this._truncateSvdFlat(W, this._rank);
     }
 
     this._W = W;
 
-    // Fit inverse ridge (Y→X, only augment the input side)
-    const XInvAug = this._bias ? augmentBias(YTrain) : YTrain;
+    const XInvAugRows = this._bias ? augmentBias(YTrain) : YTrain;
+    const XInvAugM = TypedMatrix.fromRows(XInvAugRows);
+    const XTrainForInv = TypedMatrix.fromRows(XTrain);
 
-    let WInv: Float64Array[];
+    let WInv: TypedMatrix;
     if (this._alpha === 'auto') {
-      const result = ridgeCv(XInvAug, XTrain);
+      const result = ridgeCv(XInvAugM, XTrainForInv);
       WInv = result.W;
     } else {
-      WInv = leastSquares(XInvAug, XTrain, this._alpha);
+      WInv = leastSquares(XInvAugM, XTrainForInv, this._alpha);
     }
 
     if (this._rank !== null && this._rank > 0) {
-      WInv = this._truncateSvd(WInv, this._rank);
+      WInv = this._truncateSvdFlat(WInv, this._rank);
     }
 
     this._WInv = WInv;
 
-    // Holdout validation
     const holdoutMetrics = this._computeHoldoutMetrics(XTest, YTest, W);
 
     this._validationReport = {
@@ -178,15 +140,7 @@ export class RidgeMapping extends Mapping {
     return this;
   }
 
-  // ── Transform ──────────────────────────────────────────────────
-
-  /**
-   * Map source-space vectors to target space via the learned ridge mapping.
-   *
-   * @param V - Single vector or batch of source-space vectors.
-   * @returns Mapped target-space vector(s), L2-normalized if normalizeOutput is true.
-   */
-  transform(V: Float64Array | Float64Array[]): Float64Array | Float64Array[] {
+  transform(V: SingleOrBatch): Float64Array | Float64Array[] {
     this.requireFitted();
     return this.applyMapping(V, this._W!, this._dSrc!, {
       direction: 'forward',
@@ -195,15 +149,7 @@ export class RidgeMapping extends Mapping {
     });
   }
 
-  // ── Inverse Transform ──────────────────────────────────────────
-
-  /**
-   * Map target-space vectors back to source space via the inverse ridge mapping.
-   *
-   * @param V - Single vector or batch of target-space vectors.
-   * @returns Reconstructed source-space vector(s), L2-normalized if normalizeOutput is true.
-   */
-  inverseTransform(V: Float64Array | Float64Array[]): Float64Array | Float64Array[] {
+  inverseTransform(V: SingleOrBatch): Float64Array | Float64Array[] {
     this.requireFitted();
     if (this._WInv === null) {
       throw new Error('Inverse mapping not available for this RidgeMapping.');
@@ -215,15 +161,10 @@ export class RidgeMapping extends Mapping {
     });
   }
 
-  // ── Private helpers ────────────────────────────────────────────
-
-  /**
-   * Compute holdout validation metrics.
-   */
   private _computeHoldoutMetrics(
     XTest: Float64Array[],
     YTest: Float64Array[],
-    W: Float64Array[],
+    W: TypedMatrix,
   ): {
     cosineMean: number;
     cosineMedian: number;
@@ -231,16 +172,50 @@ export class RidgeMapping extends Mapping {
     top1Retention: number;
     top10Retention: number;
   } {
-    // Apply forward mapping to holdout source vectors
     let mapped: Float64Array[];
     if (this._bias) {
       const XTestAug = augmentBias(XTest);
-      mapped = XTestAug.map((v) => vectorMatrixMultiply(v, W));
+      const XTestAugM = TypedMatrix.fromRows(XTestAug);
+      const result = new TypedMatrix(new Float64Array(XTestAugM.rows * W.cols), XTestAugM.rows, W.cols);
+      const rd = result.data;
+      const ad = XTestAugM.data;
+      const md = W.data;
+      const aCols = XTestAugM.cols;
+      for (let i = 0; i < XTestAugM.rows; i++) {
+        const aOff = i * aCols;
+        const rOff = i * W.cols;
+        for (let k = 0; k < aCols; k++) {
+          const aik = ad[aOff + k];
+          if (aik === 0) continue;
+          const mOff = k * W.cols;
+          for (let j = 0; j < W.cols; j++) {
+            rd[rOff + j] += aik * md[mOff + j];
+          }
+        }
+      }
+      mapped = result.toFloat64Arrays();
     } else {
-      mapped = XTest.map((v) => vectorMatrixMultiply(v, W));
+      const XTestM = TypedMatrix.fromRows(XTest);
+      const result = new TypedMatrix(new Float64Array(XTestM.rows * W.cols), XTestM.rows, W.cols);
+      const rd = result.data;
+      const ad = XTestM.data;
+      const md = W.data;
+      const aCols = XTestM.cols;
+      for (let i = 0; i < XTestM.rows; i++) {
+        const aOff = i * aCols;
+        const rOff = i * W.cols;
+        for (let k = 0; k < aCols; k++) {
+          const aik = ad[aOff + k];
+          if (aik === 0) continue;
+          const mOff = k * W.cols;
+          for (let j = 0; j < W.cols; j++) {
+            rd[rOff + j] += aik * md[mOff + j];
+          }
+        }
+      }
+      mapped = result.toFloat64Arrays();
     }
 
-    // Normalize for cosine computation
     const normMapped = l2Normalize(mapped) as Float64Array[];
     const normTarget = l2Normalize(YTest) as Float64Array[];
 
@@ -257,35 +232,22 @@ export class RidgeMapping extends Mapping {
     };
   }
 
-  /**
-   * Truncate a weight matrix to `rank` components via SVD.
-   *
-   * Given W of shape (d_src, d_target), computes SVD and keeps only the
-   * top `rank` singular vectors: W_truncated = U[:, :r] @ S[:r] @ Vt[:r, :]
-   *
-   * This is done on the transpose to get meaningful components.
-   */
-  private _truncateSvd(W: Float64Array[], rank: number): Float64Array[] {
-    const [rows, cols] = shape(W);
-
-    // SVD of W itself
+  private _truncateSvdFlat(W: TypedMatrix, rank: number): TypedMatrix {
     const { U, S, Vt } = svd(W);
-
     const actualRank = Math.min(rank, S.length);
 
-    // Reconstruct: U[:, :r] @ diag(S[:r]) @ Vt[:r, :]
-    const Ur = U.map((row) => row.subarray(0, actualRank));
-    const Vtr = Vt.slice(0, actualRank);
+    const Ur = U.sliceRow(0, U.rows);
+    const Vtr = Vt.sliceRow(0, actualRank);
 
-    // Scale rows of Vtr by singular values
-    const scaledVtr: Float64Array[] = new Array(actualRank);
+    const scaledVtrData = new Float64Array(actualRank * Vtr.cols);
     for (let i = 0; i < actualRank; i++) {
       const s = S[i];
-      scaledVtr[i] = new Float64Array(cols);
-      for (let j = 0; j < cols; j++) {
-        scaledVtr[i][j] = Vtr[i][j] * s;
+      const off = i * Vtr.cols;
+      for (let j = 0; j < Vtr.cols; j++) {
+        scaledVtrData[off + j] = Vtr.data[i * Vtr.cols + j] * s;
       }
     }
+    const scaledVtr = new TypedMatrix(scaledVtrData, actualRank, Vtr.cols);
 
     return matrixMultiply(Ur, scaledVtr);
   }

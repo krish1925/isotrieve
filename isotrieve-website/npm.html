@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Isotrieve NPM Package - TypeScript Docs</title>
+    <meta name="description" content="@isotrieve/core TypeScript package documentation: mapping, quality gate, score recalibration, serve mode, and migration utilities.">
+    <meta property="og:title" content="Isotrieve NPM Package - TypeScript Docs">
+    <meta property="og:description" content="TypeScript package for embedding migration without re-embedding. Ridge mapping, quality gate, serve mode.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://krish1925.github.io/Isotrieve/npm.html">
+    <link rel="canonical" href="https://krish1925.github.io/Isotrieve/npm.html">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/docs.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="brand"><span class="brand-dot"></span>Isotrieve</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="protocol.html">How It Works</a></li>
+                <li><a href="integrations.html">Integrations</a></li>
+                <li><a href="performance.html">Benchmarks</a></li>
+                <li><a href="docs.html">Docs</a></li>
+                <li><a href="npm.html" class="on">NPM</a></li>
+            </ul>
+            <div class="nav-right">
+                <a href="https://github.com/krish1925/Isotrieve" class="nav-gh" target="_blank">GitHub</a>
+                <button class="theme-btn" id="themeToggle" title="Toggle theme">&#9681;</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="docs-layout">
+        <aside class="docs-side">
+            <div class="inner">
+                <div class="search"><input type="text" placeholder="Search docs..." id="docsSearch"></div>
+                <nav>
+                    <div class="sgroup"><div class="sgroup-t">Getting Started</div>
+                        <a href="#overview" class="on">Overview</a>
+                        <a href="#install">Installation</a>
+                        <a href="#quickstart">Quick Start</a>
+                    </div>
+                    <div class="sgroup"><div class="sgroup-t">Core API</div>
+                        <a href="#mapping">Mapping Classes</a>
+                        <a href="#gate">Quality Gate</a>
+                        <a href="#recal">Score Recalibration</a>
+                        <a href="#conf">Confidence Scoring</a>
+                        <a href="#serve">Serve Mode</a>
+                        <a href="#migrate">Migration</a>
+                    </div>
+                    <div class="sgroup"><div class="sgroup-t">Reference</div>
+                        <a href="#format">File Format</a>
+                        <a href="#notebooks">Notebooks</a>
+                        <a href="#which">Which Package?</a>
+                    </div>
+                </nav>
+            </div>
+        </aside>
+
+        <main class="docs-main">
+            <div class="docs-body">
+
+                <section id="overview" class="ds">
+                    <h1>@isotrieve/core — TypeScript</h1>
+                    <p class="lead">Port of Isotrieve to TypeScript. Fit linear mappings between embedding spaces, gate migrations, recalibrate scores, and serve transformed queries — all from Node.js.</p>
+                    <p>Cross-compatible with the <a href="index.html">Python package</a>. <code>.isotrieve</code> files work identically in both runtimes.</p>
+                    <h2>Key Features</h2>
+                    <ul>
+                        <li><strong>5 mapping classes</strong> — Ridge, Orthogonal Procrustes, Procrustes Diag, Low-Rank Affine, External</li>
+                        <li><strong>Quality gate</strong> — PASS / WARN / FAIL with calibrated isotonic regression</li>
+                        <li><strong>Score recalibration</strong> — PAVA isotonic regression for margin compression</li>
+                        <li><strong>Confidence scoring</strong> — per-query high/medium/low flags</li>
+                        <li><strong>Serve mode</strong> — map new-model queries into legacy space, zero corpus writes</li>
+                        <li><strong>Binary format</strong> — v2 with CRC32, JSON header, Float64 payload, Python cross-compat</li>
+                        <li><strong>TypedMatrix</strong> — efficient flat Float64Array matrix storage under the hood</li>
+                    </ul>
+                </section>
+
+                <section id="install" class="ds">
+                    <h2>Installation</h2>
+<pre><code>npm install @isotrieve/core</code></pre>
+                    <p>Requires Node.js &ge; 18.</p>
+<pre><code>import { RidgeMapping } from '@isotrieve/core';
+console.log('Ready');</code></pre>
+                </section>
+
+                <section id="quickstart" class="ds">
+                    <h2>Quick Start</h2>
+                    <h3>1. Fit a mapping</h3>
+<pre><code>import { RidgeMapping } from '@isotrieve/core';
+
+const X = [[...], [...]];  // source vectors (N x d_src)
+const Y = [[...], [...]];  // target vectors (N x d_tgt)
+
+const m = new RidgeMapping({ alpha: 'auto', seed: 0 });
+m.fit(X, Y);
+
+const report = m.getValidationReport();
+console.log(report.holdoutCosineMean, report.top1Retention);
+
+m.save('mapping.isotrieve');</code></pre>
+                    <h3>2. Load and transform</h3>
+<pre><code>const loaded = RidgeMapping.load('mapping.isotrieve');
+const Z = loaded.transform(corpus) as Float64Array[];
+// Z[i] is the i-th transformed vector (Float64Array, L2-normalized)</code></pre>
+                    <h3>3. Gate the migration</h3>
+<pre><code>import { QualityGate } from '@isotrieve/core';
+
+const gate = new QualityGate();
+const report = gate.evaluate(loaded, X_test, Y_test);
+console.log(report.verdict); // 'PASS' | 'WARN' | 'FAIL'</code></pre>
+                </section>
+
+                <section id="mapping" class="ds">
+                    <h2>Mapping Classes</h2>
+
+                    <p>All mappings implement the same interface:</p>
+                    <table>
+                        <thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>fit(X, Y)</code></td><td><code>void</code></td><td>Learn mapping from calibration pairs</td></tr>
+                            <tr><td><code>transform(V)</code></td><td><code>Float64Array[] | Float64Array</code></td><td>Apply mapping (forward)</td></tr>
+                            <tr><td><code>inverseTransform(V)</code></td><td><code>Float64Array[] | Float64Array</code></td><td>Apply inverse mapping</td></tr>
+                            <tr><td><code>save(path)</code></td><td><code>void</code></td><td>Save to .isotrieve file</td></tr>
+                            <tr><td><code>static load(path)</code></td><td><code>Mapping</code></td><td>Load from .isotrieve file</td></tr>
+                            <tr><td><code>getValidationReport()</code></td><td><code>object | null</code></td><td>Holdout metrics</td></tr>
+                            <tr><td><code>toJSON()</code></td><td><code>object</code></td><td>Serializable JSON representation</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h3>RidgeMapping</h3>
+                    <p>Default. Noise-robust ridge regression with generalized cross-validation for alpha selection. Supports unequal source/target dimensions.</p>
+                    <table>
+                        <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>alpha</code></td><td><code>'auto'</code></td><td>Regularization strength; <code>'auto'</code> uses GCV</td></tr>
+                            <tr><td><code>bias</code></td><td><code>true</code></td><td>Include bias column (affine term)</td></tr>
+                            <tr><td><code>seed</code></td><td><code>0</code></td><td>RNG seed for train/test split</td></tr>
+                            <tr><td><code>normalizeOutput</code></td><td><code>true</code></td><td>L2-normalize transformed vectors</td></tr>
+                            <tr><td><code>holdoutFraction</code></td><td><code>0.1</code></td><td>Fraction held out for validation</td></tr>
+                            <tr><td><code>inverseAlpha</code></td><td><code>'auto'</code></td><td>Inverse mapping regularization</td></tr>
+                        </tbody>
+                    </table>
+<pre><code>const m = new RidgeMapping({ alpha: 1.0, bias: true, seed: 42 });
+m.fit(X_cal, Y_cal);
+// d_src != d_tgt — works fine (e.g., 384 -> 1536)
+
+// Forward transform
+const Z = m.transform(corpus) as Float64Array[];
+
+// Inverse (back to source space)
+const X_back = m.inverseTransform(Z) as Float64Array[];
+
+// Validation
+const r = m.getValidationReport();
+console.log(r.holdoutCosineMean, r.top1Retention, r.mrr);</code></pre>
+
+                    <h3>OrthogonalProcrustesMapping</h3>
+                    <p>Orthogonal rotation + reflection. Requires equal source/target dimensions. Inverse is exact transpose.</p>
+<pre><code>import { OrthogonalProcrustesMapping } from '@isotrieve/core';
+
+const m = new OrthogonalProcrustesMapping({ seed: 0 });
+m.fit(X, Y); // d_src === d_tgt required
+
+// W^T = exact inverse
+const Z = m.transform(V) as Float64Array[];
+const V_back = m.inverseTransform(Z) as Float64Array[];</code></pre>
+
+                    <h3>ProcrustesDiagMapping</h3>
+                    <p>Axis-aligned scaling + rotation. Diagonal scaling factors capture per-dimension importance. Requires equal dimensions.</p>
+<pre><code>import { ProcrustesDiagMapping } from '@isotrieve/core';
+
+const m = new ProcrustesDiagMapping({ seed: 0 });
+m.fit(X, Y);
+
+// Diagonal scaling factors (d_tgt,)
+console.log(m.diag);
+
+// Inverse exists (diagonal is invertible)
+const X_back = m.inverseTransform(m.transform(X)) as Float64Array[];</code></pre>
+
+                    <h3>LowRankAffineMapping</h3>
+                    <p>Low-rank constraint for limited calibration data. Truncates SVD to target rank. Supports unequal dimensions.</p>
+                    <table>
+                        <thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>alpha</code></td><td><code>'auto'</code></td><td>Regularization</td></tr>
+                            <tr><td><code>rank</code></td><td><code>8</code></td><td>Truncation rank</td></tr>
+                            <tr><td><code>bias</code></td><td><code>true</code></td><td>Include bias column</td></tr>
+                            <tr><td><code>seed</code></td><td><code>0</code></td><td>RNG seed</td></tr>
+                            <tr><td><code>normalizeOutput</code></td><td><code>true</code></td><td>L2-normalize</td></tr>
+                            <tr><td><code>holdoutFraction</code></td><td><code>0.1</code></td><td>Validation fraction</td></tr>
+                        </tbody>
+                    </table>
+<pre><code>const m = new LowRankAffineMapping({ rank: 16, alpha: 'auto', bias: true });
+m.fit(X_cal, Y_cal);
+const Z = m.transform(V) as Float64Array[];</code></pre>
+
+                    <h3>ExternalMapping</h3>
+                    <p>Wrap any custom transform function. No fitting required.</p>
+<pre><code>import { ExternalMapping } from '@isotrieve/core';
+
+const m = new ExternalMapping({
+  forwardFn: (vecs) => vecs.map(v => myForward(v)),
+  inverseFn: (vecs) => vecs.map(v => myInverse(v)),
+  dSrc: 384,
+  dTarget: 1536,
+});
+
+const Z = m.transform(V) as Float64Array[];
+const X_back = m.inverseTransform(Z) as Float64Array[];</code></pre>
+                </section>
+
+                <section id="gate" class="ds">
+                    <h2>Quality Gate</h2>
+                    <p>Data-driven verdict based on a pre-calibrated isotonic regression model (shared with the Python package). Use before committing to migration in production.</p>
+<pre><code>import { QualityGate } from '@isotrieve/core';
+
+const gate = new QualityGate();
+const report = gate.evaluate(mapping, X_heldout, Y_heldout, {
+  holdoutTop1: mapping.getValidationReport()?.top1Retention ?? null,
+});
+
+console.log(report.verdict);              // 'PASS' | 'WARN' | 'FAIL'
+console.log(report.predictedRetention);    // 0.0 - 1.0
+console.log(report.predictionInterval);    // [lower, upper] 80% CI
+console.log(report.marginCompression);     // score margin ratio
+console.log(report.scoreRecomRecommendation); // recalibration advice</code></pre>
+                    <table>
+                        <thead><tr><th>Verdict</th><th>Predicted Retention</th><th>Action</th></tr></thead>
+                        <tbody>
+                            <tr><td><span class="badge ok">PASS</span></td><td>&ge; 0.75</td><td>Safe to migrate</td></tr>
+                            <tr><td><span class="badge warn">WARN</span></td><td>0.55 – 0.75</td><td>Score recalibration recommended</td></tr>
+                            <tr><td><span class="badge no">FAIL</span></td><td>&lt; 0.55</td><td>Do not migrate; collect more calibration data</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="recal" class="ds">
+                    <h2>Score Recalibration</h2>
+                    <p>Corrects margin compression in post-mapping similarity scores using PAVA isotonic regression.</p>
+<pre><code>import { ScoreRecalibrator } from '@isotrieve/core';
+
+const recal = new ScoreRecalibrator();
+
+// Fit on heldout (mapped_score, ceiling_score) pairs
+recal.fit(mappedScores, ceilingScores);
+
+// Transform any score array
+const adjusted = recal.transform(newScores);
+
+// Inspection
+console.log(recal.report?.meanShift);     // how much scores shifted
+console.log(recal.report?.marginRatio);   // post/pre margin ratio</code></pre>
+                    <p>The recalibrator can be saved alongside the mapping and loaded at serve time.</p>
+                </section>
+
+                <section id="conf" class="ds">
+                    <h2>Confidence Scoring</h2>
+                    <p>Per-query confidence flags based on top-1 vs top-2 margin.</p>
+<pre><code>import { ConfidenceScorer, confidenceSummary } from '@isotrieve/core';
+
+const scorer = new ConfidenceScorer();
+const results = scorer.scoreQueries(queryIds, similarities, topK);
+// results[i].flag = 'high' | 'medium' | 'low'
+// results[i].is_reliable = true if 'high'
+
+const summary = confidenceSummary(results);
+console.log(summary.pctHigh, summary.pctLow);</code></pre>
+                </section>
+
+                <section id="serve" class="ds">
+                    <h2>Serve Mode (QueryAdapter)</h2>
+                    <p>Map new-model queries into legacy vector space on the fly. No corpus re-embedding needed.</p>
+<pre><code>import { QueryAdapter } from '@isotrieve/core';
+
+const qa = QueryAdapter.load('mapping.isotrieve');
+
+// Single query
+const legacyVec = qa.mapQuery(newQueryVec);
+
+// Batch
+const legacyVecs = qa.mapQueries(batchQueryVecs);
+
+// Recalibrate (if recalibrator was fitted)
+const adjusted = qa.recalibrateScores(rawScores);
+
+// Dimensions
+console.log(qa.d_src, qa.d_tgt);   // 384, 1536
+console.log(qa.hasRecalibrator);    // boolean
+console.log(qa.hasMappedData);      // boolean</code></pre>
+
+                    <h3>CSLS Hubness Correction</h3>
+<pre><code>import { cslsScores } from '@isotrieve/core';
+
+const scores = cslsScores(queryVecs, candidateVecs, k=10);
+// Cross-domain similarity local scaling</code></pre>
+                </section>
+
+                <section id="migrate" class="ds">
+                    <h2>Migration</h2>
+                    <p>Offline transform of entire vector store collections.</p>
+<pre><code>import { migrateStore } from '@isotrieve/core';
+
+const manifest = migrateStore(sourceStore, targetStore, mapping, {
+  batchSize: 1024,               // vectors per batch
+  manifestPath: './manifest.json',
+  resume: true,                  // skip already-migrated batches
+  onBatchComplete: (b) => {
+    console.log(`Batch ${b.batchNum}: ${b.rowsProcessed} vectors`);
+  },
+});
+
+console.log(manifest.rowsTotal, manifest.rowsMigrated);</code></pre>
+                </section>
+
+                <section id="format" class="ds">
+                    <h2>.isotrieve File Format</h2>
+                    <p>Cross-compatible between TypeScript and Python. Binary layout:</p>
+<pre><code>[4 bytes] Magic bytes "ISTR"
+[4 bytes] Header length (unsigned 32-bit LE)
+[4 bytes] CRC32 checksum of header + padding
+[N bytes] JSON header (padded to 8-byte alignment)
+[...]     Float64 matrix payloads (row-major)</code></pre>
+                    <p>Read/write utilities:</p>
+<pre><code>import { readIsotrieveHeader, readIsotrievePayload, writeIsotrieveFile } from '@isotrieve/core';
+
+// Read header only
+const header = readIsotrieveHeader('mapping.isotrieve');
+console.log(header.mappingType); // 'ridge'
+console.log(header.d_src, header.d_tgt);
+
+// Full read
+const { header, matrices } = readIsotrievePayload('mapping.isotrieve');
+
+// Write
+writeIsotrieveFile('output.isotrieve', header, [W, W_inv]);</code></pre>
+                </section>
+
+                <section id="notebooks" class="ds">
+                    <h2>Notebooks</h2>
+                    <p>Interactive Python notebooks demonstrating end-to-end usage. Concepts apply directly to the TypeScript package.</p>
+                    <table>
+                        <thead><tr><th>Notebook</th><th>Description</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td><a href="https://github.com/krish1925/Isotrieve/blob/main/notebooks/01_quickstart_ridge_mapping.ipynb" target="_blank">01 Quickstart: Ridge Mapping</a></td>
+                                <td>Fit, transform, and evaluate a ridge mapping</td>
+                            </tr>
+                            <tr>
+                                <td><a href="https://github.com/krish1925/Isotrieve/blob/main/notebooks/02_chromadb_migration.ipynb" target="_blank">02 ChromaDB Migration</a></td>
+                                <td>Migrate a ChromaDB collection to a new embedding model</td>
+                            </tr>
+                            <tr>
+                                <td><a href="https://github.com/krish1925/Isotrieve/blob/main/notebooks/03_qdrant_migration.ipynb" target="_blank">03 Qdrant Migration</a></td>
+                                <td>Migrate a Qdrant collection</td>
+                            </tr>
+                            <tr>
+                                <td><a href="https://github.com/krish1925/Isotrieve/blob/main/notebooks/04_adapter_as_intermediary.ipynb" target="_blank">04 Adapter as Intermediary</a></td>
+                                <td>LangChain / LlamaIndex integration</td>
+                            </tr>
+                            <tr>
+                                <td><a href="https://github.com/krish1925/Isotrieve/blob/main/notebooks/05_cross_architecture_dimension_change.ipynb" target="_blank">05 Cross-Architecture Dim Change</a></td>
+                                <td>Non-square transforms between different model families</td>
+                            </tr>
+                            <tr>
+                                <td><a href="https://github.com/krish1925/Isotrieve/blob/main/notebooks/06_recalibration_and_drift.ipynb" target="_blank">06 Recalibration and Drift</a></td>
+                                <td>Score recalibration and monitoring for drift</td>
+                            </tr>
+                            <tr>
+                                <td><a href="https://github.com/krish1925/Isotrieve/blob/main/notebooks/reproduce.ipynb" target="_blank">Reproduction: BEIR Benchmarks</a></td>
+                                <td>Reproduce published BEIR benchmark results</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="which" class="ds">
+                    <h2>Which Package to Use?</h2>
+                    <table>
+                        <thead><tr><th></th><th>Python (<code>pip install isotrieve</code>)</th><th>TypeScript (<code>npm install @isotrieve/core</code>)</th></tr></thead>
+                        <tbody>
+                            <tr><td>Status</td><td>Stable, benchmark-validated</td><td>Beta</td></tr>
+                            <tr><td>CLI</td><td>Full (<code>isotrieve plan/calibrate/gate/migrate</code>)</td><td>Library only</td></tr>
+                            <tr><td>Store adapters</td><td>ChromaDB, Qdrant, Pinecone, LlamaIndex</td><td>In-memory reference store</td></tr>
+                            <tr><td>Benchmarks</td><td>Committed in <code>benchmarks/results/</code></td><td>Not yet independent</td></tr>
+                            <tr><td>Binary format</td><td>v2 (CRC32 + padding)</td><td>v2 (cross-compatible)</td></tr>
+                        </tbody>
+                    </table>
+                    <p>Use Python for production migrations today. Use this package if you need a TypeScript library for programmatic mapping, gating, or format interop in Node.js.</p>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <footer class="footer"><div class="wrap"><p>&copy; 2026 Isotrieve. Apache-2.0 License.</p></div></footer>
+    <script src="js/main.js"></script>
+    <script src="js/docs.js"></script>
+</body>
+</html>

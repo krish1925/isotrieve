@@ -1,85 +1,54 @@
-/**
- * External mapping: wrap any pretrained callable for gating.
- *
- * Allows gating pretrained transforms from other libraries
- * (EmbeddingAdapters, sentence-transformers, etc.) without retraining.
- */
-
 import { Mapping } from './base';
-import { l2Normalize, checkFinite } from '../math/normalize';
-import type { MappingType } from '../types';
+import { TypedMatrix, toTypedMatrix, SingleOrBatch } from '../math/linalg';
 
 export type ExternalTransformFn = (vecs: Float64Array[]) => Float64Array[];
 
-/**
- * Wrap an external callable as an Isotrieve mapping.
- *
- * The callable must accept Float64Array[] and return Float64Array[].
- * Not serializable — use directly in code, not via .isotrieve files.
- */
 export class ExternalMapping extends Mapping {
-  static readonly mappingType: MappingType = 'external';
+  static readonly mappingType = 'external' as const;
 
-  private _fn: ExternalTransformFn;
-  private _inverseFn: ExternalTransformFn | null;
+  private _forwardFn: ExternalTransformFn | null = null;
+  private _inverseFn: ExternalTransformFn | null = null;
 
-  constructor(
-    fn: ExternalTransformFn,
-    options: { dSrc?: number; dTarget?: number; inverseFn?: ExternalTransformFn | null } = {},
-  ) {
-    super({ bias: false });
-    this._fn = fn;
+  constructor(options: {
+    forwardFn: ExternalTransformFn;
+    inverseFn?: ExternalTransformFn;
+    dSrc: number;
+    dTarget: number;
+    bias?: boolean;
+    seed?: number;
+  }) {
+    super({ bias: options.bias ?? false, seed: options.seed ?? 0 });
+    this._forwardFn = options.forwardFn;
     this._inverseFn = options.inverseFn ?? null;
-    this._dSrc = options.dSrc ?? null;
-    this._dTarget = options.dTarget ?? null;
+    this._dSrc = options.dSrc;
+    this._dTarget = options.dTarget;
     this._fitted = true;
-    this._meta.source = 'external';
   }
 
-  /**
-   * No-op fit: external mappings are pre-trained.
-   * Dimensions are inferred from calibration pair.
-   */
-  fit(X: Float64Array[], Y: Float64Array[]): this {
-    if (X.length === 0 || Y.length === 0) {
-      throw new Error('X and Y must be non-empty');
+  fit(_X: Float64Array[] | Float32Array[] | TypedMatrix, _Y: Float64Array[] | Float32Array[] | TypedMatrix): this {
+    throw new Error('ExternalMapping cannot be fitted; it wraps a pre-existing transform.');
+  }
+
+  transform(V: SingleOrBatch): Float64Array | Float64Array[] {
+    this.requireFitted();
+    return this._applyExternal(V, this._forwardFn!);
+  }
+
+  inverseTransform(V: SingleOrBatch): Float64Array | Float64Array[] {
+    this.requireFitted();
+    if (!this._inverseFn) {
+      throw new Error('No inverse transform provided for this ExternalMapping.');
     }
-    this._dSrc = X[0].length;
-    this._dTarget = Y[0].length;
-    return this;
+    return this._applyExternal(V, this._inverseFn);
   }
 
-  transform(V: Float64Array | Float64Array[]): Float64Array | Float64Array[] {
-    const single = !Array.isArray(V) || V.length === 0 || !(V[0] instanceof Float64Array);
-    const vecs = single ? [V as Float64Array] : V as Float64Array[];
-
-    if (vecs.length > 0 && this._dSrc !== null && vecs[0].length !== this._dSrc) {
-      throw new Error(`Expected ${this._dSrc}-D input, got ${vecs[0].length}-D`);
-    }
-    for (const v of vecs) checkFinite('external input', v);
-
-    const result = this._fn(vecs);
-    const normalized = l2Normalize(result) as Float64Array[];
-
-    return single ? normalized[0] : normalized;
-  }
-
-  inverseTransform(V: Float64Array | Float64Array[]): Float64Array | Float64Array[] {
-    if (this._inverseFn === null) {
-      throw new Error('No inverse function provided; cannot inverse-transform.');
-    }
-    const single = !Array.isArray(V) || V.length === 0 || !(V[0] instanceof Float64Array);
-    const vecs = single ? [V as Float64Array] : V as Float64Array[];
-    const result = this._inverseFn(vecs);
-    const normalized = l2Normalize(result) as Float64Array[];
-    return single ? normalized[0] : normalized;
-  }
-
-  /** External callables cannot be serialized. */
-  save(_path: string): void {
-    throw new Error(
-      'ExternalMapping wraps a live callable and cannot be saved to .isotrieve format. ' +
-      'Use the callable directly.',
-    );
+  private _applyExternal(
+    V: SingleOrBatch,
+    fn: ExternalTransformFn,
+  ): Float64Array | Float64Array[] {
+    const single = !(Array.isArray(V) && V.length > 0 && (V[0] instanceof Float64Array || V[0] instanceof Float32Array));
+    const vecs = toTypedMatrix(V).toFloat64Arrays();
+    const result = fn(vecs);
+    return single ? result[0] : result;
   }
 }

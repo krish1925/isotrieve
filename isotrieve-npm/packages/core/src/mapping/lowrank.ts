@@ -1,21 +1,13 @@
-/**
- * Low-rank affine mapping via truncated SVD on the ridge residual.
- *
- * Fits a ridge mapping, then compresses the learned weight matrix to rank `r`
- * via truncated SVD. Useful when d_src/d_target are large and you want a more
- * compact mapping (smaller .isotrieve file, faster transform).
- */
-
 import { Mapping } from './base';
 import {
   transpose,
   matrixMultiply,
-  vectorMatrixMultiply,
   svd,
   ridgeCv,
   leastSquares,
-  zeros,
-  shape,
+  TypedMatrix,
+  toTypedMatrix,
+  SingleOrBatch,
 } from '../math/linalg';
 import { augmentBias, checkFinite, l2Normalize } from '../math/normalize';
 import { pairwiseCosineStats, topkRetention } from '../math/metrics';
@@ -31,11 +23,6 @@ export interface LowRankAffineMappingOptions {
   holdoutFraction?: number;
 }
 
-/**
- * Low-rank affine mapping via truncated SVD on ridge.
- *
- * When rank >= min(d_src, d_target), behaves identically to RidgeMapping.
- */
 export class LowRankAffineMapping extends Mapping {
   static readonly mappingType: MappingType = 'lowrank_affine';
 
@@ -53,106 +40,103 @@ export class LowRankAffineMapping extends Mapping {
     this._holdoutFraction = options.holdoutFraction ?? 0.1;
   }
 
-  fit(X: Float64Array[], Y: Float64Array[]): this {
-    if (X.length < 2) {
+  fit(X: Float64Array[] | Float32Array[] | TypedMatrix, Y: Float64Array[] | Float32Array[] | TypedMatrix): this {
+    const Xm = toTypedMatrix(X);
+    const Ym = toTypedMatrix(Y);
+
+    if (Xm.rows < 2) {
       throw new Error('Need at least 2 samples to fit a mapping');
     }
 
-    this._dSrc = X[0].length;
-    this._dTarget = Y[0].length;
+    this._dSrc = Xm.cols;
+    this._dTarget = Ym.cols;
 
-    checkFinite('X', X);
-    checkFinite('Y', Y);
+    checkFinite('X', Xm);
+    checkFinite('Y', Ym);
 
     const minDim = Math.min(this._dSrc, this._dTarget);
-    if (X.length < 10 * minDim) {
+    if (Xm.rows < 10 * minDim) {
       console.warn(
-        `Warning: K=${X.length} < 10×min_dim=${10 * minDim}. ` +
+        `Warning: K=${Xm.rows} < 10×min_dim=${10 * minDim}. ` +
         'Results may be unreliable; consider collecting more calibration pairs.',
       );
     }
 
+    const XRows = Xm.toFloat64Arrays();
+    const YRows = Ym.toFloat64Arrays();
     const { XTrain, XTest, YTrain, YTest } = trainTestSplit(
-      X, Y, this._holdoutFraction, this._seed,
+      XRows, YRows, this._holdoutFraction, this._seed,
     );
 
-    // Augment bias for training (only augment X, NOT Y)
-    const XTrainAug = this._bias ? augmentBias(XTrain) : XTrain;
+    const XTrainM = TypedMatrix.fromRows(XTrain);
+    const YTrainM = TypedMatrix.fromRows(YTrain);
 
-    // Fit forward ridge
-    let W: Float64Array[];
+    let XTrainAugM: TypedMatrix;
+    if (this._bias) {
+      const augRows = augmentBias(XTrain);
+      XTrainAugM = TypedMatrix.fromRows(augRows);
+    } else {
+      XTrainAugM = XTrainM;
+    }
+
+    let W: TypedMatrix;
     let selectedAlpha: number;
-
     if (this._alpha === 'auto') {
-      const result = ridgeCv(XTrainAug, YTrain);
+      const result = ridgeCv(XTrainAugM, YTrainM);
       W = result.W;
       selectedAlpha = result.bestAlpha;
     } else {
-      W = leastSquares(XTrainAug, YTrain, this._alpha);
+      W = leastSquares(XTrainAugM, YTrainM, this._alpha);
       selectedAlpha = this._alpha;
     }
 
     this._selectedAlpha = selectedAlpha;
 
-    // Truncated SVD for low-rank approximation
-    const rank = this._rank || Math.min(...shape(W));
-    if (rank < Math.min(...shape(W))) {
-      const { U, S, Vt } = svd(W);
-      const actualRank = Math.min(rank, S.length);
-
-      // Reconstruct: U[:, :r] @ diag(sigma[:r]) @ Vt[:r, :]
-      const Ur = U.map((row) => row.subarray(0, actualRank));
-      const Vtr = Vt.slice(0, actualRank);
-
-      const scaledVtr: Float64Array[] = new Array(actualRank);
-      for (let i = 0; i < actualRank; i++) {
-        scaledVtr[i] = new Float64Array(W[0].length);
-        for (let j = 0; j < W[0].length; j++) {
-          scaledVtr[i][j] = Vtr[i][j] * S[i];
-        }
-      }
-      W = matrixMultiply(Ur, scaledVtr);
+    const effectiveRank = this._rank || Math.min(W.rows, W.cols);
+    if (effectiveRank < Math.min(W.rows, W.cols)) {
+      W = lowRankTruncate(W, effectiveRank);
     }
 
     this._W = W;
 
-    // Fit inverse via ridge Y → X (only augment the input side)
-    const XInvAug = this._bias ? augmentBias(YTrain) : YTrain;
+    const XInvAugRows = this._bias ? augmentBias(YTrain) : YRows;
+    const XInvAugM = TypedMatrix.fromRows(XInvAugRows);
+    const XTrainForInv = TypedMatrix.fromRows(XTrain);
 
-    let WInv: Float64Array[];
+    let WInv: TypedMatrix;
     if (this._alpha === 'auto') {
-      const result = ridgeCv(XInvAug, XTrain);
+      const result = ridgeCv(XInvAugM, XTrainForInv);
       WInv = result.W;
     } else {
-      WInv = leastSquares(XInvAug, XTrain, this._alpha);
+      WInv = leastSquares(XInvAugM, XTrainForInv, this._alpha);
     }
 
-    if (rank < Math.min(...shape(WInv))) {
-      const { U, S, Vt } = svd(WInv);
-      const actualRank = Math.min(rank, S.length);
-      const Ur = U.map((row) => row.subarray(0, actualRank));
-      const Vtr = Vt.slice(0, actualRank);
-      const scaledVtr: Float64Array[] = new Array(actualRank);
-      for (let i = 0; i < actualRank; i++) {
-        scaledVtr[i] = new Float64Array(WInv[0].length);
-        for (let j = 0; j < WInv[0].length; j++) {
-          scaledVtr[i][j] = Vtr[i][j] * S[i];
-        }
-      }
-      WInv = matrixMultiply(Ur, scaledVtr);
+    if (effectiveRank < Math.min(WInv.rows, WInv.cols)) {
+      WInv = lowRankTruncate(WInv, effectiveRank);
     }
 
     this._WInv = WInv;
     this._fitted = true;
 
-    // Holdout validation
-    let mapped: Float64Array[];
-    if (this._bias) {
-      const XTestAug = augmentBias(XTest);
-      mapped = XTestAug.map((v) => vectorMatrixMultiply(v, W));
-    } else {
-      mapped = XTest.map((v) => vectorMatrixMultiply(v, W));
+    const Wcols = W.cols;
+    const result = new TypedMatrix(new Float64Array(XTest.length * Wcols), XTest.length, Wcols);
+    const rd = result.data;
+    const XTM = TypedMatrix.fromRows(XTest);
+    const xd = XTM.data;
+    const wd = W.data;
+    for (let i = 0; i < XTest.length; i++) {
+      const xOff = i * XTM.cols;
+      const rOff = i * Wcols;
+      for (let k = 0; k < XTM.cols; k++) {
+        const xik = xd[xOff + k];
+        const wOff = k * Wcols;
+        for (let j = 0; j < Wcols; j++) {
+          rd[rOff + j] += xik * wd[wOff + j];
+        }
+      }
     }
+    const mapped = result.toFloat64Arrays();
+
     const normMapped = l2Normalize(mapped) as Float64Array[];
     const normTarget = l2Normalize(YTest) as Float64Array[];
     const cosine = pairwiseCosineStats(normMapped, normTarget);
@@ -173,7 +157,7 @@ export class LowRankAffineMapping extends Mapping {
     return this;
   }
 
-  transform(V: Float64Array | Float64Array[]): Float64Array | Float64Array[] {
+  transform(V: SingleOrBatch): Float64Array | Float64Array[] {
     this.requireFitted();
     return this.applyMapping(V, this._W!, this._dSrc!, {
       direction: 'forward',
@@ -182,7 +166,7 @@ export class LowRankAffineMapping extends Mapping {
     });
   }
 
-  inverseTransform(V: Float64Array | Float64Array[]): Float64Array | Float64Array[] {
+  inverseTransform(V: SingleOrBatch): Float64Array | Float64Array[] {
     this.requireFitted();
     if (this._WInv === null) {
       throw new Error('Inverse mapping not available for this LowRankAffineMapping.');
@@ -193,4 +177,29 @@ export class LowRankAffineMapping extends Mapping {
       normalize: this._normalizeOutput,
     });
   }
+}
+
+function lowRankTruncate(W: TypedMatrix, effectiveRank: number): TypedMatrix {
+  const { U, S, Vt } = svd(W);
+  const r = Math.min(effectiveRank, S.length);
+
+  const scaledU = TypedMatrix.zeros(U.rows, r);
+  const sud = scaledU.data;
+  const ud = U.data;
+  for (let i = 0; i < U.rows; i++) {
+    for (let j = 0; j < r; j++) {
+      sud[i * r + j] = ud[i * U.cols + j] * S[j];
+    }
+  }
+
+  const Vtr = TypedMatrix.zeros(r, Vt.cols);
+  const vtrd = Vtr.data;
+  const vtd = Vt.data;
+  for (let i = 0; i < r; i++) {
+    for (let j = 0; j < Vt.cols; j++) {
+      vtrd[i * Vt.cols + j] = vtd[i * Vt.cols + j];
+    }
+  }
+
+  return matrixMultiply(scaledU, Vtr);
 }

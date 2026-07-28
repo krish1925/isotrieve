@@ -22,6 +22,7 @@
  */
 
 import { readFileSync, writeFileSync } from 'fs';
+import { TypedMatrix } from '../math/matrix';
 
 // ── Constants ─────────────────────────────────────────────────────
 
@@ -174,30 +175,25 @@ function padTo8Bytes(buf: Buffer): Buffer {
 
 // ── Matrix serialization ──────────────────────────────────────────
 
-function matrixToBuffer(mat: Float64Array[]): Buffer {
-  if (mat.length === 0) return Buffer.alloc(0);
-  const rows = mat.length;
-  const cols = mat[0].length;
-  const buf = Buffer.alloc(rows * cols * 8);
-  for (let i = 0; i < rows; i++) {
-    const row = mat[i];
-    for (let j = 0; j < cols; j++) {
-      buf.writeDoubleLE(row[j], (i * cols + j) * 8);
-    }
-  }
-  return buf;
+function matrixToBuffer(mat: TypedMatrix): Buffer {
+  if (mat.rows === 0 || mat.cols === 0) return Buffer.alloc(0);
+  return Buffer.from(mat.data.buffer, mat.data.byteOffset, mat.rows * mat.cols * 8);
 }
 
-function bufferToMatrix(buf: Buffer, rows: number, cols: number): Float64Array[] {
-  const mat: Float64Array[] = new Array(rows);
-  for (let i = 0; i < rows; i++) {
-    const row = new Float64Array(cols);
-    for (let j = 0; j < cols; j++) {
-      row[j] = buf.readDoubleLE((i * cols + j) * 8);
-    }
-    mat[i] = row;
+function bufferToMatrix(buf: Buffer, rows: number, cols: number): TypedMatrix {
+  if (buf.byteLength < rows * cols * 8) {
+    throw new Error(`buffer too small: ${buf.byteLength} < ${rows * cols * 8}`);
   }
-  return mat;
+  // Float64Array requires 8-byte aligned byteOffset; if not aligned, copy.
+  if (buf.byteOffset % 8 === 0) {
+    const data = new Float64Array(buf.buffer, buf.byteOffset, rows * cols);
+    return new TypedMatrix(data, rows, cols);
+  }
+  const data = new Float64Array(rows * cols);
+  for (let i = 0; i < rows * cols; i++) {
+    data[i] = buf.readDoubleLE(i * 8);
+  }
+  return new TypedMatrix(data, rows, cols);
 }
 
 // ── Write ─────────────────────────────────────────────────────────
@@ -214,7 +210,7 @@ function bufferToMatrix(buf: Buffer, rows: number, cols: number): Float64Array[]
 export function writeIsotrieveFile(
   path: string,
   header: Record<string, unknown>,
-  matrices: Array<{ name: string; mat: Float64Array[] }>,
+  matrices: Array<{ name: string; mat: TypedMatrix }>,
 ): void {
   // Stamp format version
   header.formatVersion = FORMAT_VERSION;
@@ -340,7 +336,7 @@ function peekFormatVersion(raw: Buffer, headerLen: number): number {
  */
 export function readIsotrievePayload(path: string): {
   header: Record<string, unknown>;
-  matrices: Map<string, Float64Array[]>;
+  matrices: Map<string, TypedMatrix>;
 } {
   const raw = readFileSync(path);
 
@@ -425,7 +421,7 @@ export function readIsotrievePayload(path: string): {
   }
 
   let offset = payloadStart;
-  const matrices = new Map<string, Float64Array[]>();
+  const matrices = new Map<string, TypedMatrix>();
 
   // Forward matrix
   if (matrixShape) {
