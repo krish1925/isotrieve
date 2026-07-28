@@ -1,110 +1,31 @@
-# Isotrieve - Agent Embedding Communication Protocol
+# Isotrieve — NPM packages
 
-> **⚠️ Historical/Experimental Package**
-> This NPM package is the original protocol prototype. The actively maintained, benchmark-validated project is [`isotrieve-python/`](../isotrieve-python/) — available on [PyPI as `isotrieve`](https://pypi.org/project/isotrieve/). This package is not actively maintained.
-
-Production-ready NPM package for semantic communication between agents using different embedding models.
-
-## What is Isotrieve?
-
-Isotrieve enables agents with different embedding models to communicate semantic information directly through learned transfer matrices, achieving **2x better semantic preservation** compared to text serialization.
-
-## Quick Start
-
-```bash
-npm install @isotrieve/core @isotrieve/adapters-openai
-```
-
-```typescript
-import { Isotrieve } from '@isotrieve/core';
-import { OpenAIAdapter } from '@isotrieve/adapters-openai';
-
-// Initialize agents
-const agent1 = new Isotrieve({
-  embedder: new OpenAIAdapter({
-    apiKey: process.env.OPENAI_KEY,
-    model: 'text-embedding-3-large'
-  })
-});
-
-const agent2 = new Isotrieve({
-  embedder: new OpenAIAdapter({
-    apiKey: process.env.OPENAI_KEY,
-    model: 'text-embedding-3-small'
-  })
-});
-
-// Calibrate (one-time setup)
-await agent1.calibrateWith(agent2);
-
-// Transfer embeddings
-const embedding = await agent1.embed("Complex technical state");
-const transferred = await agent1.transferTo(agent2, embedding);
-
-// Agent 2 uses transferred embedding natively
-const similar = await agent2.findSimilar(transferred, knowledgeBase);
-```
-
-###  Auto-Negotiation (NEW)
-
-Isotrieve now automatically detects if both agents support the protocol and falls back to text if needed:
-
-```typescript
-import { Isotrieve, IsotrieveNegotiator } from '@isotrieve/core';
-import { OpenAIAdapter } from '@isotrieve/adapters-openai';
-
-// Create your agents
-const agent1 = new Isotrieve({ embedder: new OpenAIAdapter({ apiKey: '...' }) });
-const agent2 = someOtherAgent;  // Could be Isotrieve or not
-
-// Automatically negotiate and send message
-const result = await IsotrieveNegotiator.sendMessage(agent1, agent2, 'Hello!');
-
-// Isotrieve automatically:
-// ✓ Detects if both support Isotrieve → Uses Isotrieve with 97% fidelity
-// ✓ Detects if only one supports Isotrieve → Falls back to text
-// ✓ Shows clear warning when falling back
-// ✓ Returns result with method info
-
-if (result.method === 'isotrieve') {
-  console.log(`✓ Using Isotrieve with ${(result.expectedSimilarity! * 100).toFixed(1)}% fidelity`);
-} else {
-  console.log(`⚠️  Using text: ${result.fallbackReason}`);
-}
-```
-
-**Example Output:**
-```
-# Both support Isotrieve:
- Both agents support Isotrieve. Calibrating...
-✓ Isotrieve enabled with 97.3% semantic fidelity
-
-# Only one supports Isotrieve:
-⚠️  Isotrieve not available: Agent 2 does not support Isotrieve. Falling back to text communication.
-```
-
-## Features
-
-- **2x Better Semantic Preservation** vs text round-trip
-- **Provider-Agnostic** - Works with OpenAI, Anthropic, Cohere, HuggingFace
-- **Quality Monitoring** - Automatic quality tracking with fallback
-- **Lightweight** - Millisecond-level transfer latency
-- **Production-Ready** - Validated on 300k vocabulary, 97% fidelity
+> **Pre-1.0 / Beta** — The TypeScript packages are ports of the Python [`isotrieve`](https://pypi.org/project/isotrieve/) package under active development. The Python package is the mature, benchmark-validated implementation. Do not depend on these packages in production until the production readiness plan (see root README) is closed.
 
 ## Packages
 
-- `@isotrieve/core` - Core protocol implementation
-- `@isotrieve/adapters-openai` - OpenAI embeddings adapter
-- `@isotrieve/adapters-voyage` - Voyage AI adapter
-- `@isotrieve/adapters-cohere` - Cohere adapter
-- `@isotrieve/adapters-huggingface` - HuggingFace adapter
+| Package | Description | Status |
+|---|---|---|
+| [`@isotrieve/core`](./packages/core/) | Mapping, quality gate, migration, recalibration, serve | Beta |
+| `@isotrieve/adapters-openai` | OpenAI embedding provider | Legacy (old protocol API) |
+| `@isotrieve/adapters-voyage` | Voyage AI embedding provider | Legacy (old protocol API) |
+| `@isotrieve/adapters-cohere` | Cohere embedding provider | Legacy (old protocol API) |
+| `@isotrieve/adapters-huggingface` | HuggingFace embedding provider | Legacy (old protocol API) |
 
-## Documentation
+**Only `@isotrieve/core` has been ported to the new embedding-migration architecture.** The adapter packages still reference the old `Isotrieve` class and `IsotrieveNegotiator` protocol API. They will be updated or removed before any 1.0 release.
 
-- [Protocol Specification](./docs/protocol-spec.md)
-- [Getting Started Guide](./docs/getting-started.md)
-- [API Reference](./docs/api-reference.md)
+## Which package is current?
+
+**Use the Python package (`pip install isotrieve`) for production migrations.** The TypeScript packages are a work in progress. See the root [README.md](../README.md) for the full production readiness plan.
+
+## Development
+
+```bash
+npm install
+npm run build
+npm test
+```
 
 ## License
 
-MIT
+Apache-2.0. See [LICENSE](../isotrieve-python/LICENSE).
