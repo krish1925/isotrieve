@@ -60,8 +60,8 @@ flowchart LR
 
 ```
 Isotrieve/
-├── isotrieve-python/          # Maintained Python package (PyPI: isotrieve)
-├── isotrieve-npm/             # Historical NPM protocol package (experimental)
+├── isotrieve-python/          # Python package (PyPI: isotrieve) — mature, benchmark-validated
+├── isotrieve-npm/             # TypeScript packages (npm: @isotrieve/core) — beta, under active development
 ├── isotrieve-website/         # GitHub Pages site
 ├── benchmarks/           # Benchmark harness and results
 ├── spec/                 # Protocol specification (RFC-001)
@@ -70,7 +70,10 @@ Isotrieve/
 └── AGENTS.md             # Development contract for AI agents
 ```
 
-**Which package is current?** `isotrieve` on PyPI is the actively maintained, benchmark-validated package. The NPM package (`isotrieve-npm/`) is historical/experimental.
+**Which package is current?**
+
+- **Python (`pip install isotrieve`)** — Mature, benchmark-validated, CLI included. Use this for production migrations today.
+- **TypeScript (`@isotrieve/core`)** — Beta port of the mapping, gate, and migration logic. The `.isotrieve` binary format is cross-compatible with Python. No CLI yet, no store adapters beyond in-memory reference. Under active development; see `isotrieve-npm/README.md` for status. Do not depend on it in production until the production readiness plan is closed.
 
 ## Package
 

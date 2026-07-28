@@ -1,16 +1,3 @@
-/**
- * Phase 2: Numerical correctness audit.
- *
- * Loads Python-generated fixtures and verifies:
- * - SVD: reconstruction, orthogonality, known singular values
- * - Ridge regression: fixed alpha and GCV selection
- * - Procrustes: orthogonal rotation, diagonal scaling
- * - LowRankAffine: ridge + TSVD truncation
- * - Gate model: identical PASS/WARN/FAIL verdicts
- * - ScoreRecalibrator: PAVA monotonicity
- * - PAVA adversarial inputs
- */
-
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import {
@@ -23,7 +10,7 @@ import {
   eye,
   frobeniusNorm,
   vecNorm,
-  shape,
+  TypedMatrix,
 } from '../math/linalg';
 import { RidgeMapping } from '../mapping/ridge';
 import {
@@ -34,15 +21,25 @@ import { LowRankAffineMapping } from '../mapping/lowrank';
 import { QualityGate } from '../quality/gate';
 import { ScoreRecalibrator } from '../recalibration';
 
-// ── Helpers ──────────────────────────────────────────────────────
-
 function loadFixture(name: string): any {
   const path = join(__dirname, 'fixtures', `${name}.json`);
   return JSON.parse(readFileSync(path, 'utf-8'));
 }
 
-function toMat(rows: number[][]): Float64Array[] {
-  return rows.map((r) => new Float64Array(r));
+function toMat(rows: number[][]): TypedMatrix {
+  const r = rows.length;
+  const c = rows[0].length;
+  const data = new Float64Array(r * c);
+  for (let i = 0; i < r; i++) {
+    for (let j = 0; j < c; j++) {
+      data[i * c + j] = rows[i][j];
+    }
+  }
+  return new TypedMatrix(data, r, c);
+}
+
+function toFloat64Arrays(rows: number[][]): Float64Array[] {
+  return rows.map(r => new Float64Array(r));
 }
 
 function maxAbsDiff(a: Float64Array, b: Float64Array): number {
@@ -53,51 +50,48 @@ function maxAbsDiff(a: Float64Array, b: Float64Array): number {
   return max;
 }
 
-function matMaxAbsDiff(A: Float64Array[], B: Float64Array[]): number {
+function matMaxAbsDiff(A: TypedMatrix, B: TypedMatrix): number {
   let max = 0;
-  for (let i = 0; i < A.length; i++) {
-    max = Math.max(max, maxAbsDiff(A[i], B[i]));
+  for (let i = 0; i < A.rows; i++) {
+    for (let j = 0; j < A.cols; j++) {
+      max = Math.max(max, Math.abs(A.get(i, j) - B.get(i, j)));
+    }
   }
   return max;
 }
 
-function matFrobeniusDiff(A: Float64Array[], B: Float64Array[]): number {
+function matFrobeniusDiff(A: TypedMatrix, B: TypedMatrix): number {
   let sum = 0;
-  for (let i = 0; i < A.length; i++) {
-    for (let j = 0; j < A[i].length; j++) {
-      const d = A[i][j] - B[i][j];
+  for (let i = 0; i < A.rows; i++) {
+    for (let j = 0; j < A.cols; j++) {
+      const d = A.get(i, j) - B.get(i, j);
       sum += d * d;
     }
   }
   return Math.sqrt(sum);
 }
 
-// ── SVD Tests ────────────────────────────────────────────────────
+const svdFixtures = loadFixture('svd');
 
 describe('Phase 2: SVD correctness (Python fixtures)', () => {
-  const fixtures = loadFixture('svd');
-
-  for (const fx of fixtures) {
+  for (const fx of svdFixtures) {
     it(`reconstructs ${fx.m}×${fx.n} matrix within tolerance`, () => {
       const A = toMat(fx.X);
       const { U, S, Vt } = svd(A);
 
-      // Check singular values match
       const S_py = new Float64Array(fx.S);
       const sDiff = maxAbsDiff(S, S_py);
       expect(sDiff).toBeLessThan(1e-6);
 
-      // Reconstruct: U @ diag(S) @ Vt
       const n = S.length;
-      const US = zeros(U.length, n);
-      for (let i = 0; i < U.length; i++) {
+      const US = zeros(U.rows, n);
+      for (let i = 0; i < U.rows; i++) {
         for (let j = 0; j < n; j++) {
-          US[i][j] = U[i][j] * S[j];
+          US.data[i * n + j] = U.get(i, j) * S[j];
         }
       }
       const recon = matrixMultiply(US, Vt);
 
-      // Compare with Python's reconstruction
       const recon_py = toMat(fx.recon);
       const reconDiff = matFrobeniusDiff(recon, recon_py);
       const frobX = frobeniusNorm(A);
@@ -108,7 +102,7 @@ describe('Phase 2: SVD correctness (Python fixtures)', () => {
       const A = toMat(fx.X);
       const { U } = svd(A);
       const UtU = matrixMultiply(transpose(U), U);
-      const I = eye(UtU.length);
+      const I = eye(UtU.rows);
       const diff = matFrobeniusDiff(UtU, I);
       expect(diff).toBeLessThan(1e-8);
     });
@@ -117,7 +111,7 @@ describe('Phase 2: SVD correctness (Python fixtures)', () => {
       const A = toMat(fx.X);
       const { Vt } = svd(A);
       const VVt = matrixMultiply(Vt, transpose(Vt));
-      const I = eye(VVt.length);
+      const I = eye(VVt.rows);
       const diff = matFrobeniusDiff(VVt, I);
       expect(diff).toBeLessThan(1e-8);
     });
@@ -136,18 +130,16 @@ describe('Phase 2: SVD correctness (Python fixtures)', () => {
     const A = toMat([[5.0]]);
     const { U, S, Vt } = svd(A);
     expect(S[0]).toBeCloseTo(5.0, 10);
-    const Sdiag = toMat([[S[0]]]);
+    const Sdiag = new TypedMatrix(new Float64Array([S[0]]), 1, 1);
     const recon = matrixMultiply(matrixMultiply(U, Sdiag), Vt);
-    expect(recon[0][0]).toBeCloseTo(5.0, 10);
+    expect(recon.get(0, 0)).toBeCloseTo(5.0, 10);
   });
 });
 
-// ── Ridge Regression Tests ───────────────────────────────────────
+const ridgeFixtures = loadFixture('ridge');
 
 describe('Phase 2: Ridge regression (Python fixtures)', () => {
-  const fixtures = loadFixture('ridge');
-
-  for (const fx of fixtures) {
+  for (const fx of ridgeFixtures) {
     it(`ridge n=${fx.n} d=${fx.d_src}→${fx.d_tgt} alpha=${fx.alpha} matches sklearn (no bias)`, () => {
       const X = toMat(fx.X);
       const Y = toMat(fx.Y);
@@ -155,9 +147,7 @@ describe('Phase 2: Ridge regression (Python fixtures)', () => {
       const W_py = toMat(fx.W_no_bias);
 
       const diff = matFrobeniusDiff(W, W_py);
-      const norm = matFrobeniusDiff(W_py, zeros(W_py.length, W_py[0].length));
-      // TS leastSquares uses lambda * (nSamples/1000) scaling, so high alpha
-      // values differ from sklearn. Tolerance reflects this implementation difference.
+      const norm = matFrobeniusDiff(W_py, zeros(W_py.rows, W_py.cols));
       expect(diff / (norm + 1e-15)).toBeLessThan(0.5);
     });
   }
@@ -170,25 +160,21 @@ describe('Phase 2: Ridge regression (Python fixtures)', () => {
       const Y = toMat(fx.Y);
       const { W, bestAlpha } = ridgeCv(X, Y);
 
-      // Alpha should be positive
       expect(bestAlpha).toBeGreaterThan(0);
 
-      // W should be finite
-      for (const row of W) {
-        for (const v of row) {
-          expect(Number.isFinite(v)).toBe(true);
+      for (let i = 0; i < W.rows; i++) {
+        for (let j = 0; j < W.cols; j++) {
+          expect(Number.isFinite(W.get(i, j))).toBe(true);
         }
       }
     });
   }
 });
 
-// ── Procrustes Tests ─────────────────────────────────────────────
+const procrustesFixtures = loadFixture('procrustes');
 
 describe('Phase 2: Procrustes (Python fixtures)', () => {
-  const fixtures = loadFixture('procrustes');
-
-  for (const fx of fixtures) {
+  for (const fx of procrustesFixtures) {
     it(`d=${fx.d} rotation is orthogonal (R^T R = I)`, () => {
       const R_py = toMat(fx.R);
       const RtR = matrixMultiply(transpose(R_py), R_py);
@@ -198,13 +184,12 @@ describe('Phase 2: Procrustes (Python fixtures)', () => {
     });
 
     it(`d=${fx.d} mapping produces expected transform`, () => {
-      const X = toMat(fx.X);
-      const Y = toMat(fx.Y);
+      const X = toFloat64Arrays(fx.X);
+      const Y = toFloat64Arrays(fx.Y);
 
       const mapping = new OrthogonalProcrustesMapping({ holdoutFraction: 0.01 });
       mapping.fit(X, Y);
 
-      // Compare first few vectors
       const mapped = mapping.transform(X.slice(0, 5)) as Float64Array[];
       const pyTransformed = fx.transformed.slice(0, 5);
 
@@ -224,20 +209,17 @@ describe('Phase 2: Procrustes (Python fixtures)', () => {
   }
 });
 
-// ── ProcrustesDiag Tests ─────────────────────────────────────────
+const procrustesDiagFixtures = loadFixture('procrustes_diag');
 
 describe('Phase 2: ProcrustesDiag (Python fixtures)', () => {
-  const fixtures = loadFixture('procrustes_diag');
-
-  for (const fx of fixtures) {
+  for (const fx of procrustesDiagFixtures) {
     it(`d=${fx.d} scales match Python`, () => {
-      const X = toMat(fx.X);
-      const Y = toMat(fx.Y);
+      const X = toFloat64Arrays(fx.X);
+      const Y = toFloat64Arrays(fx.Y);
 
       const mapping = new ProcrustesDiagMapping({ holdoutFraction: 0.01 });
       mapping.fit(X, Y);
 
-      // The mapping should produce finite output
       const mapped = mapping.transform(X.slice(0, 5)) as Float64Array[];
       for (const row of mapped) {
         for (const v of row) {
@@ -247,7 +229,7 @@ describe('Phase 2: ProcrustesDiag (Python fixtures)', () => {
     });
 
     it(`d=${fx.d} round-trip works (forward then inverse)`, () => {
-      const X = toMat(fx.X);
+      const X = toFloat64Arrays(fx.X);
 
       const mapping = new ProcrustesDiagMapping({ holdoutFraction: 0.01 });
       mapping.fit(X, X);
@@ -255,8 +237,6 @@ describe('Phase 2: ProcrustesDiag (Python fixtures)', () => {
       const mapped = mapping.transform(X.slice(0, 10)) as Float64Array[];
       const roundtrip = mapping.inverseTransform(mapped) as Float64Array[];
 
-      // With holdoutFraction=0.01, the mapping uses ~99% of data for fit,
-      // so round-trip won't be exact. Check cosine similarity instead.
       for (let i = 0; i < 10; i++) {
         let dot = 0, normA = 0, normB = 0;
         for (let j = 0; j < roundtrip[i].length; j++) {
@@ -271,15 +251,13 @@ describe('Phase 2: ProcrustesDiag (Python fixtures)', () => {
   }
 });
 
-// ── LowRankAffine Tests ──────────────────────────────────────────
+const lowrankFixtures = loadFixture('lowrank');
 
 describe('Phase 2: LowRankAffine (Python fixtures)', () => {
-  const fixtures = loadFixture('lowrank');
-
-  for (const fx of fixtures) {
+  for (const fx of lowrankFixtures) {
     it(`n=${fx.n} d=${fx.d_src}→${fx.d_tgt} rank=${fx.rank} produces finite output`, () => {
-      const X = toMat(fx.X);
-      const Y = toMat(fx.Y);
+      const X = toFloat64Arrays(fx.X);
+      const Y = toFloat64Arrays(fx.Y);
 
       const mapping = new LowRankAffineMapping({
         alpha: 1.0,
@@ -297,8 +275,8 @@ describe('Phase 2: LowRankAffine (Python fixtures)', () => {
     });
 
     it(`n=${fx.n} rank=${fx.rank} produces lower-rank approximation`, () => {
-      const X = toMat(fx.X);
-      const Y = toMat(fx.Y);
+      const X = toFloat64Arrays(fx.X);
+      const Y = toFloat64Arrays(fx.Y);
 
       const mapping = new LowRankAffineMapping({
         alpha: 1.0,
@@ -307,7 +285,6 @@ describe('Phase 2: LowRankAffine (Python fixtures)', () => {
       });
       mapping.fit(X, Y);
 
-      // The mapping should produce reasonable output (not all zeros)
       const mapped = mapping.transform(X) as Float64Array[];
       let sumAbs = 0;
       for (const row of mapped) {
@@ -317,8 +294,6 @@ describe('Phase 2: LowRankAffine (Python fixtures)', () => {
     });
   }
 });
-
-// ── Gate Model Cross-Language Tests ──────────────────────────────
 
 describe('Phase 2: Gate model (cross-language)', () => {
   const gate = new QualityGate();
@@ -330,7 +305,6 @@ describe('Phase 2: Gate model (cross-language)', () => {
 
   for (const fx of fixtures.verdicts) {
     it(`top1=${fx.top1} → predicted retention is in [0,1]`, () => {
-      // Generate paired data where the mapping actually learns the relationship
       const d = 4;
       const n = 100;
       const rng = ((seed: number) => {
@@ -356,7 +330,6 @@ describe('Phase 2: Gate model (cross-language)', () => {
         Y.push(y);
       }
 
-      // Fit the mapping so gate.evaluate can transform
       const mapping = new RidgeMapping({ holdoutFraction: 0.1 });
       mapping.fit(X, Y);
 
@@ -370,8 +343,6 @@ describe('Phase 2: Gate model (cross-language)', () => {
   }
 
   it('gate model interpolation matches Python numpy.interp', () => {
-    // The gate model's X_thresholds and y_thresholds are loaded from JSON
-    // Verify the interpolation is monotone
     const model = gate.gateModel!;
     for (let i = 1; i < model.XThresholds.length; i++) {
       expect(model.XThresholds[i]).toBeGreaterThanOrEqual(model.XThresholds[i - 1]);
@@ -382,12 +353,10 @@ describe('Phase 2: Gate model (cross-language)', () => {
   });
 });
 
-// ── ScoreRecalibrator Tests ──────────────────────────────────────
+const recalFixtures = loadFixture('recalibration');
 
 describe('Phase 2: ScoreRecalibrator (Python fixtures)', () => {
-  const fixtures = loadFixture('recalibration');
-
-  for (const fx of fixtures) {
+  for (const fx of recalFixtures) {
     it(`n=${fx.n} isotonic function is monotone`, () => {
       const mapped = new Float64Array(fx.mapped);
       const ceiling = new Float64Array(fx.ceiling);
@@ -395,8 +364,6 @@ describe('Phase 2: ScoreRecalibrator (Python fixtures)', () => {
       const recal = new ScoreRecalibrator();
       recal.fit(mapped, ceiling);
 
-      // Check that the isotonic function values are monotone non-decreasing
-      // (the fitted values, not the transform of arbitrary input)
       const json = recal.toJSON();
       const values = json.values;
       for (let i = 1; i < values.length; i++) {
@@ -435,12 +402,10 @@ describe('Phase 2: ScoreRecalibrator (Python fixtures)', () => {
   }
 });
 
-// ── PAVA Adversarial Tests ───────────────────────────────────────
+const pavaFixtures = loadFixture('pava_adversarial');
 
 describe('Phase 2: PAVA adversarial inputs', () => {
-  const fixtures = loadFixture('pava_adversarial');
-
-  for (const fx of fixtures) {
+  for (const fx of pavaFixtures) {
     it(`${fx.name}: isotonic function is monotone`, () => {
       const mapped = new Float64Array(fx.mapped);
       const ceiling = new Float64Array(fx.ceiling);
@@ -448,7 +413,6 @@ describe('Phase 2: PAVA adversarial inputs', () => {
       const recal = new ScoreRecalibrator();
       recal.fit(mapped, ceiling);
 
-      // Check that the isotonic function values are monotone non-decreasing
       const json = recal.toJSON();
       const values = json.values;
       for (let i = 1; i < values.length; i++) {
@@ -466,7 +430,6 @@ describe('Phase 2: PAVA adversarial inputs', () => {
       const json = recal.toJSON();
       const values = new Float64Array(json.values);
 
-      // The isotonic function values should match Python's
       const minLen = Math.min(values.length, pyValues.length);
       for (let i = 0; i < minLen; i++) {
         expect(Math.abs(values[i] - pyValues[i])).toBeLessThan(0.05);
@@ -487,30 +450,27 @@ describe('Phase 2: PAVA adversarial inputs', () => {
   });
 });
 
-// ── SVD Property-Based Tests ─────────────────────────────────────
+function seededRandom(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function randomMatrix(m: number, n: number, rng: () => number): TypedMatrix {
+  const data = new Float64Array(m * n);
+  for (let i = 0; i < m; i++) {
+    for (let j = 0; j < n; j++) {
+      data[i * n + j] = rng() * 2 - 1;
+    }
+  }
+  return new TypedMatrix(data, m, n);
+}
 
 describe('Phase 2: SVD property-based (random matrices)', () => {
-  function seededRandom(seed: number): () => number {
-    let s = seed;
-    return () => {
-      s = (s + 0x6d2b79f5) | 0;
-      let t = Math.imul(s ^ (s >>> 15), 1 | s);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-
-  function randomMatrix(m: number, n: number, rng: () => number): Float64Array[] {
-    const mat: Float64Array[] = new Array(m);
-    for (let i = 0; i < m; i++) {
-      mat[i] = new Float64Array(n);
-      for (let j = 0; j < n; j++) {
-        mat[i][j] = rng() * 2 - 1;
-      }
-    }
-    return mat;
-  }
-
   const shapes = [
     [3, 3], [5, 3], [4, 6], [6, 4], [10, 10],
     [2, 8], [8, 2], [15, 5], [5, 15],
@@ -522,11 +482,10 @@ describe('Phase 2: SVD property-based (random matrices)', () => {
       const A = randomMatrix(m, n, rng);
       const { U, S, Vt } = svd(A);
 
-      // Reconstruct: U @ diag(S) @ Vt
       const US = zeros(m, S.length);
       for (let i = 0; i < m; i++) {
         for (let j = 0; j < S.length; j++) {
-          US[i][j] = U[i][j] * S[j];
+          US.data[i * S.length + j] = U.get(i, j) * S[j];
         }
       }
       const recon = matrixMultiply(US, Vt);
@@ -578,23 +537,15 @@ describe('Phase 2: SVD property-based (random matrices)', () => {
   }
 
   it('handles rank-deficient matrix', () => {
-    // Rank-2 matrix in 4×4
-    const A: Float64Array[] = [
-      new Float64Array([1, 0, 0, 0]),
-      new Float64Array([0, 1, 0, 0]),
-      new Float64Array([2, 0, 0, 0]),
-      new Float64Array([0, 0, 0, 0]),
-    ];
+    const data = new Float64Array([1, 0, 0, 0, 0, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0]);
+    const A = new TypedMatrix(data, 4, 4);
     const { S } = svd(A);
-    // Should have at most 2 non-trivial singular values
     expect(S[0]).toBeGreaterThan(0.5);
     expect(S[1]).toBeGreaterThan(0.5);
     expect(S[2]).toBeLessThan(0.01);
     expect(S[3]).toBeLessThan(0.01);
   });
 });
-
-// ── Ridge regression NaN/Infinity guards ─────────────────────────
 
 describe('Phase 2: NaN/Infinity guards', () => {
   it('RidgeMapping rejects NaN input', () => {

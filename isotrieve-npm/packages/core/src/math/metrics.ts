@@ -1,16 +1,6 @@
-/**
- * Quality metrics for embedding-space mappings.
- * Cosine alone is misleading — prefer top-k retention.
- */
-
-import { cosineSimilarity, transpose, matrixMultiply, vecNorm } from './linalg';
+import { cosineSimilarity, transpose, matrixMultiply, vecNorm, TypedMatrix, toTypedMatrix, SingleOrBatch } from './linalg';
 import { l2Normalize } from './normalize';
 
-// ── Pairwise Cosine Stats ────────────────────────────────────────
-
-/**
- * Row-wise cosine between predicted and target; return mean/median/p5.
- */
 export function pairwiseCosineStats(
   predicted: Float64Array[],
   target: Float64Array[],
@@ -41,12 +31,6 @@ export function pairwiseCosineStats(
   };
 }
 
-// ── Top-K Retention ──────────────────────────────────────────────
-
-/**
- * Fraction of rows whose true match (same index) is in top-k neighbors.
- * Uses argpartition-like selection for efficiency.
- */
 export function topkRetention(
   queries: Float64Array[],
   corpus: Float64Array[],
@@ -56,31 +40,29 @@ export function topkRetention(
   if (n === 0) return 0;
   k = Math.min(k, n);
 
-  const sims = matrixMultiply(queries, transpose(corpus));
+  const Q = TypedMatrix.fromRows(queries);
+  const C = TypedMatrix.fromRows(corpus);
+  const sims = matrixMultiply(Q, transpose(C));
 
   let correct = 0;
-  for (let i = 0; i < n; i++) {
-    // Quickselect top-k
-    const row = sims[i];
+  const simRows = sims.rows;
+  const simCols = sims.cols;
+  const sd = sims.data;
+  for (let i = 0; i < simRows; i++) {
+    const row = new Float64Array(sd.subarray(i * simCols, (i + 1) * simCols));
     const topK = quickSelectTopK(row, k);
     if (topK.has(i)) correct++;
   }
   return correct / n;
 }
 
-/**
- * Find the indices of the top-k largest values using partial sort.
- * Returns a Set of indices.
- */
 function quickSelectTopK(arr: Float64Array, k: number): Set<number> {
   const n = arr.length;
   if (k >= n) {
     return new Set(Array.from({ length: n }, (_, i) => i));
   }
 
-  // Use a min-heap of size k
   const heap: Array<{ val: number; idx: number }> = [];
-
   for (let i = 0; i < n; i++) {
     if (heap.length < k) {
       heap.push({ val: arr[i], idx: i });
@@ -90,7 +72,6 @@ function quickSelectTopK(arr: Float64Array, k: number): Set<number> {
       heapifyDown(heap, 0, k);
     }
   }
-
   return new Set(heap.map((h) => h.idx));
 }
 
@@ -121,11 +102,6 @@ function heapifyDown(
   }
 }
 
-// ── Spearman Rank Correlation ────────────────────────────────────
-
-/**
- * Spearman rank correlation without external dependencies.
- */
 export function spearmanRho(a: Float64Array, b: Float64Array): number {
   if (a.length < 2) return 0;
   const n = a.length;
@@ -168,7 +144,7 @@ function rank(arr: Float64Array): Float64Array {
   while (i < n) {
     let j = i;
     while (j < n - 1 && indexed[j + 1].val === indexed[j].val) j++;
-    const avgRank = (i + j) / 2 + 1; // 1-indexed
+    const avgRank = (i + j) / 2 + 1;
     for (let k = i; k <= j; k++) {
       result[indexed[k].idx] = avgRank;
     }
@@ -177,12 +153,6 @@ function rank(arr: Float64Array): Float64Array {
   return result;
 }
 
-// ── Holdout Rank Correlation ─────────────────────────────────────
-
-/**
- * Spearman rank correlation of pairwise similarity matrices.
- * Compares neighbor structure of mapped vs true target vectors.
- */
 export function holdoutRankCorrelation(
   mapped: Float64Array[],
   target: Float64Array[],
@@ -192,7 +162,6 @@ export function holdoutRankCorrelation(
   const n = mapped.length;
   if (n < 3) return 0;
 
-  // Sample indices
   let idx: number[];
   if (sampleSize !== null && sampleSize < n) {
     idx = sampleIndices(n, sampleSize, seed);
@@ -203,18 +172,17 @@ export function holdoutRankCorrelation(
   const m = l2Normalize(idx.map((i) => mapped[i])) as Float64Array[];
   const t = l2Normalize(idx.map((i) => target[i])) as Float64Array[];
 
-  const simMapped = matrixMultiply(m, transpose(m));
-  const simTarget = matrixMultiply(t, transpose(t));
+  const simMapped = matrixMultiply(TypedMatrix.fromRows(m), transpose(TypedMatrix.fromRows(t)));
+  const simTarget = matrixMultiply(TypedMatrix.fromRows(t), transpose(TypedMatrix.fromRows(t)));
 
   const len = idx.length;
   const aVals: number[] = [];
   const bVals: number[] = [];
 
-  // Upper triangle only
   for (let i = 0; i < len; i++) {
     for (let j = i + 1; j < len; j++) {
-      aVals.push(simMapped[i][j]);
-      bVals.push(simTarget[i][j]);
+      aVals.push(simMapped.data[i * len + j]);
+      bVals.push(simTarget.data[i * len + j]);
     }
   }
 
@@ -222,7 +190,6 @@ export function holdoutRankCorrelation(
 }
 
 function sampleIndices(n: number, k: number, seed: number): number[] {
-  // Deterministic sampling
   let s = seed | 0;
   const sampled = new Set<number>();
   while (sampled.size < k && sampled.size < n) {
@@ -232,11 +199,6 @@ function sampleIndices(n: number, k: number, seed: number): number[] {
   return Array.from(sampled);
 }
 
-// ── MRR Delta ────────────────────────────────────────────────────
-
-/**
- * Mean reciprocal rank for true-index retrieval: mapped vs true queries.
- */
 export function mrrDelta(
   mappedQueries: Float64Array[],
   corpus: Float64Array[],
@@ -255,10 +217,13 @@ function computeMrr(queries: Float64Array[], corpus: Float64Array[]): number {
   const n = queries.length;
   if (n === 0) return 0;
 
-  const sims = matrixMultiply(queries, transpose(corpus));
+  const Q = TypedMatrix.fromRows(queries);
+  const C = TypedMatrix.fromRows(corpus);
+  const sims = matrixMultiply(Q, transpose(C));
+
   let rr = 0;
   for (let i = 0; i < n; i++) {
-    const row = sims[i];
+    const row = new Float64Array(sims.data.buffer, sims.data.byteOffset + i * sims.cols * 8, sims.cols);
     let bestRank = 0;
     let bestSim = -Infinity;
     for (let j = 0; j < row.length; j++) {
@@ -267,7 +232,6 @@ function computeMrr(queries: Float64Array[], corpus: Float64Array[]): number {
         bestRank = j;
       }
     }
-    // Find actual rank of index i
     let rank = 1;
     for (let j = 0; j < row.length; j++) {
       if (row[j] > row[i]) rank++;
@@ -277,11 +241,6 @@ function computeMrr(queries: Float64Array[], corpus: Float64Array[]): number {
   return rr / n;
 }
 
-// ── Bundle Report ────────────────────────────────────────────────
-
-/**
- * Bundle of migration-relevant quality metrics.
- */
 export function retrievalRetentionReport(
   mapped: Float64Array[],
   target: Float64Array[],

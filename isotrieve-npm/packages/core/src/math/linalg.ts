@@ -1,13 +1,50 @@
-/**
- * Linear algebra operations for embedding-space mappings.
- * All operations use Float64Array[] (array of row vectors) for consistency.
- */
+import { TypedMatrix } from './matrix';
 
-// ── Vector Operations ────────────────────────────────────────────
+export { TypedMatrix } from './matrix';
 
-/**
- * Cosine similarity between two vectors. Result clamped to [-1, 1].
- */
+export type VectorInput = Float64Array | Float32Array;
+export type MatrixInput = Float64Array[] | Float32Array[] | TypedMatrix;
+export type SingleOrBatch = Float64Array | Float32Array | Float64Array[] | Float32Array[] | TypedMatrix;
+
+export function isSingleVector(v: SingleOrBatch): v is Float64Array | Float32Array {
+  return v instanceof Float64Array || v instanceof Float32Array;
+}
+
+export function toTypedMatrix(V: SingleOrBatch): TypedMatrix {
+  if (V instanceof TypedMatrix) return V;
+  if (V instanceof Float64Array) {
+    return new TypedMatrix(new Float64Array(V), 1, V.length);
+  }
+  if (V instanceof Float32Array) {
+    const d = new Float64Array(V.length);
+    for (let i = 0; i < V.length; i++) d[i] = V[i];
+    return new TypedMatrix(d, 1, V.length);
+  }
+  if (V.length === 0) {
+    return new TypedMatrix(new Float64Array(0), 0, 0);
+  }
+  const first = V[0];
+  if (first instanceof Float64Array) {
+    return TypedMatrix.fromRows(V as Float64Array[]);
+  }
+  if (first instanceof Float32Array) {
+    return TypedMatrix.fromFloat32Arrays(V as Float32Array[]);
+  }
+  return TypedMatrix.fromNumberArrays(V as unknown as number[][]);
+}
+
+export function toFlatFloat64(V: SingleOrBatch): Float64Array {
+  if (V instanceof Float64Array) return V;
+  if (V instanceof Float32Array) {
+    const d = new Float64Array(V.length);
+    for (let i = 0; i < V.length; i++) d[i] = V[i];
+    return d;
+  }
+  if (V instanceof TypedMatrix) return V.data.subarray(0, V.rows * V.cols);
+  const m = toTypedMatrix(V);
+  return m.data.subarray(0, m.rows * m.cols);
+}
+
 export function cosineSimilarity(a: Float64Array, b: Float64Array): number {
   if (a.length !== b.length) {
     throw new Error(`Vectors must have same length: ${a.length} vs ${b.length}`);
@@ -26,204 +63,162 @@ export function cosineSimilarity(a: Float64Array, b: Float64Array): number {
   return Math.max(-1, Math.min(1, dot / (normA * normB)));
 }
 
-/**
- * Euclidean norm of a vector.
- */
 export function vecNorm(v: Float64Array): number {
   let sum = 0;
   for (let i = 0; i < v.length; i++) sum += v[i] * v[i];
   return Math.sqrt(sum);
 }
 
-// ── Matrix Utilities ─────────────────────────────────────────────
-
-/**
- * Create an m×n zero matrix.
- */
-export function zeros(m: number, n: number): Float64Array[] {
-  const mat: Float64Array[] = new Array(m);
-  for (let i = 0; i < m; i++) mat[i] = new Float64Array(n);
-  return mat;
+export function zeros(m: number, n: number): TypedMatrix {
+  return TypedMatrix.zeros(m, n);
 }
 
-/**
- * Create an n×n identity matrix.
- */
-export function eye(n: number): Float64Array[] {
-  const mat = zeros(n, n);
-  for (let i = 0; i < n; i++) mat[i][i] = 1;
-  return mat;
+export function eye(n: number): TypedMatrix {
+  return TypedMatrix.eye(n);
 }
 
-/**
- * Matrix dimensions [rows, cols].
- */
-export function shape(M: Float64Array[]): [number, number] {
-  return [M.length, M.length > 0 ? M[0].length : 0];
+export function shape(M: TypedMatrix): [number, number] {
+  return [M.rows, M.cols];
 }
 
-/**
- * Deep copy a matrix.
- */
-export function matClone(M: Float64Array[]): Float64Array[] {
-  return M.map((row) => new Float64Array(row));
+export function matClone(M: TypedMatrix): TypedMatrix {
+  return M.clone();
 }
 
-/**
- * Matrix transpose.
- */
-export function transpose(M: Float64Array[]): Float64Array[] {
-  const rows = M.length;
-  const cols = M[0].length;
-  const result = zeros(cols, rows);
+export function transpose(M: TypedMatrix): TypedMatrix {
+  const rows = M.rows;
+  const cols = M.cols;
+  const result = TypedMatrix.zeros(cols, rows);
+  const rd = result.data;
+  const md = M.data;
   for (let i = 0; i < rows; i++) {
+    const mi = i * cols;
     for (let j = 0; j < cols; j++) {
-      result[j][i] = M[i][j];
+      rd[j * rows + i] = md[mi + j];
     }
   }
   return result;
 }
 
-/**
- * Matrix multiplication: A @ B.
- */
-export function matrixMultiply(A: Float64Array[], B: Float64Array[]): Float64Array[] {
-  const m = A.length;
-  const p = A[0].length;
-  const n = B[0].length;
-  if (p !== B.length) {
-    throw new Error(`Matrix dimensions incompatible: ${m}×${p} @ ${B.length}×${n}`);
+export function matrixMultiply(A: TypedMatrix, B: TypedMatrix): TypedMatrix {
+  const m = A.rows;
+  const p = A.cols;
+  const n = B.cols;
+  if (p !== B.rows) {
+    throw new Error(`Matrix dimensions incompatible: ${m}×${p} @ ${B.rows}×${n}`);
   }
-  const result = zeros(m, n);
+  const result = TypedMatrix.zeros(m, n);
+  const ad = A.data;
+  const bd = B.data;
+  const rd = result.data;
   for (let i = 0; i < m; i++) {
+    const aOff = i * p;
+    const rOff = i * n;
     for (let k = 0; k < p; k++) {
-      const aik = A[i][k];
-      if (aik === 0) continue;
+      const aik = ad[aOff + k];
+      const bOff = k * n;
       for (let j = 0; j < n; j++) {
-        result[i][j] += aik * B[k][j];
+        rd[rOff + j] += aik * bd[bOff + j];
       }
     }
   }
   return result;
 }
 
-/**
- * Vector-matrix multiplication: v @ M (treat v as 1×m row vector).
- */
-export function vectorMatrixMultiply(vec: Float64Array, matrix: Float64Array[]): Float64Array {
-  const n = matrix[0].length;
+export function vectorMatrixMultiply(vec: Float64Array, matrix: TypedMatrix): Float64Array {
+  const n = matrix.cols;
   const result = new Float64Array(n);
-  for (let j = 0; j < n; j++) {
-    let sum = 0;
-    for (let i = 0; i < vec.length; i++) {
-      sum += vec[i] * matrix[i][j];
+  const md = matrix.data;
+  for (let i = 0; i < vec.length; i++) {
+    const vi = vec[i];
+    const rowOff = i * n;
+    for (let j = 0; j < n; j++) {
+      result[j] += vi * md[rowOff + j];
     }
-    result[j] = sum;
   }
   return result;
 }
 
-/**
- * Matrix-vector multiplication: M @ v (treat v as column vector).
- */
-export function matrixVectorMultiply(M: Float64Array[], v: Float64Array): Float64Array {
-  const m = M.length;
+export function matrixVectorMultiply(M: TypedMatrix, v: Float64Array): Float64Array {
+  const m = M.rows;
+  const n = M.cols;
   const result = new Float64Array(m);
+  const md = M.data;
   for (let i = 0; i < m; i++) {
     let sum = 0;
+    const rowOff = i * n;
     for (let j = 0; j < v.length; j++) {
-      sum += M[i][j] * v[j];
+      sum += md[rowOff + j] * v[j];
     }
     result[i] = sum;
   }
   return result;
 }
 
-/**
- * Matrix trace.
- */
-export function matrixTrace(M: Float64Array[]): number {
-  const n = Math.min(M.length, M[0].length);
+export function matrixTrace(M: TypedMatrix): number {
+  const n = Math.min(M.rows, M.cols);
   let sum = 0;
-  for (let i = 0; i < n; i++) sum += M[i][i];
+  const md = M.data;
+  for (let i = 0; i < n; i++) sum += md[i * M.cols + i];
   return sum;
 }
 
-/**
- * Frobenius norm of a matrix.
- */
-export function frobeniusNorm(M: Float64Array[]): number {
+export function frobeniusNorm(M: TypedMatrix): number {
+  const len = M.rows * M.cols;
+  const md = M.data;
   let sum = 0;
-  for (let i = 0; i < M.length; i++) {
-    for (let j = 0; j < M[i].length; j++) {
-      sum += M[i][j] * M[i][j];
-    }
-  }
+  for (let i = 0; i < len; i++) sum += md[i] * md[i];
   return Math.sqrt(sum);
 }
 
-// ── SVD (One-Sided Jacobi) ──────────────────────────────────────
-
-/**
- * Singular Value Decomposition via one-sided Jacobi rotations.
- * For an m×n matrix A, returns U (m×min(m,n)), S (min(m,n)), Vt (min(m,n)×n).
- * The singular values are sorted in descending order.
- *
- * One-sided Jacobi requires m >= n (columns are orthogonalized in R^m).
- * For wide matrices (m < n), we transpose first, compute SVD of A^T, then swap.
- */
 export function svd(
-  A: Float64Array[],
+  A: TypedMatrix,
   _fullMatrices = false,
-): { U: Float64Array[]; S: Float64Array; Vt: Float64Array[] } {
-  const m = A.length;
-  const n = A[0].length;
+): { U: TypedMatrix; S: Float64Array; Vt: TypedMatrix } {
+  const m = A.rows;
+  const n = A.cols;
 
-  // For wide matrices (m < n), transpose, do Jacobi on A^T (n×m, tall), then swap
   if (m < n) {
     const At = transpose(A);
     const { U: V, S, Vt: Ut } = svd(At);
-    // At = V @ diag(S) @ Ut  =>  A = Ut^T @ diag(S) @ V^T
     return { U: transpose(Ut), S, Vt: transpose(V) };
   }
 
-  const minmn = n; // m >= n, so min(m,n) = n
+  const minmn = n;
+  const ad = A.data;
+  const aCols = A.cols;
 
-  // Work on a copy
-  const B = A.map((r) => new Float64Array(r));
-
-  // V = identity (n×n)
+  const B = A.clone();
+  const bd = B.data;
   const V = eye(n);
+  const vd = V.data;
 
-  // Precompute column dot products for efficient off-diagonal norm tracking
-  const colDots: Float64Array[] = [];
+  const colDots = new TypedMatrix(new Float64Array(n * n), n, n);
+  const cd = colDots.data;
   for (let i = 0; i < n; i++) {
-    const row = new Float64Array(n);
     for (let j = 0; j < n; j++) {
       let dot = 0;
-      for (let k = 0; k < m; k++) dot += B[k][i] * B[k][j];
-      row[j] = dot;
+      for (let k = 0; k < m; k++) dot += bd[k * aCols + i] * bd[k * aCols + j];
+      cd[i * n + j] = dot;
     }
-    colDots.push(row);
   }
 
   const maxSweeps = 20 * n;
   for (let sweep = 0; sweep < maxSweeps; sweep++) {
-    // Check convergence: off-diagonal norms
     let offDiagNorm = 0;
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
-        offDiagNorm += colDots[i][j] * colDots[i][j];
+        const v = cd[i * n + j];
+        offDiagNorm += v * v;
       }
     }
     if (offDiagNorm < 1e-24) break;
 
-    // Sweep through all column pairs
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
-        const alpha = colDots[i][i];
-        const gamma = colDots[j][j];
-        const beta = colDots[i][j];
+        const alpha = cd[i * n + i];
+        const gamma = cd[j * n + j];
+        const beta = cd[i * n + j];
 
         if (Math.abs(beta) < 1e-15 * Math.sqrt(Math.abs(alpha * gamma))) continue;
 
@@ -238,156 +233,148 @@ export function svd(
           s = t * c;
         }
 
-        // Apply rotation to B columns i,j
         for (let k = 0; k < m; k++) {
-          const bi = B[k][i], bj = B[k][j];
-          B[k][i] = c * bi - s * bj;
-          B[k][j] = s * bi + c * bj;
+          const bOff = k * aCols;
+          const bi = bd[bOff + i], bj = bd[bOff + j];
+          bd[bOff + i] = c * bi - s * bj;
+          bd[bOff + j] = s * bi + c * bj;
         }
 
-        // Apply rotation to V columns i,j
         for (let k = 0; k < n; k++) {
-          const vi = V[k][i], vj = V[k][j];
-          V[k][i] = c * vi - s * vj;
-          V[k][j] = s * vi + c * vj;
+          const vOff = k * n;
+          const vi = vd[vOff + i], vj = vd[vOff + j];
+          vd[vOff + i] = c * vi - s * vj;
+          vd[vOff + j] = s * vi + c * vj;
         }
 
-        // Update colDots incrementally
         const newII = c * c * alpha + s * s * gamma - 2 * c * s * beta;
         const newJJ = s * s * alpha + c * c * gamma + 2 * c * s * beta;
         const newIJ = (c * c - s * s) * beta + c * s * (alpha - gamma);
-        colDots[i][i] = newII;
-        colDots[j][j] = newJJ;
-        colDots[i][j] = newIJ;
-        colDots[j][i] = newIJ;
+        cd[i * n + i] = newII;
+        cd[j * n + j] = newJJ;
+        cd[i * n + j] = newIJ;
+        cd[j * n + i] = newIJ;
 
-        // Update cross-terms with other columns
         for (let k = 0; k < n; k++) {
           if (k === i || k === j) continue;
-          const di = colDots[k][i];
-          const dj = colDots[k][j];
-          colDots[k][i] = c * di - s * dj;
-          colDots[i][k] = colDots[k][i];
-          colDots[k][j] = s * di + c * dj;
-          colDots[j][k] = colDots[k][j];
+          const di = cd[k * n + i];
+          const dj = cd[k * n + j];
+          cd[k * n + i] = c * di - s * dj;
+          cd[i * n + k] = cd[k * n + i];
+          cd[k * n + j] = s * di + c * dj;
+          cd[j * n + k] = cd[k * n + j];
         }
       }
     }
   }
 
-  // Singular values are column norms of B
   const S = new Float64Array(minmn);
   for (let j = 0; j < minmn; j++) {
-    S[j] = Math.sqrt(Math.max(0, colDots[j][j]));
+    S[j] = Math.sqrt(Math.max(0, cd[j * n + j]));
   }
 
-  // U = B * diag(1/S)
-  const U = zeros(m, minmn);
+  const U = TypedMatrix.zeros(m, minmn);
+  const ud = U.data;
   for (let j = 0; j < minmn; j++) {
     if (S[j] > 1e-15) {
-      for (let k = 0; k < m; k++) U[k][j] = B[k][j] / S[j];
+      for (let k = 0; k < m; k++) {
+        ud[k * minmn + j] = bd[k * aCols + j] / S[j];
+      }
     }
   }
 
-  // Sort singular values in descending order
   const indices = Array.from({ length: minmn }, (_, i) => i);
   indices.sort((a, b) => S[b] - S[a]);
 
   const Ssorted = new Float64Array(minmn);
-  const Usorted = zeros(m, minmn);
-  const VtSorted = zeros(minmn, n);
+  const Usorted = TypedMatrix.zeros(m, minmn);
+  const VtSorted = TypedMatrix.zeros(minmn, n);
 
   for (let i = 0; i < minmn; i++) {
     const idx = indices[i];
     Ssorted[i] = S[idx];
-    for (let j = 0; j < m; j++) Usorted[j][i] = U[j][idx];
-    for (let j = 0; j < n; j++) VtSorted[i][j] = V[j][idx];
+    for (let j = 0; j < m; j++) Usorted.data[j * minmn + i] = ud[j * minmn + idx];
+    for (let j = 0; j < n; j++) VtSorted.data[i * n + j] = vd[j * n + idx];
   }
 
   return { U: Usorted, S: Ssorted, Vt: VtSorted };
 }
 
-// ── Linear Solve ─────────────────────────────────────────────────
+export function solve(A: TypedMatrix, B: TypedMatrix): TypedMatrix {
+  const n = A.rows;
+  const m = B.cols;
+  const ad = A.data;
+  const bd = B.data;
 
-/**
- * Solve AX = B using Gaussian elimination with partial pivoting.
- */
-export function solve(A: Float64Array[], B: Float64Array[]): Float64Array[] {
-  const n = A.length;
-  const m = B[0].length;
+  const augData = new Float64Array(n * (n + m));
+  for (let i = 0; i < n; i++) {
+    const rowOff = i * (n + m);
+    for (let j = 0; j < n; j++) augData[rowOff + j] = ad[i * n + j];
+    for (let j = 0; j < m; j++) augData[rowOff + n + j] = bd[i * m + j];
+  }
 
-  // Create augmented matrix
-  const aug = A.map((row, i) => {
-    const r = new Float64Array(n + m);
-    r.set(row, 0);
-    r.set(B[i], n);
-    return r;
-  });
-
-  // Forward elimination with partial pivoting
   for (let col = 0; col < n; col++) {
-    // Find pivot
     let maxRow = col;
-    let maxVal = Math.abs(aug[col][col]);
+    let maxVal = Math.abs(augData[col * (n + m) + col]);
     for (let row = col + 1; row < n; row++) {
-      const v = Math.abs(aug[row][col]);
-      if (v > maxVal) {
-        maxVal = v;
-        maxRow = row;
+      const v = Math.abs(augData[row * (n + m) + col]);
+      if (v > maxVal) { maxVal = v; maxRow = row; }
+    }
+    if (maxRow !== col) {
+      const aOff = col * (n + m);
+      const bOff = maxRow * (n + m);
+      for (let j = 0; j < n + m; j++) {
+        const tmp = augData[aOff + j];
+        augData[aOff + j] = augData[bOff + j];
+        augData[bOff + j] = tmp;
       }
     }
-    // Swap
-    [aug[col], aug[maxRow]] = [aug[maxRow], aug[col]];
 
-    if (Math.abs(aug[col][col]) < 1e-12) {
+    if (Math.abs(augData[col * (n + m) + col]) < 1e-12) {
       throw new Error('Matrix is singular or nearly singular');
     }
 
-    // Eliminate
     for (let row = col + 1; row < n; row++) {
-      const factor = aug[row][col] / aug[col][col];
+      const factor = augData[row * (n + m) + col] / augData[col * (n + m) + col];
+      const rOff = row * (n + m);
+      const cOff = col * (n + m);
       for (let j = col; j < n + m; j++) {
-        aug[row][j] -= factor * aug[col][j];
+        augData[rOff + j] -= factor * augData[cOff + j];
       }
     }
   }
 
-  // Back substitution
-  const X = zeros(n, m);
+  const X = TypedMatrix.zeros(n, m);
+  const xd = X.data;
   for (let col = n - 1; col >= 0; col--) {
+    const cOff = col * (n + m);
     for (let j = 0; j < m; j++) {
-      X[col][j] = aug[col][n + j];
+      let val = augData[cOff + n + j];
       for (let k = col + 1; k < n; k++) {
-        X[col][j] -= aug[col][k] * X[k][j];
+        val -= augData[cOff + k] * xd[k * m + j];
       }
-      X[col][j] /= aug[col][col];
+      val /= augData[cOff + col];
+      xd[col * m + j] = val;
     }
   }
   return X;
 }
 
-// ── Ridge Regression ─────────────────────────────────────────────
-
-/**
- * Solve ridge regression: X = (A^T A + λI)^{-1} A^T B.
- * Automatically increases regularization if singular.
- */
 export function leastSquares(
-  A: Float64Array[],
-  B: Float64Array[],
+  A: TypedMatrix,
+  B: TypedMatrix,
   lambda = 1e-4,
-): Float64Array[] {
+): TypedMatrix {
   const AT = transpose(A);
   const ATA = matrixMultiply(AT, A);
   const ATB = matrixMultiply(AT, B);
 
-  const n = ATA.length;
-  const nSamples = A.length;
+  const n = ATA.rows;
+  const nSamples = A.rows;
   const scaledLambda = lambda * (nSamples / 1000);
 
-  // Add ridge regularization
   for (let i = 0; i < n; i++) {
-    ATA[i][i] += Math.max(scaledLambda, 1e-10);
+    ATA.data[i * n + i] += Math.max(scaledLambda, 1e-10);
   }
 
   try {
@@ -400,67 +387,58 @@ export function leastSquares(
   }
 }
 
-/**
- * GCV alpha selection for ridge regression.
- * Tries a log-spaced grid and picks the alpha with lowest GCV score.
- */
 export function ridgeCv(
-  A: Float64Array[],
-  B: Float64Array[],
+  A: TypedMatrix,
+  B: TypedMatrix,
   alphaGrid: number[] = [],
-): { W: Float64Array[]; bestAlpha: number } {
+): { W: TypedMatrix; bestAlpha: number } {
   if (alphaGrid.length === 0) {
-    // Default: 25 points from 1e-3 to 1e3
     alphaGrid = [];
     for (let i = 0; i < 25; i++) {
       alphaGrid.push(Math.pow(10, -3 + (6 * i) / 24));
     }
   }
 
-  const n = A.length;
-  const p = A[0].length;
-  const q = B[0].length;
+  const n = A.rows;
+  const p = A.cols;
+  const q = B.cols;
 
-  // Compute SVD of A for efficient GCV
   const { U, S, Vt } = svd(A, false);
 
   let bestAlpha = alphaGrid[0];
   let bestGcv = Infinity;
-  let bestW: Float64Array[] | null = null;
+  let bestW: TypedMatrix | null = null;
 
-  // Compute A^T B once
   const AT = transpose(A);
   const ATB = matrixMultiply(AT, B);
 
   for (const alpha of alphaGrid) {
-    // Ridge: W = (A^T A + αI)^{-1} A^T B
     const ATA = matrixMultiply(AT, A);
-    for (let i = 0; i < ATA.length; i++) {
-      ATA[i][i] += alpha;
+    const ataLen = ATA.rows;
+    for (let i = 0; i < ataLen; i++) {
+      ATA.data[i * ataLen + i] += alpha;
     }
 
     try {
       const W = solve(ATA, ATB);
-
-      // Compute residuals
       const fitted = matrixMultiply(A, W);
       let ssRes = 0;
+      const fd = fitted.data;
+      const bd = B.data;
       for (let i = 0; i < n; i++) {
+        const rowOff = i * q;
         for (let j = 0; j < q; j++) {
-          const r = B[i][j] - fitted[i][j];
+          const r = bd[rowOff + j] - fd[rowOff + j];
           ssRes += r * r;
         }
       }
 
-      // Effective degrees of freedom via SVD
       let effectiveDof = 0;
       for (let i = 0; i < Math.min(n, p); i++) {
         effectiveDof += (S[i] * S[i]) / (S[i] * S[i] + alpha);
       }
 
-      // GCV score
       const gcv = ssRes / (n - effectiveDof) ** 2;
-
       if (gcv < bestGcv) {
         bestGcv = gcv;
         bestAlpha = alpha;
@@ -472,7 +450,6 @@ export function ridgeCv(
   }
 
   if (bestW === null) {
-    // Fallback to simple ridge
     bestW = leastSquares(A, B, bestAlpha);
   }
 

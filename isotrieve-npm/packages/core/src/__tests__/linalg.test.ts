@@ -1,7 +1,3 @@
-/**
- * Tests for math/linalg
- */
-
 import {
   cosineSimilarity,
   matrixMultiply,
@@ -18,10 +14,17 @@ import {
   matrixTrace,
   frobeniusNorm,
   vecNorm,
+  TypedMatrix,
 } from '../math/linalg';
 
-function toMat(rows: number[][]): Float64Array[] {
-  return rows.map((r) => new Float64Array(r));
+function toMat(rows: number[][]): TypedMatrix {
+  const data = new Float64Array(rows.length * rows[0].length);
+  for (let i = 0; i < rows.length; i++) {
+    for (let j = 0; j < rows[i].length; j++) {
+      data[i * rows[i].length + j] = rows[i][j];
+    }
+  }
+  return new TypedMatrix(data, rows.length, rows[0].length);
 }
 
 describe('cosineSimilarity', () => {
@@ -59,21 +62,22 @@ describe('cosineSimilarity', () => {
 describe('zeros', () => {
   it('creates zero matrix', () => {
     const m = zeros(2, 3);
-    expect(m.length).toBe(2);
-    expect(m[0].length).toBe(3);
-    expect(m[0][0]).toBe(0);
-    expect(m[1][2]).toBe(0);
+    expect(m.rows).toBe(2);
+    expect(m.cols).toBe(3);
+    expect(m.get(0, 0)).toBe(0);
+    expect(m.get(1, 2)).toBe(0);
   });
 });
 
 describe('eye', () => {
   it('creates identity matrix', () => {
     const I = eye(3);
-    expect(I.length).toBe(3);
-    expect(I[0][0]).toBe(1);
-    expect(I[1][1]).toBe(1);
-    expect(I[2][2]).toBe(1);
-    expect(I[0][1]).toBe(0);
+    expect(I.rows).toBe(3);
+    expect(I.cols).toBe(3);
+    expect(I.get(0, 0)).toBe(1);
+    expect(I.get(1, 1)).toBe(1);
+    expect(I.get(2, 2)).toBe(1);
+    expect(I.get(0, 1)).toBe(0);
   });
 });
 
@@ -88,8 +92,8 @@ describe('matClone', () => {
   it('creates independent copy', () => {
     const m = toMat([[1, 2], [3, 4]]);
     const c = matClone(m);
-    c[0][0] = 99;
-    expect(m[0][0]).toBe(1);
+    c.data[0] = 99;
+    expect(m.get(0, 0)).toBe(1);
   });
 });
 
@@ -97,18 +101,18 @@ describe('matrixMultiply', () => {
   it('multiplies identity by itself', () => {
     const I = eye(3);
     const result = matrixMultiply(I, I);
-    expect(result[0][0]).toBeCloseTo(1.0);
-    expect(result[0][1]).toBeCloseTo(0.0);
+    expect(result.get(0, 0)).toBeCloseTo(1.0);
+    expect(result.get(0, 1)).toBeCloseTo(0.0);
   });
 
   it('multiplies known matrices', () => {
     const A = toMat([[1, 2], [3, 4]]);
     const B = toMat([[5, 6], [7, 8]]);
     const C = matrixMultiply(A, B);
-    expect(C[0][0]).toBe(19);
-    expect(C[0][1]).toBe(22);
-    expect(C[1][0]).toBe(43);
-    expect(C[1][1]).toBe(50);
+    expect(C.get(0, 0)).toBe(19);
+    expect(C.get(0, 1)).toBe(22);
+    expect(C.get(1, 0)).toBe(43);
+    expect(C.get(1, 1)).toBe(50);
   });
 });
 
@@ -126,12 +130,12 @@ describe('transpose', () => {
   it('transposes 2x3 matrix', () => {
     const M = toMat([[1, 2, 3], [4, 5, 6]]);
     const T = transpose(M);
-    expect(T.length).toBe(3);
-    expect(T[0].length).toBe(2);
-    expect(T[0][0]).toBe(1);
-    expect(T[0][1]).toBe(4);
-    expect(T[2][0]).toBe(3);
-    expect(T[2][1]).toBe(6);
+    expect(T.rows).toBe(3);
+    expect(T.cols).toBe(2);
+    expect(T.get(0, 0)).toBe(1);
+    expect(T.get(0, 1)).toBe(4);
+    expect(T.get(2, 0)).toBe(3);
+    expect(T.get(2, 1)).toBe(6);
   });
 });
 
@@ -180,10 +184,10 @@ describe('solve', () => {
     const A = toMat([[2, 1], [1, 3]]);
     const b = toMat([[5], [7]]);
     const X = solve(A, b);
-    expect(X.length).toBe(2);
-    expect(X[0].length).toBe(1);
-    expect(X[0][0]).toBeCloseTo(1.6, 5);
-    expect(X[1][0]).toBeCloseTo(1.8, 5);
+    expect(X.rows).toBe(2);
+    expect(X.cols).toBe(1);
+    expect(X.get(0, 0)).toBeCloseTo(1.6, 5);
+    expect(X.get(1, 0)).toBeCloseTo(1.8, 5);
   });
 });
 
@@ -192,8 +196,9 @@ describe('leastSquares', () => {
     const X = toMat([[1], [2], [3], [4]]);
     const Y = toMat([[2], [4], [6], [8]]);
     const W = leastSquares(X, Y, 0);
-    expect(W.length).toBe(1);
-    expect(W[0][0]).toBeCloseTo(2, 5);
+    expect(W.rows).toBe(1);
+    expect(W.cols).toBe(1);
+    expect(W.get(0, 0)).toBeCloseTo(2, 5);
   });
 });
 
@@ -203,6 +208,6 @@ describe('ridgeCv', () => {
     const Y = toMat([[2.1], [3.9], [6.2], [7.8], [10.1], [12.2], [13.9], [16.1], [18.0], [20.1]]);
     const { W, bestAlpha } = ridgeCv(X, Y);
     expect(bestAlpha).toBeGreaterThanOrEqual(0);
-    expect(W[0][0]).toBeCloseTo(2, 0);
+    expect(W.get(0, 0)).toBeCloseTo(2, 0);
   });
 });

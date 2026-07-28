@@ -1,22 +1,8 @@
-/**
- * Phase 3: Cross-runtime binary format parity.
- *
- * Loads Python-generated .isotrieve files via the TS reader,
- * applies transforms, and compares outputs to Python-recorded
- * expected values.
- *
- * Also tests round-trip: load Python file → save TS → load TS → compare.
- */
-
 import { readFileSync, writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { loadMapping } from '../mapping/registry';
 import { readIsotrieveHeader, readIsotrievePayload, writeIsotrieveFile } from '../mapping/format';
-import { RidgeMapping } from '../mapping/ridge';
-import { OrthogonalProcrustesMapping, ProcrustesDiagMapping } from '../mapping/procrustes';
-import { LowRankAffineMapping } from '../mapping/lowrank';
-
-// ── Helpers ──────────────────────────────────────────────────────
+import { TypedMatrix } from '../math/matrix';
 
 const FIXTURE_DIR = join(__dirname, 'fixtures', 'xruntime');
 
@@ -33,25 +19,17 @@ function toFloat64Arrays(rows: number[][]): Float64Array[] {
   });
 }
 
-function maxAbsDiff(a: Float64Array, b: Float64Array): number {
-  if (a.length !== b.length) return Infinity;
-  let max = 0;
-  for (let i = 0; i < a.length; i++) {
-    max = Math.max(max, Math.abs(a[i] - b[i]));
-  }
-  return max;
-}
-
 function matMaxAbsDiff(A: Float64Array[], B: Float64Array[]): number {
   if (A.length !== B.length) return Infinity;
   let max = 0;
   for (let i = 0; i < A.length; i++) {
-    max = Math.max(max, maxAbsDiff(A[i], B[i]));
+    if (A[i].length !== B[i].length) return Infinity;
+    for (let j = 0; j < A[i].length; j++) {
+      max = Math.max(max, Math.abs(A[i][j] - B[i][j]));
+    }
   }
   return max;
 }
-
-// ── Tests ────────────────────────────────────────────────────────
 
 describe('Phase 3: Cross-runtime binary format parity', () => {
   const MAPPING_NAMES = [
@@ -76,18 +54,16 @@ describe('Phase 3: Cross-runtime binary format parity', () => {
     test('header keys are normalized (snake_case → camelCase)', () => {
       const path = join(FIXTURE_DIR, `${name}.isotrieve`);
       const header = readIsotrieveHeader(path);
-      // All keys should be camelCase after normalization
       expect(header.formatVersion).toBeDefined();
       expect(header.mappingType).toBeDefined();
       expect(header.dSrc).toBeDefined();
       expect(header.dTarget).toBeDefined();
       expect(header.matrixShape).toBeDefined();
       expect(header.hasInverse).toBeDefined();
-      // Should NOT have snake_case versions
-      expect(header.format_version).toBeUndefined();
-      expect(header.mapping_type).toBeUndefined();
-      expect(header.d_src).toBeUndefined();
-      expect(header.d_tgt).toBeUndefined();
+      expect((header as any).format_version).toBeUndefined();
+      expect((header as any).mapping_type).toBeUndefined();
+      expect((header as any).d_src).toBeUndefined();
+      expect((header as any).d_tgt).toBeUndefined();
     });
 
     test('mapping dimensions match', () => {
@@ -107,7 +83,7 @@ describe('Phase 3: Cross-runtime binary format parity', () => {
       const X = toFloat64Arrays(meta.X_test);
       const mapped = mapping.transform(X) as Float64Array[];
       const expected = meta.inverse;
-      if (expected === null) return; // no inverse to test
+      if (expected === null) return;
       const expectedArr = toFloat64Arrays(expected);
       const got = mapping.inverseTransform(mapped) as Float64Array[];
       const diff = matMaxAbsDiff(got, expectedArr);
@@ -123,8 +99,6 @@ describe('Phase 3: Cross-runtime binary format parity', () => {
     });
   });
 
-  // ── Round-trip test ─────────────────────────────────────────────
-
   describe('round-trip: Python → TS load → TS save → TS load', () => {
     const ROUNDTRIP_MAPS = ['ridge_bias', 'procrustes'];
 
@@ -132,24 +106,19 @@ describe('Phase 3: Cross-runtime binary format parity', () => {
       const meta = loadFixtureMeta(name);
       const origPath = join(FIXTURE_DIR, `${name}.isotrieve`);
 
-      // 1. Load Python file in TS
       const m1 = loadMapping(origPath);
 
-      // 2. Save TS version
       const tsPath = join(FIXTURE_DIR, `${name}_ts_roundtrip.isotrieve`);
       m1.save(tsPath);
 
-      // 3. Load TS version
       const m2 = loadMapping(tsPath);
 
-      // 4. Compare forward matrices
       const X = toFloat64Arrays(meta.X_test);
       const out1 = m1.transform(X) as Float64Array[];
       const out2 = m2.transform(X) as Float64Array[];
       const diff = matMaxAbsDiff(out1, out2);
       expect(diff).toBeLessThan(1e-12);
 
-      // 5. Compare headers (should be identical except fitDate)
       const h1 = readIsotrieveHeader(origPath);
       const h2 = readIsotrieveHeader(tsPath);
       expect(h2.mappingType).toBe(h1.mappingType);
@@ -158,12 +127,9 @@ describe('Phase 3: Cross-runtime binary format parity', () => {
       expect(h2.matrixShape).toEqual(h1.matrixShape);
       expect(h2.hasInverse).toBe(h1.hasInverse);
 
-      // Cleanup
       try { unlinkSync(tsPath); } catch {}
     });
   });
-
-  // ── Edge cases ──────────────────────────────────────────────────
 
   describe('edge cases', () => {
     test('loadMapping throws on non-existent file', () => {
@@ -179,7 +145,6 @@ describe('Phase 3: Cross-runtime binary format parity', () => {
 
     test('readIsotrievePayload throws on truncated file', () => {
       const badPath = join(FIXTURE_DIR, '_truncated.isotrieve');
-      // Valid magic + header claiming a matrix that isn't there
       const headerJson = JSON.stringify({ matrixShape: [10, 5] });
       const buf = Buffer.alloc(8 + headerJson.length);
       buf.write('ISTR', 0, 'ascii');
@@ -191,14 +156,10 @@ describe('Phase 3: Cross-runtime binary format parity', () => {
     });
   });
 
-  // ── Matrix roundtrip (byte-exact) ───────────────────────────────
-
   describe('matrix byte-exact roundtrip', () => {
     test('write → read preserves Float64 values exactly', () => {
-      const mat: Float64Array[] = [
-        new Float64Array([1.5, -2.718281828, 3.14159265358979]),
-        new Float64Array([0, 1e-300, 1e300]),
-      ];
+      const data = new Float64Array([1.5, -2.718281828, 3.14159265358979, 0, 1e-300, 1e300]);
+      const mat = new TypedMatrix(data, 2, 3);
       const path = join(FIXTURE_DIR, '_roundtrip_exact.isotrieve');
       writeIsotrieveFile(path, {
         mappingType: 'ridge',
@@ -209,8 +170,13 @@ describe('Phase 3: Cross-runtime binary format parity', () => {
       }, [{ name: 'forward', mat }]);
       const { matrices } = readIsotrievePayload(path);
       const got = matrices.get('forward')!;
-      const diff = matMaxAbsDiff(got, mat);
-      expect(diff).toBe(0);
+      const diff = matMaxAbsDiff([got.data as any as Float64Array], [mat.data as any as Float64Array]);
+      // Compare flat data
+      let maxD = 0;
+      for (let i = 0; i < got.data.length; i++) {
+        maxD = Math.max(maxD, Math.abs(got.data[i] - mat.data[i]));
+      }
+      expect(maxD).toBe(0);
       try { unlinkSync(path); } catch {}
     });
   });

@@ -1,17 +1,12 @@
-/**
- * Abstract base class for all isotrieve embedding-space mappings.
- *
- * Provides shared logic for transform/inverseTransform (bias augmentation,
- * dimension checks, finiteness checks, matrix multiply, L2 normalization),
- * serialization via the .isotrieve binary format, and score recalibration.
- */
-
 import {
   vectorMatrixMultiply,
-  matrixMultiply,
-  shape,
+  TypedMatrix,
+  toTypedMatrix,
+  isSingleVector,
+  SingleOrBatch,
 } from '../math/linalg';
 import { l2Normalize, checkFinite, augmentBias } from '../math/normalize';
+import { shape } from '../math/linalg';
 import type {
   MappingType,
   ValidationReport,
@@ -26,33 +21,20 @@ import {
   FORMAT_VERSION,
 } from './format';
 
-/** Package version used in serialized headers. */
 const __VERSION__ = '0.1.0';
 
-/**
- * Options for the shared applyMapping helper.
- */
 export interface ApplyMappingOptions {
-  /** Direction label for error messages. */
   direction: 'forward' | 'inverse';
-  /** Whether to augment a bias (ones) column before multiplication. */
   bias: boolean;
-  /** Whether to L2-normalize output vectors. */
   normalize: boolean;
 }
 
-/**
- * Abstract mapping between two embedding spaces.
- *
- * Concrete subclasses must implement `fit`, `transform`, and `inverseTransform`.
- */
 export abstract class Mapping {
-  /** Discriminant tag for serialization dispatch. */
   static readonly mappingType: MappingType;
 
   protected _fitted = false;
-  protected _W: Float64Array[] | null = null;
-  protected _WInv: Float64Array[] | null = null;
+  protected _W: TypedMatrix | null = null;
+  protected _WInv: TypedMatrix | null = null;
   protected _dSrc: number | null = null;
   protected _dTarget: number | null = null;
   protected _bias: boolean;
@@ -66,62 +48,33 @@ export abstract class Mapping {
     this._seed = options.seed ?? 0;
   }
 
-  // ── Abstract interface ─────────────────────────────────────────
+  abstract fit(X: Float64Array[] | Float32Array[] | TypedMatrix, Y: Float64Array[] | Float32Array[] | TypedMatrix): this;
 
-  /**
-   * Fit the mapping to paired source→target vectors.
-   * @param X - Source embedding vectors.
-   * @param Y - Target embedding vectors.
-   */
-  abstract fit(X: Float64Array[], Y: Float64Array[]): this;
+  abstract transform(V: SingleOrBatch): Float64Array | Float64Array[];
+  abstract inverseTransform(V: SingleOrBatch): Float64Array | Float64Array[];
 
-  /**
-   * Map source-space vectors to target space.
-   * Accepts a single vector or a batch.
-   */
-  abstract transform(V: Float64Array | Float64Array[]): Float64Array | Float64Array[];
-
-  /**
-   * Map target-space vectors back to source space.
-   * Accepts a single vector or a batch.
-   */
-  abstract inverseTransform(V: Float64Array | Float64Array[]): Float64Array | Float64Array[];
-
-  // ── Getters ────────────────────────────────────────────────────
-
-  /** Whether this mapping has been fitted. */
   get isFitted(): boolean {
     return this._fitted;
   }
 
-  /** Source embedding dimension. Throws if not fitted. */
   get dSrc(): number {
     this.requireFitted();
     return this._dSrc!;
   }
 
-  /** Target embedding dimension. Throws if not fitted. */
   get dTarget(): number {
     this.requireFitted();
     return this._dTarget!;
   }
 
-  /** Whether this mapping has a score recalibrator attached. */
   get hasRecalibrator(): boolean {
     return this._recalibrator !== null;
   }
 
-  /** Whether this mapping has an inverse transformation. */
   get hasInverse(): boolean {
     return this._WInv !== null;
   }
 
-  // ── Validation ─────────────────────────────────────────────────
-
-  /**
-   * Return the validation report from fitting.
-   * @throws If no validation report exists (mapping not fitted or fit without holdout).
-   */
   validationReport(): ValidationReport {
     if (this._validationReport === null) {
       throw new Error('No validation report available. Was the mapping fitted?');
@@ -129,12 +82,6 @@ export abstract class Mapping {
     return this._validationReport;
   }
 
-  // ── Meta ───────────────────────────────────────────────────────
-
-  /**
-   * Merge key/value pairs into the metadata dictionary.
-   * Metadata is persisted in the .isotrieve header on save.
-   */
   setMeta(...args: Array<string | unknown>): void {
     if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
       Object.assign(this._meta, args[0]);
@@ -145,15 +92,6 @@ export abstract class Mapping {
     }
   }
 
-  // ── Score recalibration ────────────────────────────────────────
-
-  /**
-   * Apply score recalibration to raw mapped-vs-target cosine scores.
-   * Requires that a recalibrator has been attached.
-   *
-   * @param scores - Raw cosine similarity scores.
-   * @returns Recalibrated scores.
-   */
   recalibrateScores(scores: Float64Array): Float64Array {
     if (this._recalibrator === null) {
       throw new Error('No recalibrator attached to this mapping.');
@@ -161,25 +99,13 @@ export abstract class Mapping {
     return this._recalibrator.recalibrate(scores);
   }
 
-  // ── Serialization ──────────────────────────────────────────────
-
-  /**
-   * Save the fitted mapping to a .isotrieve binary file.
-   *
-   * The file contains a JSON header with all parameters, validation,
-   * metadata, and recalibrator state, followed by the raw Float64
-   * matrix payloads.
-   *
-   * @param path - Filesystem path to write to.
-   */
   save(path: string): void {
     this.requireFitted();
 
-    const matrixShape = shape(this._W!);
+    const matrixShape: [number, number] = [this._W!.rows, this._W!.cols];
     const hasInverse = this._WInv !== null;
-    const inverseMatrixShape = hasInverse ? shape(this._WInv!) : undefined;
+    const inverseMatrixShape = hasInverse ? [this._WInv!.rows, this._WInv!.cols] as [number, number] : undefined;
 
-    // Build extra matrices for Procrustes variants
     const extraMatrices: Record<string, [number, number]> = {};
 
     const header: IsotrieveFileHeader = {
@@ -204,21 +130,19 @@ export abstract class Mapping {
       header.scoreRecalV1 = this._recalibrator.toJSON();
     }
 
-    const matrices: Array<{ name: string; mat: Float64Array[] }> = [
+    const matrices: Array<{ name: string; mat: TypedMatrix }> = [
       { name: 'forward', mat: this._W! },
     ];
     if (hasInverse) {
       matrices.push({ name: 'inverse', mat: this._WInv! });
     }
 
-    // Any subclass-specific extra matrices (e.g. mean_X, mean_Y)
     const extras = this._extraMatrices();
     for (const { name, mat } of extras) {
-      extraMatrices[name] = shape(mat);
+      extraMatrices[name] = [mat.rows, mat.cols];
       matrices.push({ name, mat });
     }
 
-    // Re-write header with extra matrix shapes now that we know them
     if (Object.keys(extraMatrices).length > 0) {
       header.extraMatrices = extraMatrices;
     }
@@ -226,26 +150,11 @@ export abstract class Mapping {
     writeIsotrieveFile(path, header as unknown as Record<string, unknown>, matrices);
   }
 
-  /**
-   * Load a fitted mapping from a .isotrieve binary file.
-   *
-   * Reads the header, dispatches to the correct concrete Mapping subclass,
-   * reconstructs the matrices, and restores meta/validation/recalibrator state.
-   *
-   * @param path - Filesystem path to read from.
-   * @returns A fully reconstructed, fitted Mapping instance.
-   */
   static load(path: string): Mapping {
-    // Lazy import to avoid circular deps — resolved at runtime via registry
     const { loadMapping } = require('./registry') as typeof import('./registry');
     return loadMapping(path);
   }
 
-  // ── Internal helpers ───────────────────────────────────────────
-
-  /**
-   * Throw if the mapping has not been fitted.
-   */
   requireFitted(): void {
     if (!this._fitted) {
       throw new Error(
@@ -255,95 +164,82 @@ export abstract class Mapping {
     }
   }
 
-  /**
-   * Shared implementation for transform and inverseTransform.
-   *
-   * Handles:
-   * 1. Single-vector reshaping to/from batch
-   * 2. Dimension validation against the expected source/target dim
-   * 3. Finiteness checks
-   * 4. Bias augmentation (appending a ones column)
-   * 5. Matrix multiply (v @ W)
-   * 6. Optional L2 normalization
-   *
-   * @param V - Input vector(s).
-   * @param matrix - The weight matrix to apply.
-   * @param expectedDim - Expected input dimension for validation.
-   * @param options - Direction, bias, and normalization flags.
-   */
   applyMapping(
-    V: Float64Array | Float64Array[],
-    matrix: Float64Array[],
+    V: SingleOrBatch,
+    matrix: TypedMatrix,
     expectedDim: number,
     options: ApplyMappingOptions,
   ): Float64Array | Float64Array[] {
-    const singleInput = !(Array.isArray(V) && V.length > 0 && V[0] instanceof Float64Array);
-    let vecs: Float64Array[];
+    const singleInput = isSingleVector(V);
+    let vecs: TypedMatrix;
     if (singleInput) {
-      vecs = [V as Float64Array];
+      const v = V as Float64Array | Float32Array;
+      vecs = new TypedMatrix(
+        v instanceof Float64Array ? new Float64Array(v) : new Float64Array(v),
+        1,
+        v.length,
+      );
     } else {
-      vecs = V as Float64Array[];
+      vecs = toTypedMatrix(V);
     }
 
-    // Dimension check
-    if (vecs.length > 0 && vecs[0].length !== expectedDim) {
+    if (vecs.rows > 0 && vecs.cols !== expectedDim) {
       throw new Error(
         `Expected ${expectedDim}-dimensional vectors for ${options.direction} mapping, ` +
-        `got ${vecs[0].length}`,
+        `got ${vecs.cols}`,
       );
     }
 
-    // Finiteness check
-    for (let i = 0; i < vecs.length; i++) {
-      checkFinite(`${options.direction} input[${i}]`, vecs[i]);
-    }
+    checkFinite(`${options.direction} input`, vecs);
 
-    // Bias augmentation
-    let augmented: Float64Array[];
+    let augmented: TypedMatrix;
     if (options.bias) {
-      augmented = augmentBias(vecs);
+      const augRows = augmentBias(vecs.toFloat64Arrays());
+      augmented = TypedMatrix.fromRows(augRows);
     } else {
       augmented = vecs;
     }
 
-    // Matrix multiply: each row vector v becomes v @ matrix
-    let result: Float64Array[];
-    if (augmented.length === 1) {
-      result = [vectorMatrixMultiply(augmented[0], matrix)];
-    } else {
-      result = augmented.map((v) => vectorMatrixMultiply(v, matrix));
+    const n = matrix.cols;
+    const result = new TypedMatrix(new Float64Array(augmented.rows * n), augmented.rows, n);
+    const rd = result.data;
+    const ad = augmented.data;
+    const md = matrix.data;
+    const aCols = augmented.cols;
+    for (let i = 0; i < augmented.rows; i++) {
+      const aOff = i * aCols;
+      const rOff = i * n;
+      for (let k = 0; k < aCols; k++) {
+        const aik = ad[aOff + k];
+        const mOff = k * n;
+        for (let j = 0; j < n; j++) {
+          rd[rOff + j] += aik * md[mOff + j];
+        }
+      }
     }
 
-    // Optional L2 normalization
+    let output: Float64Array[];
     if (options.normalize) {
-      result = l2Normalize(result) as Float64Array[];
+      output = l2Normalize(result) as Float64Array[];
+    } else {
+      output = result.toFloat64Arrays();
     }
 
     if (singleInput) {
-      return result[0];
+      return output[0];
     }
-    return result;
+    return output;
   }
 
-  /**
-   * Subclasses override this to provide extra matrices for serialization
-   * (e.g. Procrustes mean_X, mean_Y). Default: none.
-   */
-  protected _extraMatrices(): Array<{ name: string; mat: Float64Array[] }> {
+  protected _extraMatrices(): Array<{ name: string; mat: TypedMatrix }> {
     return [];
   }
 
-  /**
-   * Subclasses override this to restore extra matrices after loading.
-   */
-  protected _restoreExtraMatrices(_extras: Map<string, Float64Array[]>): void {
+  protected _restoreExtraMatrices(_extras: Map<string, TypedMatrix>): void {
     // no-op by default
   }
 
-  /**
-   * Subclasses override this to set _dSrc/_dTarget from extra matrices.
-   */
-  protected _setDimsFromExtra(_extras: Map<string, Float64Array[]>): void {
+  protected _setDimsFromExtra(_extras: Map<string, TypedMatrix>): void {
     // no-op by default
   }
 }
