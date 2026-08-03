@@ -36,39 +36,90 @@
 
     <section class="hero">
         <div class="wrap">
-            <h1>Embedding Migration<br>Without Re-embedding</h1>
-            <p>Migrate a vector database to a new embedding model by fitting a linear map from ~2K calibration texts. 87–91% retrieval retention on BEIR.</p>
-            <div class="grid4" style="margin-bottom:2rem">
-                <div class="card"><div class="big">91%</div><div class="label">Retrieval Retention</div><div class="detail">bge-large &rarr; e5-large, SciFact K=2000</div></div>
-                <div class="card"><div class="big">87%</div><div class="label">Rectangular Pair</div><div class="detail">MiniLM (384d) &rarr; bge-large (1024d)</div></div>
-                <div class="card"><div class="big">~0</div><div class="label">Corpus Writes</div><div class="detail">Serve mode: map queries on-the-fly</div></div>
-                <div class="card"><div class="big">2K</div><div class="label">Calibration Texts</div><div class="detail">Minimum for PASS gate verdict</div></div>
+            <div class="hero-layout">
+                <div class="hero-copy">
+                    <div class="hero-brand">Iso<span>trieve</span></div>
+                    <h1>Learn a linear map.<br>Skip re-embedding.</h1>
+                    <p>Migrate a vector database to a new embedding model by fitting a transform from ~2K calibration texts. 87–91% retrieval retention on BEIR.</p>
+                    <div class="actions">
+                        <a href="docs.html" class="btn primary">Quick Start</a>
+                        <a href="performance.html" class="btn">View Benchmarks</a>
+                    </div>
+                </div>
+                <div class="hero-viz" aria-hidden="true">
+                    <canvas id="transferViz"></canvas>
+                    <div class="hero-viz-caption">
+                        <span class="src">space A</span>
+                        <span class="map">W : A → B</span>
+                        <span class="tgt">space B</span>
+                    </div>
+                </div>
             </div>
-            <div class="actions">
-                <a href="docs.html" class="btn primary">Quick Start</a>
-                <a href="performance.html" class="btn">View Benchmarks</a>
+
+            <div class="stat-figure">
+                <div class="stat-hero">
+                    <div class="big">91%</div>
+                    <div class="label">Retrieval retention</div>
+                    <div class="detail">bge-large → e5-large · SciFact · K=2000</div>
+                </div>
+                <div class="stat-side">
+                    <div class="stat-item">
+                        <div class="big">87%</div>
+                        <div class="label">Rectangular pair</div>
+                        <div class="detail">MiniLM 384d → bge-large 1024d</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="big">~0</div>
+                        <div class="label">Corpus writes in serve mode</div>
+                        <div class="detail">Map queries on-the-fly</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="big">2K</div>
+                        <div class="label">Calibration texts</div>
+                        <div class="detail">Minimum for PASS gate</div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
     <section class="section">
         <div class="wrap">
-            <div class="st">The Problem</div>
-            <div class="grid3">
-                <div class="card">
-                    <h3>Incompatible Embedding Spaces</h3>
-                    <p>Different models produce vectors in different geometric spaces. Raw cross-space nDCG@10 = <strong>0.0</strong>.</p>
-                    <p class="note">1024d from bge &ne; 1024d from e5</p>
+            <div class="st">The problem is a chain</div>
+            <p class="solve-lead">Incompatible spaces make cross-model search fail. Re-embedding is the expensive fix — and deprecation keeps forcing the cycle.</p>
+            <div class="chain">
+                <div class="chain-step">
+                    <div class="chain-rail">
+                        <div class="chain-num">01</div>
+                        <div class="chain-line"></div>
+                    </div>
+                    <div class="chain-body">
+                        <h3>Incompatible embedding spaces</h3>
+                        <p>Different models produce vectors in different geometric spaces. Raw cross-space nDCG@10 = <strong>0.0</strong>.</p>
+                        <p class="note">1024d from bge ≠ 1024d from e5</p>
+                    </div>
                 </div>
-                <div class="card">
-                    <h3>Re-embedding Is Expensive</h3>
-                    <p>Switching models means re-embedding every document. 1M docs = hundreds of dollars.</p>
-                    <p class="note">Cost scales linearly with corpus size</p>
+                <div class="chain-step">
+                    <div class="chain-rail">
+                        <div class="chain-num">02</div>
+                        <div class="chain-line"></div>
+                    </div>
+                    <div class="chain-body">
+                        <h3>Re-embedding is expensive</h3>
+                        <p>Switching models means re-embedding every document. A million docs means hundreds of dollars — and downtime while you rebuild.</p>
+                        <p class="note">Cost scales linearly with corpus size</p>
+                    </div>
                 </div>
-                <div class="card">
-                    <h3>Model Deprecation Looms</h3>
-                    <p>OpenAI deprecated ada-002. New models are better, but migrating means rebuilding from scratch.</p>
-                    <p class="note">ada-002 &rarr; text-embedding-3: same story</p>
+                <div class="chain-step">
+                    <div class="chain-rail">
+                        <div class="chain-num">03</div>
+                        <div class="chain-line"></div>
+                    </div>
+                    <div class="chain-body">
+                        <h3>Model deprecation looms</h3>
+                        <p>OpenAI deprecated ada-002. Newer models are better, but migrating still means rebuilding from scratch — unless you learn the map.</p>
+                        <p class="note">ada-002 → text-embedding-3: same story</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -76,31 +127,32 @@
 
     <section class="section">
         <div class="wrap">
-            <div class="st">How Isotrieve Solves This</div>
-            <p>Fits a ridge regression from ~2K paired calibration texts. The learned mapping transforms stored vectors, or maps new-model queries into the legacy space.</p>
+            <div class="st">How Isotrieve solves this</div>
+            <p class="solve-lead">Fits a ridge regression from ~2K paired calibration texts. The learned mapping transforms stored vectors, or maps new-model queries into the legacy space.</p>
             <ul class="fl">
-                <li><span class="ck">&gt;</span><strong>87–91% retrieval retention</strong> — measured on BEIR SciFact, 3 seeds</li>
-                <li><span class="ck">&gt;</span><strong>Score recalibration</strong> — isotonic regression makes threshold decisions reliable</li>
-                <li><span class="ck">&gt;</span><strong>Confidence flags</strong> — per-query high/medium/low with adaptive margins</li>
-                <li><span class="ck">&gt;</span><strong>ChromaDB + LangChain adapters</strong> — drop-in wrappers for popular vector DBs</li>
-                <li><span class="ck">&gt;</span><strong>Quality gate</strong> — data-driven PASS/WARN/FAIL from a trained model</li>
+                <li><span class="ck">→</span><strong>87–91% retrieval retention</strong> — measured on BEIR SciFact, 3 seeds</li>
+                <li><span class="ck">→</span><strong>Score recalibration</strong> — isotonic regression makes threshold decisions reliable</li>
+                <li><span class="ck">→</span><strong>Confidence flags</strong> — per-query high/medium/low with adaptive margins</li>
+                <li><span class="ck">→</span><strong>ChromaDB + LangChain adapters</strong> — drop-in wrappers for popular vector DBs</li>
+                <li><span class="ck">→</span><strong>Quality gate</strong> — data-driven PASS/WARN/FAIL from a trained model</li>
             </ul>
-            <a href="protocol.html" class="btn primary">See How It Works</a>
+            <a href="protocol.html" class="btn primary">See how it works</a>
         </div>
     </section>
 
-    <section class="section">
-        <div class="wrap">
-            <div class="grid4">
-                <a href="protocol.html" class="card" style="text-decoration:none;color:inherit"><h3>How It Works</h3><p class="note">Architecture and math</p></a>
-                <a href="integrations.html" class="card" style="text-decoration:none;color:inherit"><h3>Integrations</h3><p class="note">ChromaDB, LangChain, Qdrant</p></a>
-                <a href="performance.html" class="card" style="text-decoration:none;color:inherit"><h3>Benchmarks</h3><p class="note">Real numbers, no fakes</p></a>
-                <a href="docs.html" class="card" style="text-decoration:none;color:inherit"><h3>Documentation</h3><p class="note">API reference + guides</p></a>
-            </div>
+    <section class="section explore-section">
+        <div class="wrap explore-wrap">
+            <nav class="explore" aria-label="Explore">
+                <a href="protocol.html"><strong>How it works<span class="arrow">→</span></strong><span>Architecture and math</span></a>
+                <a href="integrations.html"><strong>Integrations<span class="arrow">→</span></strong><span>ChromaDB, LangChain, Qdrant</span></a>
+                <a href="performance.html"><strong>Benchmarks<span class="arrow">→</span></strong><span>Real numbers, no fakes</span></a>
+                <a href="docs.html"><strong>Documentation<span class="arrow">→</span></strong><span>API reference + guides</span></a>
+            </nav>
         </div>
     </section>
 
     <footer class="footer"><div class="wrap"><p>&copy; 2026 Isotrieve. Apache-2.0 License.</p></div></footer>
     <script src="js/main.js"></script>
+    <script src="js/visualization.js"></script>
 </body>
 </html>

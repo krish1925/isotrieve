@@ -68,22 +68,40 @@
             <div class="docs-body">
 
                 <section id="overview" class="ds">
-                    <h1>Isotrieve Documentation</h1>
-                    <p class="lead">Migrate a vector database to a new embedding model without re-embedding. Fits a linear map from ~2K calibration texts; 87–91% retrieval retention on BEIR.</p>
-                    <h2>What is Isotrieve?</h2>
-                    <p>Different embedding models produce vectors in incompatible geometric spaces. Raw cross-space nDCG@10 = 0.0. Isotrieve fits a ridge regression mapping from paired calibration texts, then transforms stored vectors (offline) or maps queries on-the-fly (serve mode).</p>
-                    <h2>Key Features</h2>
-                    <ul>
-                        <li><strong>87–91% retrieval retention</strong> on BEIR SciFact</li>
-                        <li><strong>Score recalibration</strong> — isotonic regression for reliable thresholds</li>
-                        <li><strong>Confidence flags</strong> — per-query high/medium/low</li>
-                        <li><strong>ChromaDB + LangChain adapters</strong></li>
-                        <li><strong>Quality gate</strong> — data-driven PASS/WARN/FAIL</li>
-                    </ul>
+                    <div class="docs-row docs-row--solo">
+                        <div class="docs-prose">
+                            <h1>Isotrieve Documentation</h1>
+                            <p class="lead">Migrate a vector database to a new embedding model without re-embedding. Fits a linear map from ~2K calibration texts; 87–91% retrieval retention on BEIR.</p>
+                            <h2>What is Isotrieve?</h2>
+                            <p>Different embedding models produce vectors in incompatible geometric spaces. Even when two models output the same dimensionality, their axes mean different things — raw cross-space nDCG@10 is typically <strong>0.0</strong>.</p>
+                            <p>Isotrieve fits a ridge regression from paired calibration texts: embed the same ~2K documents with both models, learn a linear map <code>W</code>, then either transform stored vectors offline or map new-model queries into the legacy space at serve time. You keep the index you already paid for and still move to a better model.</p>
+                            <h2>Key Features</h2>
+                            <ul>
+                                <li><strong>87–91% retrieval retention</strong> on BEIR SciFact vs full re-embedding</li>
+                                <li><strong>Score recalibration</strong> — isotonic regression so thresholds stay meaningful</li>
+                                <li><strong>Confidence flags</strong> — per-query high / medium / low from score margins</li>
+                                <li><strong>ChromaDB + LangChain + Qdrant adapters</strong> for drop-in use</li>
+                                <li><strong>Quality gate</strong> — data-driven PASS / WARN / FAIL before you ship</li>
+                            </ul>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="install" class="ds">
-                    <h2>Installation</h2>
+                    <header class="docs-head">
+                        <h2>Installation</h2>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p>Install the core package from PyPI. Adapter extras pull in optional dependencies only when you need them — keep the core install small for CI and production images that only load a saved mapping.</p>
+                            <p>Use <code>isotrieve[chroma]</code>, <code>isotrieve[langchain]</code>, or <code>isotrieve[qdrant]</code> for a single store, or <code>isotrieve[all]</code> when you want every adapter available in one environment (local demos, notebooks).</p>
+                            <ul>
+                                <li><strong>Core</strong> — mapping, serve, gate, CLI</li>
+                                <li><strong>chroma / langchain / qdrant</strong> — store-specific wrappers</li>
+                                <li><strong>all</strong> — core + every adapter</li>
+                            </ul>
+                        </div>
+                        <div class="docs-code">
 <pre><code># Core only
 pip install isotrieve
 
@@ -92,14 +110,39 @@ pip install "isotrieve[chroma]"       # ChromaDB
 pip install "isotrieve[langchain]"    # LangChain
 pip install "isotrieve[qdrant]"       # Qdrant
 pip install "isotrieve[all]"          # Everything</code></pre>
-                    <p>Python &ge; 3.10, numpy &ge; 1.24, scikit-learn &ge; 1.3.</p>
+                        </div>
+                    </div>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p>Requires <strong>Python &ge; 3.10</strong>, <strong>numpy &ge; 1.24</strong>, and <strong>scikit-learn &ge; 1.3</strong>. After install, confirm the package imports and print the version — this is the quickest sanity check before calibrating.</p>
+                            <p>If import fails, check that you are in the intended virtualenv and that the Python on <code>PATH</code> matches the one used for <code>pip install</code>.</p>
+                        </div>
+                        <div class="docs-code">
 <pre><code>python -c "import isotrieve; print(isotrieve.__version__)"
 # 0.2.0</code></pre>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="quickstart" class="ds">
-                    <h2>Quick Start</h2>
-                    <h3>1. Fit a mapping</h3>
+                    <header class="docs-head">
+                        <h2>Quick Start</h2>
+                        <p>Three steps: fit a map from calibration pairs, reuse it at query time, or transform the store offline. The snippets below use synthetic matrices so you can run them without embedding models; swap in real <code>X</code> / <code>Y</code> from your corpus for production.</p>
+                    </header>
+                    <header class="docs-head docs-head--sub">
+                        <h3>1. Fit a mapping</h3>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p>Calibration pairs are the same texts embedded with the source and target models. Aim for at least <strong>~2K</strong> in-domain examples for a PASS gate verdict; fewer often works for prototyping but retention drops.</p>
+                            <p><code>RidgeMapping</code> with <code>alpha="auto"</code> tunes regularization via leave-one-out GCV. After <code>fit</code>, <code>save</code> writes a <code>.isotrieve</code> file (forward map, optional inverse, metadata). <code>transform</code> returns L2-normalized vectors in the target space.</p>
+                            <ul>
+                                <li>Works for same-dim and rectangular (<code>d_src ≠ d_tgt</code>) pairs</li>
+                                <li>Seed the fit for reproducibility across machines</li>
+                                <li>Reuse the saved file in serve mode or offline migrate</li>
+                            </ul>
+                        </div>
+                        <div class="docs-code">
 <pre><code>import numpy as np
 from isotrieve import RidgeMapping
 
@@ -113,12 +156,42 @@ m.fit(X, Y)
 m.save("mapping.isotrieve")
 
 Z = m.transform(X[:10])  # (10, d_tgt), L2-normalized</code></pre>
-                    <h3>2. Serve mode (zero corpus writes)</h3>
+                        </div>
+                    </div>
+                    <header class="docs-head docs-head--sub">
+                        <h3>2. Serve mode (zero corpus writes)</h3>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p>Serve mode leaves the existing index untouched. Embed the query with the <em>new</em> model, then map it into the <em>legacy</em> space with the inverse transform and search the store you already have.</p>
+                            <p>This is the lowest-cost path when re-embedding millions of documents is expensive or when you want to A/B a new model before committing to an offline migration. The mapping file must include a fitted inverse (<code>QueryAdapter.load</code> will error if it does not).</p>
+                            <ul>
+                                <li>No corpus rewrites; only query-path latency for the map</li>
+                                <li>Same <code>.isotrieve</code> artifact as offline transform</li>
+                                <li>Optional score recalibration if you fitted one</li>
+                            </ul>
+                        </div>
+                        <div class="docs-code">
 <pre><code>from isotrieve.serve import QueryAdapter
 
 qa = QueryAdapter.load("mapping.isotrieve")
 legacy_vec = qa.map_query(new_model_embed(query))</code></pre>
-                    <h3>3. Offline migration</h3>
+                        </div>
+                    </div>
+                    <header class="docs-head docs-head--sub">
+                        <h3>3. Offline migration</h3>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p>When you are ready to move the corpus into the new space, transform stored vectors in batch and write a new store. Queries then use the new model directly with no per-request map.</p>
+                            <p>Prefer offline migration once serve-mode quality looks good and you want simpler serving (no inverse at query time). Keep the old store until the quality gate and spot-checks pass on the new collection.</p>
+                            <ul>
+                                <li>One-time cost proportional to corpus size</li>
+                                <li>Serve path becomes a normal new-model embed + search</li>
+                                <li>Use adapters (<code>migrate_collection</code>, etc.) for store-native I/O</li>
+                            </ul>
+                        </div>
+                        <div class="docs-code">
 <pre><code>from isotrieve.migrate import migrate_store
 
 migrate_store(
@@ -126,10 +199,26 @@ migrate_store(
     target_dir="./new_store",
     mapping=m,
 )</code></pre>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="cli" class="ds">
-                    <h2>CLI</h2>
+                    <header class="docs-head">
+                        <h2>CLI</h2>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p>The CLI covers the same lifecycle as the Python API without writing a script: estimate cost and shape of a migration, fit from numpy dumps, transform a directory of vectors, and inspect a saved artifact.</p>
+                            <p><code>plan</code> is useful before you spend on embeddings — pass source/target model names and corpus size to get a rough sense of work. <code>calibrate</code> expects paired <code>.npy</code> matrices. <code>transform</code> walks a source directory and writes mapped vectors. <code>inspect</code> prints header metadata (dims, type, whether an inverse exists).</p>
+                            <ul>
+                                <li><code>plan</code> — migration sketch from model names + corpus size</li>
+                                <li><code>calibrate</code> — fit <code>X.npy</code> / <code>Y.npy</code> → <code>.isotrieve</code></li>
+                                <li><code>transform</code> — batch-map a vector directory</li>
+                                <li><code>inspect</code> — dump artifact metadata</li>
+                            </ul>
+                        </div>
+                        <div class="docs-code">
 <pre><code># Plan migration
 isotrieve plan --source-model ada-002 --target-model te3-large --corpus-size 1000000
 
@@ -141,11 +230,30 @@ isotrieve transform --mapping map.isotrieve --source-dir ./old --target-dir ./ne
 
 # Inspect
 isotrieve inspect map.isotrieve</code></pre>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="mapping" class="ds">
-                    <h2>Mapping Classes</h2>
-                    <h3>RidgeMapping (default)</h3>
+                    <header class="docs-head">
+                        <h2>Mapping Classes</h2>
+                        <p>Mappings learn a linear transform between source and target embedding spaces. Ridge is the default for production; Procrustes is available when you need an orthogonal square map.</p>
+                    </header>
+                    <header class="docs-head docs-head--sub">
+                        <h3>RidgeMapping (default)</h3>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p>Ridge regression minimizes <code>||X W − Y||² + α||W||²</code>. With <code>alpha="auto"</code>, α is chosen by leave-one-out GCV. An affine bias column is included by default so a pure scale/shift between spaces is absorbed cleanly.</p>
+                            <p>Rectangular pairs (e.g. MiniLM 384d → bge-large 1024d) are first-class: the matrix shape is <code>(d_src (+1), d_tgt)</code>. The inverse is fitted separately with its own α so serve mode does not reuse a poorly conditioned transpose.</p>
+                            <ul>
+                                <li>Handles rectangular mappings (<code>d_src ≠ d_tgt</code>)</li>
+                                <li>Bias column for the affine term</li>
+                                <li>Independent inverse α (fitted separately)</li>
+                                <li>Default choice on BEIR (higher retention than MLP / low-rank)</li>
+                            </ul>
+                        </div>
+                        <div class="docs-code">
 <pre><code>from isotrieve import RidgeMapping
 
 m = RidgeMapping(alpha="auto", seed=0)
@@ -154,20 +262,45 @@ m.save("mapping.isotrieve")
 
 Z = m.transform(corpus)           # (N, d_tgt)
 X_hat = m.inverse_transform(Z)    # back to source</code></pre>
-                    <ul>
-                        <li>Handles rectangular mappings (d_src != d_tgt)</li>
-                        <li>Bias column for affine term</li>
-                        <li>Independent inverse alpha (fitted separately)</li>
-                    </ul>
-                    <h3>OrthogonalProcrustesMapping</h3>
+                        </div>
+                    </div>
+                    <header class="docs-head docs-head--sub">
+                        <h3>OrthogonalProcrustesMapping</h3>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p>Orthogonal Procrustes finds the nearest rotation (orthogonal matrix) aligning two point clouds of the <strong>same</strong> dimensionality. Use it when you want a volume-preserving map and can guarantee <code>d_src == d_tgt</code>.</p>
+                            <p>It will not handle rectangular migrations. On same-dim BEIR pairs it is competitive but usually slightly behind Ridge; prefer Ridge unless you have a geometric reason to constrain to SO(d) / O(d).</p>
+                            <ul>
+                                <li>Requires <code>d_src == d_tgt</code></li>
+                                <li>Orthogonal constraint — no shear / scale freedom beyond rotation</li>
+                                <li>Good for interpretability experiments; Ridge for default quality</li>
+                            </ul>
+                        </div>
+                        <div class="docs-code">
 <pre><code>from isotrieve.mapping.linear import OrthogonalProcrustesMapping
 
 m = OrthogonalProcrustesMapping(seed=0)
 m.fit(X_cal, Y_cal)  # Requires d_src == d_tgt</code></pre>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="serve" class="ds">
-                    <h2>Serve Mode</h2>
+                    <header class="docs-head">
+                        <h2>Serve Mode</h2>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p><code>QueryAdapter</code> loads a <code>.isotrieve</code> file and exposes query-time mapping into the legacy space. Embed with the new model in your app, call <code>map_query</code> / <code>map_queries</code>, then search the existing index.</p>
+                            <p>Inspect <code>d_src</code> / <code>d_tgt</code> to assert wiring, and <code>has_recalibrator</code> before calling <code>recalibrate_scores</code>. If the inverse was not fitted at calibrate time, load raises — re-fit with inverse enabled rather than shipping a half-complete artifact.</p>
+                            <ul>
+                                <li><code>map_query</code> — single vector; <code>map_queries</code> — batch</li>
+                                <li>Zero corpus writes; only the query path changes</li>
+                                <li>Same artifact used for offline <code>transform</code></li>
+                            </ul>
+                        </div>
+                        <div class="docs-code">
 <pre><code>from isotrieve.serve import QueryAdapter
 
 qa = QueryAdapter.load("mapping.isotrieve")
@@ -176,10 +309,28 @@ legacy_vecs = qa.map_queries(new_model_embed_batch(query_texts))
 
 print(qa.d_src, qa.d_tgt)          # dimensions
 print(qa.has_recalibrator)          # True if fitted</code></pre>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="recal" class="ds">
-                    <h2>Score Recalibration</h2>
+                    <header class="docs-head">
+                        <h2>Score Recalibration</h2>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p>Linear maps preserve neighborhood structure better than absolute score scales. Thresholds tuned on the original model (e.g. “accept if cosine &gt; 0.82”) often shift after mapping. Fit an isotonic recalibrator on held-out pairs so serve-time scores land back on a comparable scale.</p>
+                            <p>Call <code>fit_recalibrator</code> after <code>fit</code>, then <code>save</code> so the recalibrator travels with the mapping. At serve time, run retrieval as usual and pass raw scores through <code>recalibrate_scores</code> before applying product thresholds.</p>
+                            <p>MAE and margin compression on SciFact held-outs:</p>
+                            <table>
+                                <thead><tr><th>Pair</th><th>MAE</th><th>Margin Compression</th></tr></thead>
+                                <tbody>
+                                    <tr><td>bge-&gt;e5 (same-dim)</td><td>0.095</td><td>0.83x</td></tr>
+                                    <tr><td>MiniLM-&gt;bge (rectangular)</td><td>0.364</td><td>0.85x</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="docs-code">
 <pre><code>m = RidgeMapping(alpha="auto", seed=0).fit(X, Y)
 m.fit_recalibrator(X_heldout, Y_heldout)
 m.save("mapping.isotrieve")
@@ -187,17 +338,27 @@ m.save("mapping.isotrieve")
 # At serve time
 qa = QueryAdapter.load("mapping.isotrieve")
 calibrated = qa.recalibrate_scores(raw_scores)</code></pre>
-                    <table>
-                        <thead><tr><th>Pair</th><th>MAE</th><th>Margin Compression</th></tr></thead>
-                        <tbody>
-                            <tr><td>bge->e5 (same-dim)</td><td>0.095</td><td>0.83x</td></tr>
-                            <tr><td>MiniLM->bge (rectangular)</td><td>0.364</td><td>0.85x</td></tr>
-                        </tbody>
-                    </table>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="conf" class="ds">
-                    <h2>Confidence Scoring</h2>
+                    <header class="docs-head">
+                        <h2>Confidence Scoring</h2>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p>Not every mapped query is equally trustworthy. <code>ConfidenceScorer</code> looks at top-score margins and labels the result <code>high</code>, <code>medium</code>, or <code>low</code> so you can fall back to re-embed, escalate to a stronger ranker, or hide low-confidence hits.</p>
+                            <p>Margins below are tuned from SciFact runs; start there and retune on your domain if the high/low split does not match your risk tolerance. <code>is_reliable</code> is a convenience for “high only” gates.</p>
+                            <table>
+                                <thead><tr><th>Pair</th><th>High-conf R@10</th><th>Low-conf R@10</th><th>Gap</th></tr></thead>
+                                <tbody>
+                                    <tr><td>bge-&gt;e5</td><td>0.955</td><td>0.637</td><td>0.318</td></tr>
+                                    <tr><td>MiniLM-&gt;bge</td><td>0.875</td><td>0.651</td><td>0.224</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="docs-code">
 <pre><code>from isotrieve.reranking import ConfidenceScorer
 
 scorer = ConfidenceScorer(margin_high=0.955, margin_low=0.637)
@@ -205,17 +366,28 @@ result = scorer.score(query_vector, top_scores)
 
 print(result.flag)         # "high", "medium", or "low"
 print(result.is_reliable)  # True if "high"</code></pre>
-                    <table>
-                        <thead><tr><th>Pair</th><th>High-conf R@10</th><th>Low-conf R@10</th><th>Gap</th></tr></thead>
-                        <tbody>
-                            <tr><td>bge->e5</td><td>0.955</td><td>0.637</td><td>0.318</td></tr>
-                            <tr><td>MiniLM->bge</td><td>0.875</td><td>0.651</td><td>0.224</td></tr>
-                        </tbody>
-                    </table>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="gate" class="ds">
-                    <h2>Quality Gate</h2>
+                    <header class="docs-head">
+                        <h2>Quality Gate</h2>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p>Before you cut over production traffic, run the quality gate on held-out source/target samples. It predicts retrieval retention and returns <strong>PASS</strong>, <strong>WARN</strong>, or <strong>FAIL</strong> so you do not discover a broken map only after users complain.</p>
+                            <p>Verdicts are driven by a model trained across benchmark runs (including leave-one-pair-out style evaluation). Treat FAIL as a hard stop: gather more or better calibration text, or re-embed. WARN means proceed with monitoring and tighter confidence thresholds.</p>
+                            <table>
+                                <thead><tr><th>Verdict</th><th>Predicted Retention</th><th>Typical K</th></tr></thead>
+                                <tbody>
+                                    <tr><td><span class="badge ok">PASS</span></td><td>&ge; 0.75</td><td>K &ge; 2000</td></tr>
+                                    <tr><td><span class="badge warn">WARN</span></td><td>0.55 – 0.75</td><td>K = 500–1000</td></tr>
+                                    <tr><td><span class="badge no">FAIL</span></td><td>&lt; 0.55</td><td>Broken mapping</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="docs-code">
 <pre><code>from isotrieve.quality.gate import QualityGate
 
 gate = QualityGate()
@@ -223,24 +395,46 @@ report = gate.evaluate(mapping, sample_source, sample_target)
 
 print(report.verdict)              # "PASS", "WARN", or "FAIL"
 print(report.predicted_retention)  # estimated retention</code></pre>
-                    <table>
-                        <thead><tr><th>Verdict</th><th>Predicted Retention</th><th>Typical K</th></tr></thead>
-                        <tbody>
-                            <tr><td><span class="badge ok">PASS</span></td><td>&ge; 0.75</td><td>K &ge; 2000</td></tr>
-                            <tr><td><span class="badge warn">WARN</span></td><td>0.55 – 0.75</td><td>K = 500–1000</td></tr>
-                            <tr><td><span class="badge no">FAIL</span></td><td>&lt; 0.55</td><td>Broken mapping</td></tr>
-                        </tbody>
-                    </table>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="chroma" class="ds">
-                    <h2>ChromaDB Adapter</h2>
+                    <header class="docs-head">
+                        <h2>ChromaDB Adapter</h2>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p><code>IsotrieveChromaFunction</code> wraps your new-model embedder so Chroma queries are mapped into the space of the collection you already built. Point an existing collection at this embedding function and keep serving without rewriting rows.</p>
+                            <p>Pass the fitted mapping plus a callable (or object) that embeds text with the <em>new</em> model. Chroma calls that path on <code>query</code>; the adapter applies the inverse map before the distance computation against stored legacy vectors.</p>
+                            <ul>
+                                <li>Drop-in for serve mode on an existing collection</li>
+                                <li>No need to duplicate the corpus under a new name first</li>
+                                <li>Pair with the quality gate before flipping production</li>
+                            </ul>
+                        </div>
+                        <div class="docs-code">
 <pre><code>from isotrieve.adapters.chroma import IsotrieveChromaFunction
 
 ef = IsotrieveChromaFunction(mapping, new_model_embedder=my_embed_fn)
 col = client.get_collection("docs", embedding_function=ef)
 results = col.query(query_texts=["..."], n_results=10)</code></pre>
-                    <h3>Offline Migration</h3>
+                        </div>
+                    </div>
+                    <header class="docs-head docs-head--sub">
+                        <h3>Offline Migration</h3>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p>When you want the corpus itself in the new space, <code>migrate_collection</code> reads the source collection in batches, applies <code>transform</code>, and writes a new collection. Tune <code>batch_size</code> for memory; 1000 is a reasonable default for medium-dim vectors.</p>
+                            <p>Keep the old collection until spot-checks and the gate look good on <code>docs_v2</code>. The report’s <code>rows_processed</code> count is useful for ops logging and resume checks.</p>
+                            <ul>
+                                <li>Creates <code>new_collection</code>; does not mutate the source in place</li>
+                                <li>Batch size trades throughput vs peak RAM</li>
+                                <li>Use after serve-mode validation when possible</li>
+                            </ul>
+                        </div>
+                        <div class="docs-code">
 <pre><code>from isotrieve.adapters.chroma import migrate_collection
 
 report = migrate_collection(
@@ -249,33 +443,73 @@ report = migrate_collection(
     batch_size=1000,
 )
 print(f"Migrated {report.rows_processed} rows")</code></pre>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="lc" class="ds">
-                    <h2>LangChain Adapter</h2>
+                    <header class="docs-head">
+                        <h2>LangChain Adapter</h2>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p><code>IsotrieveEmbeddings</code> implements the LangChain embeddings interface around a base embedder and your fitted map. Document and query paths both go through the adapter so vector stores built with LangChain stay consistent.</p>
+                            <p>Use it when your stack already centers on LangChain retrievers / Chroma / FAISS wrappers. Sync and async embed methods are supported; prefer the same mapping artifact you would use with the plain Python API.</p>
+                            <ul>
+                                <li><code>embed_documents(texts)</code> — corpus / indexing path</li>
+                                <li><code>embed_query(text)</code> — single query</li>
+                                <li><code>aembed_documents(texts)</code> — async batch</li>
+                            </ul>
+                        </div>
+                        <div class="docs-code">
 <pre><code>from isotrieve.adapters.langchain import IsotrieveEmbeddings
 
 ae = IsotrieveEmbeddings(mapping, base_embeddings)
 db = Chroma.from_documents(docs, embedding=ae)
 results = db.similarity_search("query", k=10)</code></pre>
-                    <ul>
-                        <li><code>ae.embed_documents(texts)</code></li>
-                        <li><code>ae.embed_query(text)</code></li>
-                        <li><code>ae.aembed_documents(texts)</code> (async)</li>
-                    </ul>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="qdrant" class="ds">
-                    <h2>Qdrant Adapter</h2>
+                    <header class="docs-head">
+                        <h2>Qdrant Adapter</h2>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p><code>QdrantStore</code> connects to a running Qdrant instance and streams vectors in batches so you can apply <code>m.transform</code> without loading the whole collection into memory.</p>
+                            <p>Typical offline flow: iterate batches, stack to a matrix, transform, upsert into a new collection (or overwrite after validation). Choose <code>batch_size</code> based on vector dim and available RAM — 1024 is a starting point for ~1k-d embeddings.</p>
+                            <ul>
+                                <li>Streaming iterator — safe for large collections</li>
+                                <li>Works with any fitted mapping that implements <code>transform</code></li>
+                                <li>Pair with gate + spot queries before deleting the old collection</li>
+                            </ul>
+                        </div>
+                        <div class="docs-code">
 <pre><code>from isotrieve.stores.qdrant_store import QdrantStore
 
 store = QdrantStore.connect(url="http://localhost:6333")
 for batch in store.iter_vectors(batch_size=1024):
     Z = m.transform(np.stack([r.vector for r in batch]))</code></pre>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="format" class="ds">
-                    <h2>.isotrieve File Format</h2>
+                    <header class="docs-head">
+                        <h2>.isotrieve File Format</h2>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <p>A <code>.isotrieve</code> file is a JSON header followed by float64 matrix payloads. The header records format version, mapping type, dimensions, whether a bias column was used, whether an inverse exists, and the forward matrix shape.</p>
+                            <p>Payloads carry the forward <code>W</code> and, when present, <code>W_inv</code>. Optional recalibrator state is stored alongside so serve mode can restore score calibration without a second file. Treat the artifact as opaque for day-to-day use — prefer <code>Mapping.load</code> / <code>inspect</code> over hand-editing.</p>
+                            <ul>
+                                <li>Header is human-readable; matrices are binary float64</li>
+                                <li>Forward and inverse travel together when fitted</li>
+                                <li>Bump-aware via <code>format_version</code></li>
+                            </ul>
+                        </div>
+                        <div class="docs-code">
 <pre><code>{
   "format_version": 1,
   "mapping_type": "ridge",
@@ -286,35 +520,58 @@ for batch in store.iter_vectors(batch_size=1024):
   "matrix_shape": [1537, 3072]
 }
 # Payload: float64 matrices (forward W, inverse W_inv)</code></pre>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="not-use" class="ds">
-                    <h2>When NOT to Use</h2>
-                    <ul>
-                        <li>Maximum quality matters more than cost</li>
-                        <li>Calibration domain mismatches corpus</li>
-                        <li>Quality gate returns FAIL</li>
-                        <li>K &lt; 2000</li>
-                    </ul>
+                    <header class="docs-head">
+                        <h2>When NOT to Use</h2>
+                    </header>
+                    <div class="docs-row docs-row--solo">
+                        <div class="docs-prose">
+                            <p>Isotrieve is a cost/quality tradeoff, not a free lunch. Skip it (or re-embed instead) when:</p>
+                            <ul>
+                                <li><strong>Maximum quality matters more than cost</strong> — full re-embedding still wins on nDCG when budget allows</li>
+                                <li><strong>Calibration domain mismatches the corpus</strong> — out-of-domain pairs learn the wrong map</li>
+                                <li><strong>Quality gate returns FAIL</strong> — do not ship; fix calibration or re-embed</li>
+                                <li><strong>K &lt; 2000</strong> — often lands in WARN territory; gather more pairs first</li>
+                            </ul>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="anti" class="ds">
-                    <h2>Anti-patterns</h2>
-                    <ul>
-                        <li>Don't mix vectors from different models in one collection</li>
-                        <li>Don't assume same dimensionality = compatibility</li>
-                        <li>Don't skip the quality gate</li>
-                        <li>Don't use MLP (0.719 vs 0.866 for Ridge)</li>
-                    </ul>
+                    <header class="docs-head">
+                        <h2>Anti-patterns</h2>
+                    </header>
+                    <div class="docs-row docs-row--solo">
+                        <div class="docs-prose">
+                            <p>These mistakes show up repeatedly in broken migrations:</p>
+                            <ul>
+                                <li><strong>Don't mix vectors from different models in one collection</strong> — the index assumes one geometry</li>
+                                <li><strong>Don't assume same dimensionality = compatibility</strong> — equal dim still yields ~0.0 cross-space nDCG</li>
+                                <li><strong>Don't skip the quality gate</strong> — catch FAIL before cutover</li>
+                                <li><strong>Don't default to MLP</strong> — on SciFact rectangular, Ridge ~0.866 vs MLP ~0.719</li>
+                            </ul>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="sec" class="ds">
-                    <h2>Security</h2>
-                    <ul>
-                        <li><strong>Inversion attacks:</strong> Treat mapped vectors with same sensitivity as source text</li>
-                        <li><strong>API keys:</strong> Environment variables, never in code</li>
-                        <li><strong>Calibration:</strong> Use non-sensitive texts</li>
-                    </ul>
+                    <header class="docs-head">
+                        <h2>Security</h2>
+                    </header>
+                    <div class="docs-row docs-row--solo">
+                        <div class="docs-prose">
+                            <p>Mapped vectors remain sensitive artifacts of the underlying text. Handle them with the same care as embeddings from the source model.</p>
+                            <ul>
+                                <li><strong>Inversion attacks:</strong> Treat mapped vectors with the same sensitivity as source text</li>
+                                <li><strong>API keys:</strong> Environment variables only — never commit keys into notebooks or mapping sidecars</li>
+                                <li><strong>Calibration:</strong> Prefer non-sensitive texts for pairing; avoid shipping PII in calibration dumps</li>
+                            </ul>
+                        </div>
+                    </div>
                 </section>
 
             </div>
