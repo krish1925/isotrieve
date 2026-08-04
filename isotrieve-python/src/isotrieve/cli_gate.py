@@ -388,7 +388,9 @@ def _output_md(
             "Range",
             f"[{ss_report.min_retention:.3f}, {ss_report.max_retention:.3f}]",
         )
-        ss_table.add_row("Per-seed", ", ".join(f"{v:.3f}" for v in ss_report.per_seed_retention))
+        ss_table.add_row(
+            "Per-seed", ", ".join(f"{v:.3f}" for v in ss_report.per_seed_retention)
+        )
         ss_table.add_row(
             "Stability",
             "[red]UNSTABLE[/red]" if ss_report.unstable else "[green]STABLE[/green]",

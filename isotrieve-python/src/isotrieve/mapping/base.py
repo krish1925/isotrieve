@@ -199,7 +199,12 @@ class Mapping(ABC):
             payload += self._mean_Y.astype(np.float64, copy=False).tobytes(order="C")
 
         # CRC32 covers everything except itself: magic + headerLen + paddedJSON + payload
-        crc_input = _ISOTRIEVE_MAGIC + _HEADER_LEN_STRUCT.pack(len(header_bytes)) + padded_header + payload
+        crc_input = (
+            _ISOTRIEVE_MAGIC
+            + _HEADER_LEN_STRUCT.pack(len(header_bytes))
+            + padded_header
+            + payload
+        )
         checksum = _crc32(crc_input)
 
         with path.open("wb") as f:
@@ -322,7 +327,9 @@ def _parse_header_from_buffer(raw: bytes) -> dict[str, Any]:
     # v2 layout: magic(4) + header_len(4) + crc32(4) + JSON; v1: magic(4) + header_len(4) + JSON.
     header_offset = 8
     try:
-        header_obj = json.loads(raw[_FIXED_HEADER_SIZE:_FIXED_HEADER_SIZE + header_len].decode("utf-8"))
+        header_obj = json.loads(
+            raw[_FIXED_HEADER_SIZE : _FIXED_HEADER_SIZE + header_len].decode("utf-8")
+        )
         fmt_ver = header_obj.get("format_version", 1)
     except (json.JSONDecodeError, UnicodeDecodeError):
         fmt_ver = 1
@@ -341,7 +348,7 @@ def _parse_header_from_buffer(raw: bytes) -> dict[str, Any]:
                 f"(stored=0x{stored_crc:08x}, computed=0x{computed_crc:08x})"
             )
 
-    header = json.loads(raw[header_offset:header_offset + header_len].decode("utf-8"))
+    header = json.loads(raw[header_offset : header_offset + header_len].decode("utf-8"))
     return header
 
 

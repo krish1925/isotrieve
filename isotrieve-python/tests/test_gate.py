@@ -196,9 +196,7 @@ def test_seed_sensitivity_returns_report():
     """Seed-sensitivity refits on subsamples and reports retention stats."""
     _, X, Y = _make_good_mapping(k=200)
     gate = QualityGate()
-    report = gate.seed_sensitivity(
-        X, Y, runs=5, seed=0, alpha=1.0, max_workers=2
-    )
+    report = gate.seed_sensitivity(X, Y, runs=5, seed=0, alpha=1.0, max_workers=2)
     assert report.runs == 5
     assert len(report.per_seed_retention) == 5
     assert len(report.per_seed_top1) == 5
@@ -217,12 +215,8 @@ def test_seed_sensitivity_threshold_flips_verdict():
     """A low threshold marks an otherwise stable run as unstable."""
     _, X, Y = _make_good_mapping(k=200)
     gate = QualityGate()
-    stable = gate.seed_sensitivity(
-        X, Y, runs=5, threshold=1.0, alpha=1.0
-    )
-    strict = gate.seed_sensitivity(
-        X, Y, runs=5, threshold=0.0, alpha=1.0
-    )
+    stable = gate.seed_sensitivity(X, Y, runs=5, threshold=1.0, alpha=1.0)
+    strict = gate.seed_sensitivity(X, Y, runs=5, threshold=0.0, alpha=1.0)
     assert stable.unstable is False
     assert strict.unstable is True
 

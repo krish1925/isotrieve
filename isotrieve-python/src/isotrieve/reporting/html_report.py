@@ -36,14 +36,14 @@ def generate_gate_html(
         )
         header = f"<h1>Quality Gate: {verdict}</h1>"
         predicted = (
-            f"<p class=\"muted\">Predicted retention: {report.predicted_retention:.4f} "
+            f'<p class="muted">Predicted retention: {report.predicted_retention:.4f} '
             f"(80% CI: [{report.prediction_interval[0]:.4f}, "
             f"{report.prediction_interval[1]:.4f}])</p>\n"
             f"<p>{report.rationale}</p>\n"
         )
         metrics_section = f"<h2>Metrics</h2>\n<table>\n<tr><th>Metric</th><th>Value</th></tr>\n{metrics_rows}</table>\n"
         footer = (
-            f"<p class=\"muted\">Gate model: {report.gate_model_used} | "
+            f'<p class="muted">Gate model: {report.gate_model_used} | '
             f"Scope: {report.gate_model_scope or 'N/A'} | "
             f"LOPO MAE: {report.lopo_error or 'N/A'}</p>\n"
         )
@@ -51,7 +51,7 @@ def generate_gate_html(
         color = "#6b7280"
         verdict = "SEED-SENSITIVITY"
         header = "<h1>Quality Gate: Seed Sensitivity</h1>"
-        predicted = "<p class=\"muted\">Point-estimate gate skipped (no mapping).</p>\n"
+        predicted = '<p class="muted">Point-estimate gate skipped (no mapping).</p>\n'
         metrics_section = ""
         footer = ""
 
@@ -77,7 +77,7 @@ def generate_gate_html(
             f"<tr><td>Range</td><td>[{ss_report.min_retention:.4f}, "
             f"{ss_report.max_retention:.4f}]</td></tr>\n"
             f"<tr><td>Per-seed retention</td><td>{per_seed}</td></tr>\n"
-            f"<tr><td>Stability</td><td style=\"color:{stability_color};font-weight:bold\">"
+            f'<tr><td>Stability</td><td style="color:{stability_color};font-weight:bold">'
             f"{'UNSTABLE' if ss_report.unstable else 'STABLE'}</td></tr>\n"
             "</table>\n"
         )
