@@ -10,7 +10,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -66,7 +66,7 @@ def l2_normalize(vectors: np.ndarray, eps: float = 1e-12) -> np.ndarray:
         return vectors / norm
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     norms = np.maximum(norms, eps)
-    return vectors / norms
+    return np.asarray(vectors / norms)
 
 
 def _check_finite(name: str, arr: np.ndarray) -> None:
@@ -273,7 +273,7 @@ class Mapping(ABC):
         _check_finite("V", V)
         if bias:
             V = _augment_bias(V)
-        out = V @ matrix
+        out = np.asarray(V @ matrix)
         if normalize:
             out = l2_normalize(out)
         return out.ravel() if single else out
@@ -294,7 +294,7 @@ class Mapping(ABC):
         """
         if self._recalibrator is None or not self._recalibrator.is_fitted:
             return np.asarray(scores, dtype=np.float64)
-        return self._recalibrator.transform(scores)
+        return np.asarray(self._recalibrator.transform(scores))
 
 
 def _pkg_version() -> str:
@@ -349,7 +349,7 @@ def _parse_header_from_buffer(raw: bytes) -> dict[str, Any]:
             )
 
     header = json.loads(raw[header_offset : header_offset + header_len].decode("utf-8"))
-    return header
+    return cast(dict[str, Any], header)
 
 
 def _find_payload_start(raw: bytes, header_len: int, fmt_ver: int) -> int:
