@@ -5,17 +5,18 @@
 /* --- TOC links in hero --- */
 .toc {
     display: flex;
-    gap: .5rem;
+    gap: var(--s2);
     flex-wrap: wrap;
-    margin-top: .25rem;
+    margin-top: var(--s1);
 }
 .toc a {
     display: inline-block;
-    padding: .25rem .75rem;
+    padding: var(--s1) var(--s3);
     border: 1px solid var(--border);
-    border-radius: 20px;
+    border-radius: var(--radius);
     font-size: .75rem;
     font-weight: 500;
+    font-family: var(--mono);
     color: var(--muted);
     transition: color .12s, border-color .12s, background .12s;
     text-decoration: none;
