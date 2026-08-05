@@ -55,6 +55,7 @@ def _save_test_images(images: list[Image.Image], directory: Path) -> list[Path]:
 # Unit tests for ContrastiveMapping
 # ---------------------------------------------------------------------------
 
+
 class TestContrastiveMapping:
     """Test ContrastiveMapping with synthetic embeddings (no model download)."""
 
@@ -181,6 +182,7 @@ class TestContrastiveMapping:
 # Integration test with real CLIP models
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.slow
 class TestImageMigrationEndToEnd:
     """Full consumer test with real CLIP models."""
@@ -265,6 +267,7 @@ class TestImageMigrationEndToEnd:
 # ---------------------------------------------------------------------------
 # Test image calibration pipeline
 # ---------------------------------------------------------------------------
+
 
 class TestImageCalibration:
     """Test image loading and calibration utilities."""

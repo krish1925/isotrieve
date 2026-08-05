@@ -324,7 +324,7 @@ def _bootstrap_retention_ci(
 
 def _output_json(
     report: Any,
-    ci: dict,
+    ci: dict[str, Any],
     ss_report: Any | None,
     output_file: Path | None,
 ) -> None:
@@ -346,7 +346,7 @@ def _output_json(
 
 
 def _output_md(
-    report: Any, ci: dict, ss_report: Any | None, output_file: Path | None
+    report: Any, ci: dict[str, Any], ss_report: Any | None, output_file: Path | None
 ) -> None:
     lines: list[str] = []
     if report is not None:
@@ -417,7 +417,7 @@ def _table_to_text(table: Table) -> str:
 
 
 def _output_html(
-    report: Any, ci: dict, ss_report: Any | None, output_file: Path | None
+    report: Any, ci: dict[str, Any], ss_report: Any | None, output_file: Path | None
 ) -> None:
     from isotrieve.reporting.html_report import generate_gate_html
 

@@ -34,8 +34,7 @@ def load_images_from_directory(
 
     ext_lower = {e.lower() for e in extensions}
     images = [
-        p for p in sorted(d.iterdir())
-        if p.is_file() and p.suffix.lower() in ext_lower
+        p for p in sorted(d.iterdir()) if p.is_file() and p.suffix.lower() in ext_lower
     ]
     if not images:
         raise ValueError(f"No images found in {d} with extensions {extensions}")

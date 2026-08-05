@@ -74,7 +74,9 @@ def _contrastive_validation(
 
     if candidate_pool_tgt is not None and len(candidate_pool_tgt) > len(X_tgt):
         t1 = topk_retention(mapped, candidate_pool_tgt, k=1)
-        t10 = topk_retention(mapped, candidate_pool_tgt, k=min(10, len(candidate_pool_tgt)))
+        t10 = topk_retention(
+            mapped, candidate_pool_tgt, k=min(10, len(candidate_pool_tgt))
+        )
     else:
         t1 = topk_retention(mapped, X_tgt, k=1)
         t10 = topk_retention(mapped, X_tgt, k=min(10, len(X_tgt)))
@@ -193,7 +195,9 @@ class ContrastiveMapping(Mapping):
         # then optionally fine-tune with gradient-free InfoNCE optimization.
         from sklearn.linear_model import Ridge
 
-        X_fit = np.hstack([X_train, np.ones((len(X_train), 1))]) if self._bias else X_train
+        X_fit = (
+            np.hstack([X_train, np.ones((len(X_train), 1))]) if self._bias else X_train
+        )
         ridge = Ridge(alpha=1.0, fit_intercept=False)
         ridge.fit(X_fit, Y_train)
         coef = np.asarray(ridge.coef_, dtype=np.float64)
@@ -241,7 +245,9 @@ class ContrastiveMapping(Mapping):
         self._W = W
 
         # Inverse map: ridge Y -> X (standard ridge, since we need pointwise for inverse)
-        Y_fit = np.hstack([Y_train, np.ones((len(Y_train), 1))]) if self._bias else Y_train
+        Y_fit = (
+            np.hstack([Y_train, np.ones((len(Y_train), 1))]) if self._bias else Y_train
+        )
         inv_ridge = Ridge(alpha=1.0, fit_intercept=False)
         inv_ridge.fit(Y_fit, X_train)
         inv_coef = np.asarray(inv_ridge.coef_, dtype=np.float64)
@@ -262,20 +268,21 @@ class ContrastiveMapping(Mapping):
         return self
 
     def transform(self, V: np.ndarray) -> np.ndarray:
-        self._require_fitted()
+        W, d = self._fitted_forward()
         return self._apply_mapping(
             V,
-            self._W,
-            self._d_src,
+            W,
+            d,
             direction="forward",
             bias=self._bias,
             normalize=self._normalize_output,
         )
 
     def inverse_transform(self, V: np.ndarray) -> np.ndarray:
-        self._require_fitted()
         if self._W_inv is None:
             raise RuntimeError("Inverse mapping not available")
+        if self._d_tgt is None:
+            raise RuntimeError("Mapping is not fitted; call fit() first")
         return self._apply_mapping(
             V,
             self._W_inv,
@@ -284,3 +291,9 @@ class ContrastiveMapping(Mapping):
             bias=self._bias,
             normalize=self._normalize_output,
         )
+
+    def _fitted_forward(self) -> tuple[np.ndarray, int]:
+        self._require_fitted()
+        if self._W is None or self._d_src is None:
+            raise RuntimeError("Mapping is not fitted; call fit() first")
+        return self._W, self._d_src
