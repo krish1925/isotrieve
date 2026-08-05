@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README restructured: problem → wrapper quickstart → gate → migration → adapters → claims → prior art
 - **Binary format v2**: 8-byte header padding, CRC32 checksum, 1MB header cap (cross-compatible with TS @isotrieve/core)
 - CI: add Python 3.13 to the test matrix; run mypy with `--strict` (closes #13)
+- CLAIMS linter: warn on stale `verified` dates (>180 days) and cross-check docs numbers against CLAIMS.md (closes #14; linter stays internal/informational)
 
 ## [0.3.0] - 2026-07-25
 
