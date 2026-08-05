@@ -184,6 +184,66 @@ class TestQdrantInMemory:
         assert len(results[0]) <= 2
 
 
+class TestQdrantParityResilience:
+    """Chroma-parity resilience: kill/resume, rollback, scroll edges (#17)."""
+
+    def test_seed_migrate_kill_resume(self):
+        client = QdrantClient(":memory:")
+        _populate_collection(client, "src", n=10_000, dim=D_SRC)
+        m = _make_mapping()
+        adapter = _make_adapter(m, client, "src")
+
+        # Kill mid-run by forcing upsert to raise after N batches.
+        real_upsert = client.upsert
+        calls = {"n": 0}
+
+        def flaky_upsert(*args, **kwargs):
+            calls["n"] += 1
+            if calls["n"] == 4:
+                raise RuntimeError("simulated kill mid-stream")
+            return real_upsert(*args, **kwargs)
+
+        client.upsert = flaky_upsert
+        with pytest.raises(RuntimeError, match="simulated kill"):
+            adapter.migrate(batch_size=200, new_collection="dst")
+
+        # Resume: upserts are idempotent by point id, so re-running completes.
+        client.upsert = real_upsert
+        report = adapter.migrate(batch_size=200, new_collection="dst")
+        assert report.rows_processed == 10_000
+        assert client.get_collection("dst").points_count == 10_000
+
+    def test_rollback_via_target_drop_and_reseed(self):
+        client = QdrantClient(":memory:")
+        _populate_collection(client, "src", n=400, dim=D_SRC)
+        m = _make_mapping()
+        adapter = _make_adapter(m, client, "src")
+
+        adapter.migrate(batch_size=100, new_collection="dst")
+        assert client.get_collection("dst").points_count == 400
+
+        # Rollback = drop the migrated target; source stays intact.
+        client.delete_collection("dst")
+        with pytest.raises(ValueError, match="not found"):
+            client.get_collection("dst")
+
+        # Re-migrate cleanly from untouched source.
+        report = adapter.migrate(batch_size=100, new_collection="dst")
+        assert report.rows_processed == 400
+        assert client.get_collection("dst").points_count == 400
+
+    def test_scroll_exact_batch_boundary(self):
+        client = QdrantClient(":memory:")
+        n = 1000  # exact multiple of batch_size 100 -> clean scroll boundary
+        _populate_collection(client, "src", n=n, dim=D_SRC)
+        m = _make_mapping()
+        adapter = _make_adapter(m, client, "src")
+
+        report = adapter.migrate(batch_size=100, new_collection="dst")
+        assert report.rows_processed == n
+        assert client.get_collection("dst").points_count == n
+
+
 class TestMigrationReport:
     def test_to_dict(self):
         from isotrieve.adapters.base import MigrationReport
