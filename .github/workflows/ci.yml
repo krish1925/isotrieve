@@ -64,6 +64,10 @@ jobs:
           name: test-results-${{ matrix.python-version }}
           path: isotrieve-python/test-results.xml
 
+      - name: Adapter parity matrix is fresh
+        run: python isotrieve-python/scripts/gen_adapter_matrix.py --check
+        continue-on-error: true
+
   claims-lint:
     runs-on: ubuntu-latest
     steps:

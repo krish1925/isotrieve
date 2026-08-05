@@ -27,8 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - README restructured: problem → wrapper quickstart → gate → migration → adapters → claims → prior art
 - **Binary format v2**: 8-byte header padding, CRC32 checksum, 1MB header cap (cross-compatible with TS @isotrieve/core)
+<<<<<<< HEAD
 - CI: add Python 3.13 to the test matrix; run mypy with `--strict` (closes #13)
 - CLAIMS linter: warn on stale `verified` dates (>180 days) and cross-check docs numbers against CLAIMS.md (closes #14; linter stays internal/informational)
+- Qdrant adapter test suite to Chroma parity: 10k seed → kill mid-run → resume, rollback via target drop, scroll batch-boundary edge cases (closes #17)
+>>>>>>> origin/development
 
 ## [0.3.0] - 2026-07-25
 
@@ -63,6 +66,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI traceback leaks — all commands now catch errors and display actionable hints
 - Notebook `pass_realloc` undefined variable bug
 - Lambda and unused import lint violations
+
+## [0.2.1] - 2026-07-22
+
+### Added
+- PyPI publish workflow via trusted publishing (`release.yml` on `v*` tags)
+- Release validation tests (`tests/test_release.py`)
+- GitHub Pages deployment workflow for the website
+- Expansion program: LangChain/LlamaIndex wrappers, adapters, gate telemetry, deprecation playbooks
+- Sitemap, robots.txt, and SEO meta tags for the website
+- Mermaid flowcharts in README
+
+### Changed
+- Renamed `aecp` → `isotrieve` across the entire codebase
+- Repo URLs updated to `krish1925/isotrieve`
+- Benchmark K values and retention numbers corrected to match actual results
+- GitHub Pages deploy trigger moved to `main` (was `development`)
+
+### Fixed
+- Gate margin compression always returned `None` (issue #8)
+- Qdrant `write_vectors` iterator materialization + `list[VectorRecord]` handling (issue #9)
+- Chroma metadata enrichment dropped AECP metadata when row metadata was `None` (issue #10)
+- Optional-dep test failures converted to skips instead of failures (issue #11)
+- CLAIMS.md drift from fresh SciFact runs (issue #12)
+- Gate HTML report output
+- Version test made dynamic instead of hardcoded
+- CI lint, typecheck, and format failures
 
 ## [0.2.0] - 2026-07-19
 

@@ -50,6 +50,14 @@ class IsotrieveChromaFunction:
         results = col.query(query_texts=["..."], n_results=10)
     """
 
+    # Capability flags (source of truth for docs/adapters.md).
+    serve_mode: bool = True
+    offline_migration: bool = False
+    idempotency_guard: bool = False
+    resume: bool = False
+    rollback_strategy: str = "none"
+    tested_in_ci: bool = True
+
     def __init__(
         self,
         mapping: Mapping,

@@ -33,18 +33,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Fade in
-    var els = document.querySelectorAll('.fade, .grid4 .card, .grid3 .card, .grid2 .card, .ds');
+    // Fade in — marketing only (.fade). Docs stay instant for jump navigation.
+    var els = document.querySelectorAll('.fade, .chain-step, .stat-figure, .fl li');
     var obs = new IntersectionObserver(function(entries) {
         entries.forEach(function(e) {
             if (e.isIntersecting) { e.target.classList.add('vis'); obs.unobserve(e.target); }
         });
-    }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+    }, { threshold: 0.12, rootMargin: '0px 0px -24px 0px' });
     els.forEach(function(el) { obs.observe(el); });
 
-    // Stagger grid children
-    document.querySelectorAll('.grid4, .grid3, .grid2').forEach(function(g) {
-        for (var i = 0; i < g.children.length; i++) g.children[i].style.transitionDelay = (i * 60) + 'ms';
+    // Stagger chain / feature list lightly
+    document.querySelectorAll('.chain').forEach(function(g) {
+        for (var i = 0; i < g.children.length; i++) g.children[i].style.transitionDelay = (i * 90) + 'ms';
+    });
+    document.querySelectorAll('.fl').forEach(function(g) {
+        for (var i = 0; i < g.children.length; i++) g.children[i].style.transitionDelay = (i * 40) + 'ms';
     });
 
     // Copy buttons
