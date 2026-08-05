@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
 
 import numpy as np
@@ -102,7 +103,7 @@ def _load_npy(path: Path, label: str) -> np.ndarray:
         )
         raise typer.Exit(1)
     try:
-        return np.load(path)
+        return np.asarray(np.load(path))
     except Exception as exc:
         console.print(f"[red]{label}: failed to load {path}: {exc}[/red]")
         raise typer.Exit(1) from exc
@@ -258,7 +259,7 @@ def calibrate_cmd(
     except Exception:
         pass  # Skip recalibration if it fails; mapping still works
 
-    meta: dict = {
+    meta: dict[str, str | int | bool] = {
         "source_model_id": src_id,
         "target_model_id": tgt_id,
         "calibration_k": int(X.shape[0]),
@@ -341,7 +342,7 @@ def transform_cmd(
 
     dst = NumpyFileStore(target_dir, create=True)
 
-    def gen():
+    def gen() -> Iterator[list[VectorRecord]]:
         for batch in src.iter_vectors(batch_size=batch_size):
             vecs = np.stack([r.vector for r in batch], axis=0)
             try:
