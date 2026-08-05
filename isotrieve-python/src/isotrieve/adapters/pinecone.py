@@ -47,6 +47,9 @@ class PineconeAdapter(VectorStoreAdapter):
         ``"migrated"`` = corpus already transformed.
     """
 
+    # Pinecone: shadow-namespace migration (source namespace untouched).
+    rollback_strategy: str = "shadow"
+
     def __init__(
         self,
         mapping: Mapping,

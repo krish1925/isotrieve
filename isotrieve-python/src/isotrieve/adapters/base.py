@@ -68,6 +68,15 @@ class VectorStoreAdapter(ABC):
         ``"migrated"`` = corpus already transformed, no query mapping needed.
     """
 
+    # Capability flags (source of truth for the parity matrix, docs/adapters.md).
+    # Override per-subclass to describe what the adapter actually supports.
+    serve_mode: bool = True
+    offline_migration: bool = True
+    idempotency_guard: bool = False
+    resume: bool = False
+    rollback_strategy: str = "none"  # "shadow" | "inverse" | "snapshot" | "none"
+    tested_in_ci: bool = False
+
     def __init__(
         self, mapping: Mapping, mode: Literal["serve", "migrated"] = "serve"
     ) -> None:
