@@ -190,3 +190,47 @@ class TestMarginCompression:
         d = report.to_dict()
         assert "margin_compression" in d
         assert "score_recal_recommendation" in d
+
+
+def test_seed_sensitivity_returns_report():
+    """Seed-sensitivity refits on subsamples and reports retention stats."""
+    _, X, Y = _make_good_mapping(k=200)
+    gate = QualityGate()
+    report = gate.seed_sensitivity(X, Y, runs=5, seed=0, alpha=1.0, max_workers=2)
+    assert report.runs == 5
+    assert len(report.per_seed_retention) == 5
+    assert len(report.per_seed_top1) == 5
+    assert len(report.seeds) == 5
+    assert report.mean_retention > 0.7
+    assert report.std_retention >= 0.0
+    assert report.min_retention <= report.max_retention
+    assert report.unstable in (True, False)
+    d = report.to_dict()
+    assert "per_seed_retention" in d
+    assert "std_retention" in d
+    assert "unstable" in d
+
+
+def test_seed_sensitivity_threshold_flips_verdict():
+    """A low threshold marks an otherwise stable run as unstable."""
+    _, X, Y = _make_good_mapping(k=200)
+    gate = QualityGate()
+    stable = gate.seed_sensitivity(X, Y, runs=5, threshold=1.0, alpha=1.0)
+    strict = gate.seed_sensitivity(X, Y, runs=5, threshold=0.0, alpha=1.0)
+    assert stable.unstable is False
+    assert strict.unstable is True
+
+
+def test_seed_sensitivity_requires_enough_data():
+    gate = QualityGate()
+    X = np.random.default_rng(0).normal(size=(3, 8))
+    Y = np.random.default_rng(1).normal(size=(3, 8))
+    with pytest.raises(ValueError):
+        gate.seed_sensitivity(X, Y, runs=5)
+
+
+def test_seed_sensitivity_requires_two_runs():
+    _, X, Y = _make_good_mapping(k=200)
+    gate = QualityGate()
+    with pytest.raises(ValueError):
+        gate.seed_sensitivity(X, Y, runs=1)
