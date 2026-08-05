@@ -306,6 +306,7 @@ class TestImageCalibration:
         with pytest.raises(ValueError, match="No matching filenames"):
             load_paired_images(tmp_path / "src", tmp_path / "tgt")
 
+    @pytest.mark.slow
     def test_embed_image_pairs(self, tmp_path: Path):
         from isotrieve.calibration.image_calibration import embed_image_pairs
 
