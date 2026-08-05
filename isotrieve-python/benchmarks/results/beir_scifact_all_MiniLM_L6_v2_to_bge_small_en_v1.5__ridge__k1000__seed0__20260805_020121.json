@@ -1,0 +1,19 @@
+{
+  "mapping": "ridge",
+  "seed": 0,
+  "k_calibration": 1000,
+  "n_docs": 5000,
+  "n_queries": 1109,
+  "fit_time_s": 0.174,
+  "transform_time_s": 0.002,
+  "holdout_cosine_mean": 0.8955,
+  "holdout_cosine_median": 0.897,
+  "query_cosine_mean": 0.8462,
+  "query_cosine_median": 0.8569,
+  "ndcg_at_10": 0.0042,
+  "top1_retention": 0.7349,
+  "top10_retention": 0.9513,
+  "alpha": 1.0,
+  "n_train": 900,
+  "n_holdout": 100
+}
