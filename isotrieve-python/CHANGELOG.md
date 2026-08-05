@@ -62,6 +62,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Notebook `pass_realloc` undefined variable bug
 - Lambda and unused import lint violations
 
+## [0.2.1] - 2026-07-22
+
+### Added
+- PyPI publish workflow via trusted publishing (`release.yml` on `v*` tags)
+- Release validation tests (`tests/test_release.py`)
+- GitHub Pages deployment workflow for the website
+- Expansion program: LangChain/LlamaIndex wrappers, adapters, gate telemetry, deprecation playbooks
+- Sitemap, robots.txt, and SEO meta tags for the website
+- Mermaid flowcharts in README
+
+### Changed
+- Renamed `aecp` → `isotrieve` across the entire codebase
+- Repo URLs updated to `krish1925/isotrieve`
+- Benchmark K values and retention numbers corrected to match actual results
+- GitHub Pages deploy trigger moved to `main` (was `development`)
+
+### Fixed
+- Gate margin compression always returned `None` (issue #8)
+- Qdrant `write_vectors` iterator materialization + `list[VectorRecord]` handling (issue #9)
+- Chroma metadata enrichment dropped AECP metadata when row metadata was `None` (issue #10)
+- Optional-dep test failures converted to skips instead of failures (issue #11)
+- CLAIMS.md drift from fresh SciFact runs (issue #12)
+- Gate HTML report output
+- Version test made dynamic instead of hardcoded
+- CI lint, typecheck, and format failures
+
 ## [0.2.0] - 2026-07-19
 
 ### Added
