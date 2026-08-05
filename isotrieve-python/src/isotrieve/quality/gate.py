@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal
 
 import numpy as np
 
@@ -27,7 +27,7 @@ class GateVerdict(str, Enum):
 def _load_thresholds() -> dict[str, Any]:
     path = Path(__file__).with_name("thresholds.json")
     if path.exists():
-        return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+        return json.loads(path.read_text(encoding="utf-8"))
     return {
         "pass_retention": 0.75,
         "warn_retention": 0.55,
@@ -39,7 +39,7 @@ def _load_thresholds() -> dict[str, Any]:
 def _load_gate_model() -> dict[str, Any] | None:
     path = Path(__file__).with_name("gate_model_v1.json")
     if path.exists():
-        return cast(dict[str, Any] | None, json.loads(path.read_text(encoding="utf-8")))
+        return json.loads(path.read_text(encoding="utf-8"))
     return None
 
 
@@ -88,6 +88,42 @@ class GateReport:
             "thresholds_used": self.thresholds_used,
             "margin_compression": self.margin_compression,
             "score_recal_recommendation": self.score_recal_recommendation,
+        }
+
+
+@dataclass
+class SeedSensitivityReport:
+    """Stability of gate retention when the transform is refit on subsamples.
+
+    ``per_seed_retention`` holds predicted retention for each seed's
+    refit-and-holdout run. ``unstable`` is True when ``std_retention``
+    exceeds the configured threshold, meaning the gate result may be an
+    artifact of one lucky calibration split.
+    """
+
+    runs: int
+    seeds: list[int]
+    per_seed_retention: list[float]
+    per_seed_top1: list[float]
+    mean_retention: float
+    std_retention: float
+    min_retention: float
+    max_retention: float
+    unstable: bool
+    threshold: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "runs": self.runs,
+            "seeds": self.seeds,
+            "per_seed_retention": self.per_seed_retention,
+            "per_seed_top1": self.per_seed_top1,
+            "mean_retention": self.mean_retention,
+            "std_retention": self.std_retention,
+            "min_retention": self.min_retention,
+            "max_retention": self.max_retention,
+            "unstable": self.unstable,
+            "threshold": self.threshold,
         }
 
 
@@ -233,6 +269,82 @@ class QualityGate:
             },
             margin_compression=mc,
             score_recal_recommendation=self._score_recal_recommendation(mc),
+        )
+
+    def seed_sensitivity(
+        self,
+        X: np.ndarray,
+        Y: np.ndarray,
+        *,
+        runs: int = 5,
+        threshold: float = 0.05,
+        seed: int = 0,
+        alpha: float | Literal["auto"] = "auto",
+        subsample_fraction: float = 0.5,
+        max_workers: int | None = None,
+    ) -> SeedSensitivityReport:
+        """Refit the transform on subsamples and report retention stability.
+
+        Each run splits the paired calibration vectors into a training
+        subsample (``subsample_fraction`` of the data) and a holdout,
+        refits a :class:`~isotrieve.mapping.linear.RidgeMapping` from
+        scratch, and evaluates gate retention on the held-out pairs.
+        High variance across seeds means the gate result is an artifact
+        of one lucky calibration split.
+
+        Subsample runs are independent and executed in a thread pool when
+        ``max_workers > 1`` (sklearn's BLAS releases the GIL).
+        """
+        if runs < 2:
+            raise ValueError("seed-sensitivity requires at least 2 runs")
+        if not 0.0 < subsample_fraction < 1.0:
+            raise ValueError("subsample_fraction must be in (0, 1)")
+        X = np.asarray(X, dtype=np.float64)
+        Y = np.asarray(Y, dtype=np.float64)
+        if X.ndim != 2 or Y.ndim != 2 or X.shape[0] != Y.shape[0]:
+            raise ValueError("X and Y must be paired 2-D arrays of shape (K, d)")
+        if X.shape[0] < 4:
+            raise ValueError(
+                f"seed-sensitivity needs at least 4 paired vectors, got {X.shape[0]}"
+            )
+
+        from isotrieve.mapping.linear import RidgeMapping
+
+        def _run(s: int) -> tuple[float, float]:
+            rng = np.random.default_rng(s)
+            idx = rng.permutation(len(X))
+            n_train = int(len(X) * subsample_fraction)
+            train_idx, hold_idx = idx[:n_train], idx[n_train:]
+            mapping = RidgeMapping(alpha=alpha, seed=s)
+            mapping.fit(X[train_idx], Y[train_idx])
+            report = self.evaluate(mapping, X[hold_idx], Y[hold_idx])
+            return report.predicted_retention, report.top1_retention
+
+        seeds = [seed + i for i in range(runs)]
+        if max_workers is not None and max_workers > 1:
+            from concurrent.futures import ThreadPoolExecutor
+
+            workers = min(runs, max_workers)
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                results = list(pool.map(_run, seeds))
+        else:
+            results = [_run(s) for s in seeds]
+
+        retentions = [r[0] for r in results]
+        top1s = [r[1] for r in results]
+        arr = np.asarray(retentions, dtype=np.float64)
+        std = float(arr.std(ddof=1)) if runs > 1 else 0.0
+        return SeedSensitivityReport(
+            runs=runs,
+            seeds=seeds,
+            per_seed_retention=retentions,
+            per_seed_top1=top1s,
+            mean_retention=float(arr.mean()),
+            std_retention=std,
+            min_retention=float(arr.min()),
+            max_retention=float(arr.max()),
+            unstable=std >= threshold,
+            threshold=threshold,
         )
 
     @staticmethod

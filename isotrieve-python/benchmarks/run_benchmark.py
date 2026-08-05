@@ -231,9 +231,12 @@ def main():
     n_relevant = int(R.sum())
     print(f"  {n_relevant} relevant pairs across {(R > 0).sum()} query-doc pairs")
 
-    # Subsample for evaluation (all queries, but cap docs for matrix size)
+    # Subsample for evaluation (all queries, but cap docs for matrix size).
+    # Truncate both X_docs/Y_docs and R to the SAME doc subset so ndcg scores
+    # and the relevance matrix stay index-aligned.
     n_eval_docs = min(5000, len(Y_docs))
-    Y_docs_eval = Y_docs[:n_eval_docs]
+    X_docs = X_docs[:n_eval_docs]
+    Y_docs = Y_docs[:n_eval_docs]
     R_eval = R[:, :n_eval_docs]
 
     # Run benchmarks

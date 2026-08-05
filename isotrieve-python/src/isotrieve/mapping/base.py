@@ -63,7 +63,7 @@ def l2_normalize(vectors: np.ndarray, eps: float = 1e-12) -> np.ndarray:
         norm = float(np.linalg.norm(vectors))
         if norm < eps:
             return vectors.astype(np.float64, copy=True)
-        return np.asarray(vectors / norm)
+        return vectors / norm
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     norms = np.maximum(norms, eps)
     return np.asarray(vectors / norms)
@@ -323,16 +323,19 @@ def _parse_header_from_buffer(raw: bytes) -> dict[str, Any]:
             f"Invalid .isotrieve file: header length {header_len} exceeds {_MAX_HEADER_LEN} byte limit"
         )
 
-    # Check format version to determine if CRC is present
-    # Peek at the header JSON to get format_version
+    # Peek at the header JSON to get format_version.
+    # v2 layout: magic(4) + header_len(4) + crc32(4) + JSON; v1: magic(4) + header_len(4) + JSON.
+    header_offset = 8
     try:
-        header_json_raw = raw[_FIXED_HEADER_SIZE : _FIXED_HEADER_SIZE + header_len]
-        header_obj = json.loads(header_json_raw.decode("utf-8"))
+        header_obj = json.loads(
+            raw[_FIXED_HEADER_SIZE : _FIXED_HEADER_SIZE + header_len].decode("utf-8")
+        )
         fmt_ver = header_obj.get("format_version", 1)
     except (json.JSONDecodeError, UnicodeDecodeError):
         fmt_ver = 1
 
     if fmt_ver >= 2:
+        header_offset = _FIXED_HEADER_SIZE
         # v2: validate CRC32
         if len(raw) < _FIXED_HEADER_SIZE + header_len:
             raise ValueError("Not an .isotrieve file: truncated")
@@ -345,24 +348,18 @@ def _parse_header_from_buffer(raw: bytes) -> dict[str, Any]:
                 f"(stored=0x{stored_crc:08x}, computed=0x{computed_crc:08x})"
             )
 
-    header = json.loads(
-        raw[_FIXED_HEADER_SIZE : _FIXED_HEADER_SIZE + header_len].decode("utf-8")
-    )
+    header = json.loads(raw[header_offset : header_offset + header_len].decode("utf-8"))
     return cast(dict[str, Any], header)
 
 
-def _find_payload_start(raw: bytes, header_len: int) -> int:
-    """Find where the payload starts, skipping padding spaces after JSON."""
-    # Payload starts after fixed header + JSON (unpadded)
-    start = _FIXED_HEADER_SIZE + header_len
-    # Skip any padding spaces
-    while start < len(raw) and raw[start : start + 1] == b"\x20":
-        start += 1
-    # Align to 8-byte boundary
-    misalign = start % 8
-    if misalign != 0:
-        start += 8 - misalign
-    return start
+def _find_payload_start(raw: bytes, header_len: int, fmt_ver: int) -> int:
+    """Find where the payload starts, skipping padding after the JSON header."""
+    if fmt_ver >= 2:
+        # v2: fixed header (magic + header_len + crc32) + JSON padded to 8 bytes.
+        padded_header_len = ((header_len + 7) // 8) * 8
+        return _FIXED_HEADER_SIZE + padded_header_len
+    # v1: no CRC, no padding.
+    return 8 + header_len
 
 
 def read_isotrieve_header(path: str | Path) -> dict[str, Any]:
@@ -379,9 +376,10 @@ def load_isotrieve_payload(
     path = Path(path)
     raw = path.read_bytes()
     header = _parse_header_from_buffer(raw)
+    fmt_ver = header.get("format_version", 1)
 
     (file_header_len,) = _HEADER_LEN_STRUCT.unpack(raw[4:8])
-    payload_start = _find_payload_start(raw, file_header_len)
+    payload_start = _find_payload_start(raw, file_header_len, fmt_ver)
     rest = raw[payload_start:]
 
     shape = tuple(header["matrix_shape"])
