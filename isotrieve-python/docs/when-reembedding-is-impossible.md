@@ -27,6 +27,36 @@ can no longer re-embed because the source text is gone.
 usually still exist (they're what your users searched for). Embed the queries under
 both models, fit a mapping against the stored vectors, and transform.
 
+### Runnable example
+
+`--queries-only` needs only a query log (`queries.npy`, in source space) and the
+stored target vectors (`stored.npy`). Source texts/source vectors are never required:
+
+```bash
+# Emit the two NPY inputs from Python (synthetic, for illustration):
+python - <<'PY'
+import numpy as np
+W = np.random.default_rng(0).normal(size=(8, 12))
+queries = np.random.default_rng(1).normal(size=(2000, 8))   # query log, source space
+stored  = queries @ W                                        # already-embedded corpus, target space
+np.save("queries.npy", queries)
+np.save("stored.npy", stored)
+PY
+
+# Fit a mapping from queries alone — no source documents exist
+isotrieve calibrate --queries-only \
+    --queries queries.npy \
+    --target-vectors stored.npy \
+    --output map.isotrieve
+
+# Gate it before touching the real corpus
+isotrieve gate --mapping map.isotrieve \
+    --queries queries.npy --corpus stored.npy
+```
+
+See also the `--queries-only` fixture test in `isotrieve-python/tests/test_cli.py`
+for a runnable, dependency-free reproduction.
+
 ### 3. Dead sources
 
 Scraped web pages are gone. APIs have been sunset. OCR/transcription pipelines

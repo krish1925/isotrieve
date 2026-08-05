@@ -68,6 +68,63 @@ def test_calibrate_from_npy_and_inspect(tmp_path):
     assert "ridge" in r2.stdout
 
 
+def test_calibrate_queries_only_no_source_docs(tmp_path):
+    """--queries-only fits from query log + stored vectors, no source docs."""
+    rng = np.random.default_rng(5)
+    d_src, d_tgt = 8, 12
+    k = 10 * d_src
+    W = rng.normal(size=(d_src, d_tgt))
+    queries = rng.normal(size=(k, d_src))  # query log in source space
+    stored = queries @ W  # stored vectors are in target space already
+    qp = tmp_path / "queries.npy"
+    sp = tmp_path / "stored.npy"
+    np.save(qp, queries)
+    np.save(sp, stored)
+    out = tmp_path / "map.isotrieve"
+
+    # No --source-vectors, no --texts, no --source-model — queries only
+    r = runner.invoke(
+        app,
+        [
+            "calibrate",
+            "--queries-only",
+            "--queries",
+            str(qp),
+            "--target-vectors",
+            str(sp),
+            "-o",
+            str(out),
+            "--seed",
+            "0",
+        ],
+    )
+    assert r.exit_code == 0, r.stdout + r.stderr
+    assert out.exists()
+
+    # Fitted mapping can be inspected and maps d_src -> d_tgt
+    r2 = runner.invoke(app, ["inspect", str(out), "--json"])
+    assert r2.exit_code == 0
+    assert "ridge" in r2.stdout
+
+
+def test_calibrate_queries_only_requires_queries(tmp_path):
+    """--queries-only without --queries fails fast with exit 2."""
+    rng = np.random.default_rng(6)
+    np.save(tmp_path / "stored.npy", rng.normal(size=(80, 12)))
+    r = runner.invoke(
+        app,
+        [
+            "calibrate",
+            "--queries-only",
+            "--target-vectors",
+            str(tmp_path / "stored.npy"),
+            "-o",
+            str(tmp_path / "map.isotrieve"),
+        ],
+    )
+    assert r.exit_code == 2
+
+
 def test_transform_cli(tmp_path):
     from isotrieve.stores.numpy_files import NumpyFileStore
 
