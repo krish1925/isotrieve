@@ -10,7 +10,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -63,10 +63,10 @@ def l2_normalize(vectors: np.ndarray, eps: float = 1e-12) -> np.ndarray:
         norm = float(np.linalg.norm(vectors))
         if norm < eps:
             return vectors.astype(np.float64, copy=True)
-        return vectors / norm
+        return np.asarray(vectors / norm)
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     norms = np.maximum(norms, eps)
-    return vectors / norms
+    return np.asarray(vectors / norms)
 
 
 def _check_finite(name: str, arr: np.ndarray) -> None:
@@ -199,7 +199,12 @@ class Mapping(ABC):
             payload += self._mean_Y.astype(np.float64, copy=False).tobytes(order="C")
 
         # CRC32 covers everything except itself: magic + headerLen + paddedJSON + payload
-        crc_input = _ISOTRIEVE_MAGIC + _HEADER_LEN_STRUCT.pack(len(header_bytes)) + padded_header + payload
+        crc_input = (
+            _ISOTRIEVE_MAGIC
+            + _HEADER_LEN_STRUCT.pack(len(header_bytes))
+            + padded_header
+            + payload
+        )
         checksum = _crc32(crc_input)
 
         with path.open("wb") as f:
@@ -268,7 +273,7 @@ class Mapping(ABC):
         _check_finite("V", V)
         if bias:
             V = _augment_bias(V)
-        out = V @ matrix
+        out = np.asarray(V @ matrix)
         if normalize:
             out = l2_normalize(out)
         return out.ravel() if single else out
@@ -289,7 +294,7 @@ class Mapping(ABC):
         """
         if self._recalibrator is None or not self._recalibrator.is_fitted:
             return np.asarray(scores, dtype=np.float64)
-        return self._recalibrator.transform(scores)
+        return np.asarray(self._recalibrator.transform(scores))
 
 
 def _pkg_version() -> str:
@@ -309,7 +314,7 @@ def _parse_header_from_buffer(raw: bytes) -> dict[str, Any]:
     if len(raw) < 8:
         raise ValueError("Not an .isotrieve file: too short")
     if raw[:4] != _ISOTRIEVE_MAGIC:
-        raise ValueError(f"Not an .isotrieve file (bad magic)")
+        raise ValueError("Not an .isotrieve file (bad magic)")
 
     (header_len,) = _HEADER_LEN_STRUCT.unpack(raw[4:8])
 
@@ -321,7 +326,7 @@ def _parse_header_from_buffer(raw: bytes) -> dict[str, Any]:
     # Check format version to determine if CRC is present
     # Peek at the header JSON to get format_version
     try:
-        header_json_raw = raw[_FIXED_HEADER_SIZE:_FIXED_HEADER_SIZE + header_len]
+        header_json_raw = raw[_FIXED_HEADER_SIZE : _FIXED_HEADER_SIZE + header_len]
         header_obj = json.loads(header_json_raw.decode("utf-8"))
         fmt_ver = header_obj.get("format_version", 1)
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -340,8 +345,10 @@ def _parse_header_from_buffer(raw: bytes) -> dict[str, Any]:
                 f"(stored=0x{stored_crc:08x}, computed=0x{computed_crc:08x})"
             )
 
-    header = json.loads(raw[_FIXED_HEADER_SIZE:_FIXED_HEADER_SIZE + header_len].decode("utf-8"))
-    return header
+    header = json.loads(
+        raw[_FIXED_HEADER_SIZE : _FIXED_HEADER_SIZE + header_len].decode("utf-8")
+    )
+    return cast(dict[str, Any], header)
 
 
 def _find_payload_start(raw: bytes, header_len: int) -> int:
@@ -372,10 +379,7 @@ def load_isotrieve_payload(
     path = Path(path)
     raw = path.read_bytes()
     header = _parse_header_from_buffer(raw)
-    header_len = len(json.dumps(header, separators=(",", ":")).encode("utf-8"))
 
-    # For v1 files, header_len in the file is the unpadded length
-    # For v2 files, same — it's the unpadded length
     (file_header_len,) = _HEADER_LEN_STRUCT.unpack(raw[4:8])
     payload_start = _find_payload_start(raw, file_header_len)
     rest = raw[payload_start:]

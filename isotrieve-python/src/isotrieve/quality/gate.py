@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -27,7 +27,7 @@ class GateVerdict(str, Enum):
 def _load_thresholds() -> dict[str, Any]:
     path = Path(__file__).with_name("thresholds.json")
     if path.exists():
-        return json.loads(path.read_text(encoding="utf-8"))
+        return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
     return {
         "pass_retention": 0.75,
         "warn_retention": 0.55,
@@ -39,7 +39,7 @@ def _load_thresholds() -> dict[str, Any]:
 def _load_gate_model() -> dict[str, Any] | None:
     path = Path(__file__).with_name("gate_model_v1.json")
     if path.exists():
-        return json.loads(path.read_text(encoding="utf-8"))
+        return cast(dict[str, Any] | None, json.loads(path.read_text(encoding="utf-8")))
     return None
 
 

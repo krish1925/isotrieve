@@ -66,9 +66,9 @@ def _inspect_store(
     url: str | None,
     collection: str | None,
     source_model: str | None,
-) -> dict:
+) -> dict[str, object]:
     """Inspect store and return metadata dict."""
-    info: dict = {
+    info: dict[str, object] = {
         "store_type": store_type,
         "url": url or "default",
         "collection": collection or "default",
@@ -90,16 +90,16 @@ def _inspect_store(
     return info
 
 
-def _inspect_chroma(url: str | None, collection: str | None) -> dict:
+def _inspect_chroma(url: str | None, collection: str | None) -> dict[str, object]:
     """Inspect a ChromaDB collection."""
     try:
-        import chromadb  # type: ignore[import-untyped]
+        import chromadb
 
         client = chromadb.Client() if not url else chromadb.HttpClient(host=url)
         col = client.get_collection(collection or "default")
         count = col.count()
         sample = col.get(limit=1, include=["embeddings", "metadatas"])
-        dim = len(sample["embeddings"][0]) if sample.get("embeddings") else None  # type: ignore[index]
+        dim = len(sample["embeddings"][0]) if sample.get("embeddings") else None
         has_isotrieve = False
         if sample.get("metadatas") and sample["metadatas"]:
             has_isotrieve = "isotrieve_mapping_id" in sample["metadatas"][0]
@@ -112,24 +112,28 @@ def _inspect_chroma(url: str | None, collection: str | None) -> dict:
         return {"vector_count": f"error: {e}", "dimension": None}
 
 
-def _inspect_qdrant(url: str | None, collection: str | None) -> dict:
+def _inspect_qdrant(url: str | None, collection: str | None) -> dict[str, object]:
     """Inspect a Qdrant collection."""
     try:
-        from qdrant_client import QdrantClient  # type: ignore[import-untyped]
+        from qdrant_client import QdrantClient
 
         client = QdrantClient(url=url or "http://localhost:6333")
         info = client.get_collection(collection or "default")
+        vectors = info.config.params.vectors
+        size = None
+        if isinstance(vectors, (dict,)):
+            size = None
+        elif vectors is not None:
+            size = vectors.size
         return {
             "vector_count": info.points_count,
-            "dimension": (
-                info.config.params.vectors.size if info.config.params.vectors else None  # type: ignore[union-attr]
-            ),
+            "dimension": size,
         }
     except Exception as e:
         return {"vector_count": f"error: {e}", "dimension": None}
 
 
-def _inspect_numpy(path: str | None) -> dict:
+def _inspect_numpy(path: str | None) -> dict[str, object]:
     """Inspect a NumpyFileStore directory."""
     if not path:
         return {"vector_count": "no path", "dimension": None}
@@ -147,9 +151,9 @@ def _inspect_numpy(path: str | None) -> dict:
         return {"vector_count": f"error: {e}", "dimension": None}
 
 
-def _suggest_playbook(info: dict) -> str | None:
+def _suggest_playbook(info: dict[str, object]) -> str | None:
     """Suggest a playbook based on store metadata."""
-    model = (info.get("inferred_model") or "").lower()
+    model = str(info.get("inferred_model") or "").lower()
     if "ada-002" in model or "ada" in model:
         return "ada-002 → text-embedding-3-small (docs/playbooks/ada-002-to-te3.md)"
     if "embed-v3" in model:

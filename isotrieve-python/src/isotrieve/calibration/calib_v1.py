@@ -11,6 +11,7 @@ import json
 from collections.abc import Sequence
 from importlib import resources
 from pathlib import Path
+from typing import cast
 
 CORPUS_ID = "isotrieve-calib-v1"
 
@@ -138,7 +139,7 @@ def calib_v1_checksum(texts: Sequence[str] | None = None) -> str:
     return h.hexdigest()
 
 
-def write_calib_manifest(path: str | Path) -> dict:
+def write_calib_manifest(path: str | Path) -> dict[str, int | str]:
     """Write corpus id + checksum + K for provenance."""
     texts = load_calib_v1()
     manifest = {
@@ -147,4 +148,4 @@ def write_calib_manifest(path: str | Path) -> dict:
         "checksum_sha256": calib_v1_checksum(texts),
     }
     Path(path).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    return manifest
+    return cast(dict[str, int | str], manifest)

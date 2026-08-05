@@ -264,7 +264,9 @@ def _bootstrap_retention_ci(
     }
 
 
-def _output_json(report: Any, ci: dict, output_file: Path | None) -> None:
+def _output_json(
+    report: Any, ci: dict[str, tuple[float, float]], output_file: Path | None
+) -> None:
     data = report.to_dict()
     data["confidence_intervals"] = {
         k: {"lower": v[0], "upper": v[1]} for k, v in ci.items()
@@ -277,7 +279,9 @@ def _output_json(report: Any, ci: dict, output_file: Path | None) -> None:
         console.print_json(text)
 
 
-def _output_md(report: Any, ci: dict, output_file: Path | None) -> None:
+def _output_md(
+    report: Any, ci: dict[str, tuple[float, float]], output_file: Path | None
+) -> None:
     table = Table(title=f"Gate: {report.verdict.value}")
     table.add_column("Metric")
     table.add_column("Value", justify="right")
@@ -320,7 +324,9 @@ def _table_to_text(table: Table) -> str:
     return buf.getvalue()
 
 
-def _output_html(report: Any, ci: dict, output_file: Path | None) -> None:
+def _output_html(
+    report: Any, ci: dict[str, tuple[float, float]], output_file: Path | None
+) -> None:
     from isotrieve.reporting.html_report import generate_gate_html
 
     html = generate_gate_html(report, ci)
