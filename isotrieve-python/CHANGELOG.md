@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - README restructured: problem → wrapper quickstart → gate → migration → adapters → claims → prior art
 - **Binary format v2**: 8-byte header padding, CRC32 checksum, 1MB header cap (cross-compatible with TS @isotrieve/core)
+- Qdrant adapter test suite to Chroma parity: 10k seed → kill mid-run → resume, rollback via target drop, scroll batch-boundary edge cases (closes #17)
 
 ## [0.3.0] - 2026-07-25
 
