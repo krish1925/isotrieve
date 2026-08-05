@@ -1,0 +1,22 @@
+name: Isotrieve Gate (template)
+
+# Copy this file into your repo as .github/workflows/isotrieve-gate.yml and
+# supply an isotrieve mapping + paired source/target embedding NPYs.
+# Docs: https://krish1925.github.io/Isotrieve/ and docs/gh-action.md in this repo.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: krish1925/isotrieve/.github/actions/gate-action@main
+        with:
+          mapping-path: mapping.isotrieve
+          source-vectors: source.npy
+          target-vectors: target.npy
+          format: json
+          junit: "true"
