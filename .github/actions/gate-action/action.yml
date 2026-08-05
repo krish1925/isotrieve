@@ -15,6 +15,10 @@ inputs:
     description: "Output format: json, md, html"
     required: false
     default: "md"
+  junit:
+    description: "Emit a JUnit XML summary for CI reporting (true/false)"
+    required: false
+    default: "true"
   fail-on-warn:
     description: "Exit 1 on WARN (not just FAIL)"
     required: false
@@ -48,9 +52,38 @@ runs:
         fi
         exit $EXIT_CODE
 
+    - name: Emit JUnit summary
+      if: always() && inputs.junit == 'true'
+      shell: bash
+      run: |
+        RESULT=$?
+        if [ -f gate-report.json ]; then
+          VERDICT=$(python -c "import json;print(json.load(open('gate-report.json')).get('verdict','FAIL'))" 2>/dev/null || echo "FAIL")
+        else
+          VERDICT="$(test $EXIT_CODE -eq 0 && echo PASS || echo FAIL)"
+        fi
+        cat > gate-results.xml <<'XML'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <testsuites>
+          <testsuite name="isotrieve-gate" tests="1" failures="$(test "$VERDICT" = "PASS" && echo 0 || echo 1)">
+            <testcase name="retention-gate" classname="isotrieve.gate">
+              <system-out>verdict=$VERDICT</system-out>
+            </testcase>
+          </testsuite>
+        </testsuites>
+        XML
+        echo "JUnit written: gate-results.xml (verdict=$VERDICT)"
+
     - name: Upload gate report
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: gate-report
         path: gate-report.*
+
+    - name: Upload JUnit summary
+      if: always() && inputs.junit == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: gate-junit
+        path: gate-results.xml
