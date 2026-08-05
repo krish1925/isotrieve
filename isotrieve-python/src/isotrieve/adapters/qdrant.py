@@ -45,6 +45,11 @@ class QdrantAdapter(VectorStoreAdapter):
         ``"migrated"`` = corpus already transformed.
     """
 
+    # Qdrant: checkpointed resume via collection state; tested in CI (in-memory).
+    resume: bool = True
+    rollback_strategy: str = "snapshot"
+    tested_in_ci: bool = True
+
     def __init__(
         self,
         mapping: Mapping,
