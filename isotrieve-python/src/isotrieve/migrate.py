@@ -10,8 +10,10 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import numpy as np
 
@@ -19,9 +21,33 @@ from isotrieve.mapping.base import Mapping
 from isotrieve.stores.base import VectorRecord, VectorStore
 
 
+def _new_manifest_id() -> str:
+    """Short, sortable, collision-resistant manifest id."""
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return f"mig_{ts}_{uuid4().hex[:6]}"
+
+
+def _store_spec(store: VectorStore) -> dict[str, str]:
+    """Record enough store info to reopen the store from a manifest.
+
+    The ``VectorStore`` ABC has no URI accessor, so we introspect: file-backed
+    stores (``NumpyFileStore``) expose ``.path`` and can be reopened by URI;
+    anything else is recorded by class name for display only.
+    """
+    path = getattr(store, "path", None)
+    if path is not None:
+        return {"type": "numpy", "uri": str(path)}
+    return {"type": type(store).__name__, "uri": ""}
+
+
 @dataclass
 class MigrationManifest:
-    """Track migration progress for resumability."""
+    """Track migration progress for resumability.
+
+    New fields are backward-compatible: ``from_dict`` filters unknown keys, so
+    manifests written by older versions load cleanly (missing fields fall back
+    to their defaults).
+    """
 
     source_collection: str
     target_collection: str
@@ -35,9 +61,17 @@ class MigrationManifest:
     started_at: str = ""
     completed_at: str = ""
     batches: list[dict[str, Any]] = field(default_factory=list)
+    id: str = field(default_factory=_new_manifest_id)
+    mapping_path: str = ""
+    transform_invertible: bool = False
+    rollback_strategy: str = "none"
+    gate_result: dict[str, Any] = field(default_factory=dict)
+    source_store: dict[str, str] = field(default_factory=dict)
+    target_store: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "id": self.id,
             "source_collection": self.source_collection,
             "target_collection": self.target_collection,
             "source_model": self.source_model,
@@ -50,6 +84,12 @@ class MigrationManifest:
             "started_at": self.started_at,
             "completed_at": self.completed_at,
             "batches": self.batches,
+            "mapping_path": self.mapping_path,
+            "transform_invertible": self.transform_invertible,
+            "rollback_strategy": self.rollback_strategy,
+            "gate_result": self.gate_result,
+            "source_store": self.source_store,
+            "target_store": self.target_store,
         }
 
     @classmethod
@@ -70,6 +110,9 @@ def migrate_store(
     batch_size: int = 1024,
     manifest_path: Path | None = None,
     resume: bool = False,
+    mapping_path: Path | None = None,
+    rollback_strategy: str = "none",
+    gate_result: dict[str, Any] | None = None,
 ) -> MigrationManifest:
     """Migrate vectors from source to target with transformation.
 
@@ -80,12 +123,18 @@ def migrate_store(
         batch_size: Batch size for streaming.
         manifest_path: Path to save/load manifest for resumability.
         resume: If True, resume from last checkpoint.
+        mapping_path: Path to the ``.isotrieve`` mapping file, recorded in the
+            manifest so post-migration tooling (rollback/verify) can reload it.
+        rollback_strategy: How the migration can be rolled back: one of
+            ``"shadow"`` (original source preserved untouched), ``"inverse"``
+            (transform has an analytic inverse), ``"snapshot"`` (store-level
+            snapshot), or ``"none"``.
+        gate_result: Optional ``GateReport.to_dict()`` captured at migration
+            time; used later by ``isotrieve verify`` for drift detection.
 
     Returns:
         MigrationManifest with progress info.
     """
-    from datetime import datetime, timezone
-
     # Load existing manifest if resuming
     manifest = None
     start_idx = 0
@@ -101,13 +150,20 @@ def migrate_store(
 
     if manifest is None:
         total = source.count()
+        meta = mapping.meta
         manifest = MigrationManifest(
             source_collection="source",
             target_collection="target",
-            source_model="",
-            target_model="",
+            source_model=str(meta.get("source_model_id", "")),
+            target_model=str(meta.get("target_model_id", "")),
             total_vectors=total,
             started_at=datetime.now(timezone.utc).isoformat(),
+            mapping_path=str(mapping_path) if mapping_path else "",
+            transform_invertible=mapping.has_inverse,
+            rollback_strategy=rollback_strategy,
+            gate_result=dict(gate_result or {}),
+            source_store=_store_spec(source),
+            target_store=_store_spec(target),
         )
 
     # Migrate in batches

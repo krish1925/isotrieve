@@ -164,9 +164,17 @@ class NumpyFileStore(VectorStore):
             if not batch_files:
                 return 0
 
-            # Concatenate all batch files into final array
+            # Concatenate all batch files into final array.
+            # Appends to existing vectors so streaming writers (e.g.
+            # migrate_store, which writes one batch per call) accumulate
+            # correctly instead of clobbering earlier batches.
             arrays = [np.load(f) for f in batch_files]
             arr = np.concatenate(arrays, axis=0)
+            if self.vectors_path.exists():
+                existing = np.load(self.vectors_path)
+                if existing.ndim == 1:
+                    existing = existing.reshape(1, -1)
+                arr = np.concatenate([existing, arr], axis=0)
             np.save(self.vectors_path, arr)
         finally:
             # Clean up temp files
@@ -174,8 +182,9 @@ class NumpyFileStore(VectorStore):
                 f.unlink(missing_ok=True)
             tmp_dir.rmdir()
 
-        with self.meta_path.open("w", encoding="utf-8") as f:
+        with self.meta_path.open("a", encoding="utf-8") as f:
             f.write("\n".join(meta_lines) + "\n")
-        manifest = {"last_written_id": last_id, "count": written}
+        total_count = int(arr.shape[0])
+        manifest = {"last_written_id": last_id, "count": total_count}
         self.manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         return written
