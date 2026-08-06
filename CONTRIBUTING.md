@@ -1,5 +1,7 @@
 # Contributing to Isotrieve
 
+**Operating manual (read first):** [`SKILLS.md`](SKILLS.md) — branch workflow, issue/label taxonomy, release process, and Definition of Done.
+
 **Canonical contributing guide:** [`isotrieve-python/CONTRIBUTING.md`](isotrieve-python/CONTRIBUTING.md)
 
 That file covers development setup, testing, code style, PR expectations, and the escalation protocol for design decisions.
