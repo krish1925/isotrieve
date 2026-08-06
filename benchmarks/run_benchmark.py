@@ -33,7 +33,9 @@ sys.path.insert(0, str(ROOT / "isotrieve-python" / "src"))
 from isotrieve.mapping.base import l2_normalize  # noqa: E402
 from isotrieve.mapping.linear import RidgeMapping  # noqa: E402
 from isotrieve.providers.factory import create_embedder  # noqa: E402
-from beir_loaders import load_beir_dataset  # noqa: E402
+from isotrieve.quality.metrics import topk_retention  # noqa: E402
+from beir_loaders import domain_of, load_beir_dataset  # noqa: E402
+from domain_probes import DOMAINS, probe_chunks, probe_queries  # noqa: E402
 
 # Model-specific prefixes required for correct embeddings.
 # e5 models require "query: " / "passage: " prefixes; without them
@@ -56,6 +58,7 @@ def _get_prefix(model_id: str, text_type: str) -> str:
 
 
 CACHE_PREFIX_VERSION = "v2"  # bump to invalidate caches after prefix changes
+PROBE_VERSION = "v1"  # bump to invalidate probe-embedding caches after probe edits
 
 
 def git_commit() -> str:
@@ -271,6 +274,103 @@ def load_or_embed(
     return doc_src, doc_tgt, qry_tgt, embed_s
 
 
+def probe_cache_paths(
+    cache_dir: Path, source_model: str, target_model: str
+) -> Path:
+    """Directory for cached identifier-probe embeddings for a model pair."""
+    tag = hashlib.sha256(
+        f"probe|{source_model}|{target_model}|{PROBE_VERSION}".encode()
+    ).hexdigest()[:10]
+    d = cache_dir / "probes" / tag
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def load_or_embed_probes(
+    *,
+    source_model: str,
+    target_model: str,
+    domains: list[str],
+    cache_dir: Path,
+    use_api: bool = False,
+) -> tuple[dict[str, dict[str, np.ndarray]], float]:
+    """Embed the identifier-probe corpora for ``domains`` (cached).
+
+    Returns ``({domain: {"chunk_src", "chunk_tgt", "qry_tgt"}}, embed_s)``.
+    Probe chunks are embedded with the source model (to be transformed) and
+    the target model; probe queries with the target model. Deterministic and
+    offline once the harness models are cached.
+    """
+    cache = probe_cache_paths(cache_dir, source_model, target_model)
+    src_prefix = _get_prefix(source_model, "passage")
+    tgt_doc_prefix = _get_prefix(target_model, "passage")
+    tgt_qry_prefix = _get_prefix(target_model, "query")
+
+    out: dict[str, dict[str, np.ndarray]] = {}
+    embed_s = 0.0
+    for domain in domains:
+        chunks = probe_chunks(domain)
+        queries = probe_queries(domain)
+        meta_path = cache / f"{domain}.meta.json"
+        fnames = {
+            "chunk_src": cache / f"{domain}.chunk_src.npy",
+            "chunk_tgt": cache / f"{domain}.chunk_tgt.npy",
+            "qry_tgt": cache / f"{domain}.qry_tgt.npy",
+        }
+        cached = False
+        if meta_path.exists() and all(p.exists() for p in fnames.values()):
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            if (
+                meta.get("n_chunks") == len(chunks)
+                and meta.get("n_queries") == len(queries)
+                and meta.get("source_model") == source_model
+                and meta.get("target_model") == target_model
+                and meta.get("prefix_version") == CACHE_PREFIX_VERSION
+                and meta.get("probe_version") == PROBE_VERSION
+            ):
+                cached = True
+        if cached:
+            out[domain] = {k: np.load(p) for k, p in fnames.items()}
+            continue
+
+        t0 = time.perf_counter()
+        if use_api:
+            chunk_src = _embed_api(source_model, chunks)
+            chunk_tgt = _embed_api(target_model, chunks)
+            qry_tgt = _embed_api(target_model, queries)
+        else:
+            from sentence_transformers import SentenceTransformer
+
+            src_m = SentenceTransformer(source_model)
+            tgt_m = SentenceTransformer(target_model)
+            chunk_src = embed_texts(src_m, chunks, prefix=src_prefix)
+            chunk_tgt = embed_texts(tgt_m, chunks, prefix=tgt_doc_prefix)
+            qry_tgt = embed_texts(tgt_m, queries, prefix=tgt_qry_prefix)
+        embed_s += time.perf_counter() - t0
+
+        out[domain] = {
+            "chunk_src": chunk_src,
+            "chunk_tgt": chunk_tgt,
+            "qry_tgt": qry_tgt,
+        }
+        for k, p in fnames.items():
+            np.save(p, out[domain][k])
+        meta_path.write_text(
+            json.dumps(
+                {
+                    "n_chunks": len(chunks),
+                    "n_queries": len(queries),
+                    "source_model": source_model,
+                    "target_model": target_model,
+                    "prefix_version": CACHE_PREFIX_VERSION,
+                    "probe_version": PROBE_VERSION,
+                }
+            ),
+            encoding="utf-8",
+        )
+    return out, embed_s
+
+
 def _embed_api(model_id: str, texts: list[str], batch_size: int = 128) -> np.ndarray:
     """Embed texts using Isotrieve provider adapters (with disk cache)."""
     embedder = create_embedder(model_id, cached=True)
@@ -351,6 +451,11 @@ def run_seed(
     embed_s: float,
     out_dir: Path,
     adapter: str = "ridge",
+    probe_embeddings: dict[str, dict[str, np.ndarray]] | None = None,
+    probe_domains: list[str] | None = None,
+    probe_embed_s: float = 0.0,
+    domain: str | None = None,
+    max_docs: int | None = None,
 ) -> dict:
     rng = np.random.default_rng(seed)
     k_cal = min(k_cal, len(doc_ids))
@@ -396,6 +501,36 @@ def run_seed(
         if c <= 1e-12:
             return None
         return float(a / c)
+
+    # Identifier-level probe retention (issue #37): for each domain's probe
+    # corpus, does the same-index chunk survive the mapping into the target
+    # space? Same-index true-match retrieval, exactly like topk_retention.
+    probe_top1s: list[float] = []
+    probe_top10s: list[float] = []
+    per_domain_probe: dict[str, dict[str, float | int]] = {}
+    for dom in probe_domains or []:
+        emb = (probe_embeddings or {}).get(dom)
+        if emb is None or len(emb["chunk_src"]) == 0:
+            continue
+        if emb["chunk_src"].shape[1] != doc_src.shape[1]:
+            print(f"  Probe domain {dom}: source dim mismatch — skipped")
+            continue
+        mapped_probe = mapping.transform(emb["chunk_src"])
+        t1 = topk_retention(mapped_probe, emb["chunk_tgt"], k=1)
+        t10 = topk_retention(mapped_probe, emb["chunk_tgt"], k=min(10, len(emb["chunk_tgt"])))
+        per_domain_probe[dom] = {"top1": t1, "top10": t10, "n": int(len(emb["chunk_tgt"]))}
+        probe_top1s.append(t1)
+        probe_top10s.append(t10)
+
+    probe_retention = {
+        "top1": float(np.mean(probe_top1s)) if probe_top1s else None,
+        "top10": float(np.mean(probe_top10s)) if probe_top10s else None,
+        "n_probes": int(
+            sum(len(probe_chunks(d)) for d in (probe_domains or []) if d in (probe_embeddings or {}))
+        ),
+        "per_domain": per_domain_probe,
+        "probe_embed_s": probe_embed_s,
+    }
 
     # Bidirectional: query→legacy direction (WS-3)
     query_legacy_metrics = None
@@ -449,6 +584,9 @@ def run_seed(
         },
         "calibration_calls": 2 * k_cal,
         "reembed_calls": len(doc_ids),
+        "domain": domain,
+        "max_docs": max_docs,
+        "probe_retention": probe_retention,
     }
 
     # Add bidirectional results if available
@@ -465,6 +603,9 @@ def run_seed(
                 "k": k_cal,
                 "seed": seed,
                 "adapter": adapter,
+                # Corpus size distinguishes truncated (--max-docs) runs from the
+                # full-corpus runs committed earlier (issue #37).
+                "n_docs": len(doc_ids),
             },
             sort_keys=True,
         ).encode()
@@ -486,6 +627,11 @@ def run_seed(
         f"isotrieve={isotrieve_metrics['nDCG@10']:.4f} "
         f"ceiling={ceiling_metrics['nDCG@10']:.4f}"
     )
+    if probe_retention.get("top1") is not None:
+        print(
+            f"seed={seed} probe_retention top1={probe_retention['top1']:.4f} "
+            f"top10={probe_retention['top10']:.4f}"
+        )
     return result
 
 
@@ -526,8 +672,17 @@ def main() -> None:
     p.add_argument(
         "--dataset",
         default="scifact",
-        choices=["scifact", "nfcorpus", "fiqa"],
-        help="BEIR dataset to evaluate on",
+        choices=["scifact", "nfcorpus", "fiqa", "code", "legal"],
+        help=(
+            "BEIR dataset to evaluate on (scifact/nfcorpus=medical, fiqa=general) "
+            "or an offline identifier-probe corpus (code/legal) — issue #37"
+        ),
+    )
+    p.add_argument(
+        "--probe-domains",
+        nargs="+",
+        default=list(DOMAINS),
+        help="Which identifier-probe domains to report probe retention for (issue #37)",
     )
     p.add_argument(
         "--adapter",
@@ -557,6 +712,20 @@ def main() -> None:
         use_api=args.use_api,
     )
 
+    # Identifier-level probe embeddings for the domain matrix (issue #37).
+    # Deterministic and offline; cached per model pair + probe version.
+    probe_domains = [d for d in args.probe_domains if d in DOMAINS]
+    probe_embeddings, probe_embed_s = load_or_embed_probes(
+        source_model=args.source_model,
+        target_model=args.target_model,
+        domains=probe_domains,
+        cache_dir=args.cache_dir,
+        use_api=args.use_api,
+    )
+    print(f"Loaded probe embeddings for domains: {sorted(probe_embeddings)}")
+    domain = domain_of(args.dataset)
+    print(f"Dataset domain regime: {domain}")
+
     # Resolve adapter list
     adapter_list = args.adapter
     if adapter_list == ["all"]:
@@ -570,24 +739,29 @@ def main() -> None:
         for k in args.k:
             for seed in args.seeds:
                 try:
-                    results.append(
-                        run_seed(
-                            doc_src=doc_src,
-                            doc_tgt=doc_tgt,
-                            qry_tgt=qry_tgt,
-                            doc_ids=doc_ids,
-                            query_ids=query_ids,
-                            qrels=qrels,
-                            dataset_id=dataset_id,
-                            source_model=args.source_model,
-                            target_model=args.target_model,
-                            k_cal=k,
-                            seed=seed,
-                            embed_s=embed_s,
-                            out_dir=args.out_dir,
-                            adapter=adapter_name,
+                        results.append(
+                            run_seed(
+                                doc_src=doc_src,
+                                doc_tgt=doc_tgt,
+                                qry_tgt=qry_tgt,
+                                doc_ids=doc_ids,
+                                query_ids=query_ids,
+                                qrels=qrels,
+                                dataset_id=dataset_id,
+                                source_model=args.source_model,
+                                target_model=args.target_model,
+                                k_cal=k,
+                                seed=seed,
+                                embed_s=embed_s,
+                                out_dir=args.out_dir,
+                                adapter=adapter_name,
+                                probe_embeddings=probe_embeddings,
+                                probe_domains=probe_domains,
+                                probe_embed_s=probe_embed_s,
+                                domain=domain,
+                                max_docs=args.max_docs,
+                            )
                         )
-                    )
                 except Exception as e:
                     print(f"  FAILED: {adapter_name} seed={seed} K={k}: {e}")
 

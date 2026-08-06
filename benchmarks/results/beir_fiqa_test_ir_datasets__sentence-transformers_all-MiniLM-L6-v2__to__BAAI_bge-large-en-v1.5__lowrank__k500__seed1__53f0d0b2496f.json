@@ -1,0 +1,102 @@
+{
+  "timestamp": "2026-08-06T06:45:25.668046+00:00",
+  "commit": "afd55941f624b6f20e85b26734fe0456706ca3be",
+  "dataset": "beir/fiqa/test@ir_datasets",
+  "source_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "target_model": "BAAI/bge-large-en-v1.5",
+  "adapter": "lowrank",
+  "calibration_mode": "in_domain",
+  "protocol": "fixed_calibration_per_seed",
+  "k_cal": 500,
+  "seed": 1,
+  "n_docs": 2000,
+  "n_queries": 648,
+  "d_src": 384,
+  "d_tgt": 1024,
+  "timings_s": {
+    "embed": 101.09660895799607,
+    "fit": 0.18279204099962953,
+    "transform": 0.005971334001515061
+  },
+  "transform_vectors_per_s": 334933.53402984247,
+  "validation": {
+    "holdout_cosine_mean": 0.8329741114370529,
+    "holdout_cosine_median": 0.8466781577995617,
+    "holdout_cosine_p5": 0.7009510650093589,
+    "top1_retention": 0.9,
+    "top10_retention": 0.98,
+    "n_train": 450,
+    "n_holdout": 50,
+    "seed": 1,
+    "alpha": 1.0,
+    "notes": []
+  },
+  "floor": {
+    "nDCG@10": 0.0,
+    "Recall@10": 0.0,
+    "Recall@100": 0.0,
+    "n_eval": 648,
+    "note": "dims differ; floor set to 0 (cross-space raw retrieval impossible)"
+  },
+  "isotrieve": {
+    "nDCG@10": 0.02505885083206305,
+    "Recall@10": 0.023122427983539095,
+    "Recall@100": 0.030313051146384478,
+    "n_eval": 648
+  },
+  "ceiling": {
+    "nDCG@10": 0.03226689073137523,
+    "Recall@10": 0.025929600235155788,
+    "Recall@100": 0.030704977464236727,
+    "n_eval": 648
+  },
+  "retention": {
+    "nDCG@10": 0.7766118849405181,
+    "Recall@10": 0.8917386991639508,
+    "Recall@100": 0.9872357399282009
+  },
+  "calibration_calls": 1000,
+  "reembed_calls": 2000,
+  "domain": "general",
+  "max_docs": 2000,
+  "probe_retention": {
+    "top1": 0.7087301587301588,
+    "top10": 0.9821428571428572,
+    "n_probes": 43,
+    "per_domain": {
+      "general": {
+        "top1": 0.7,
+        "top10": 1.0,
+        "n": 10
+      },
+      "legal": {
+        "top1": 0.7777777777777778,
+        "top10": 1.0,
+        "n": 9
+      },
+      "medical": {
+        "top1": 0.5,
+        "top10": 1.0,
+        "n": 10
+      },
+      "code": {
+        "top1": 0.8571428571428571,
+        "top10": 0.9285714285714286,
+        "n": 14
+      }
+    },
+    "probe_embed_s": 0.0
+  },
+  "query_legacy": {
+    "nDCG@10": 0.021624649832912072,
+    "Recall@10": 0.02002498530276308,
+    "Recall@100": 0.030004409171075837,
+    "n_eval": 648
+  },
+  "query_legacy_retention": {
+    "nDCG@10": 0.6701807748673161,
+    "Recall@10": 0.7722828397335979,
+    "Recall@100": 0.9771838851216592
+  },
+  "config_hash": "53f0d0b2496f"
+}

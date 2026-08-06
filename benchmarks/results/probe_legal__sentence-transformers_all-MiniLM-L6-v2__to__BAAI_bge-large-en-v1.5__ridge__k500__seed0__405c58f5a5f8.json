@@ -1,0 +1,102 @@
+{
+  "timestamp": "2026-08-06T06:46:23.089951+00:00",
+  "commit": "afd55941f624b6f20e85b26734fe0456706ca3be",
+  "dataset": "probe/legal",
+  "source_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "target_model": "BAAI/bge-large-en-v1.5",
+  "adapter": "ridge",
+  "calibration_mode": "in_domain",
+  "protocol": "fixed_calibration_per_seed",
+  "k_cal": 500,
+  "seed": 0,
+  "n_docs": 520,
+  "n_queries": 9,
+  "d_src": 384,
+  "d_tgt": 1024,
+  "timings_s": {
+    "embed": 9.192859333001252,
+    "fit": 0.1568682080032886,
+    "transform": 0.0019430000029387884
+  },
+  "transform_vectors_per_s": 267627.3799348944,
+  "validation": {
+    "holdout_cosine_mean": 0.9668120051197717,
+    "holdout_cosine_median": 0.9858352435627764,
+    "holdout_cosine_p5": 0.9247309926540896,
+    "top1_retention": 0.66,
+    "top10_retention": 0.98,
+    "n_train": 450,
+    "n_holdout": 50,
+    "seed": 0,
+    "alpha": 0.1,
+    "notes": []
+  },
+  "floor": {
+    "nDCG@10": 0.0,
+    "Recall@10": 0.0,
+    "Recall@100": 0.0,
+    "n_eval": 9,
+    "note": "dims differ; floor set to 0 (cross-space raw retrieval impossible)"
+  },
+  "isotrieve": {
+    "nDCG@10": 0.923940541865081,
+    "Recall@10": 1.0,
+    "Recall@100": 1.0,
+    "n_eval": 9
+  },
+  "ceiling": {
+    "nDCG@10": 0.8207614230260601,
+    "Recall@10": 0.8888888888888888,
+    "Recall@100": 1.0,
+    "n_eval": 9
+  },
+  "retention": {
+    "nDCG@10": 1.1257114624839584,
+    "Recall@10": 1.125,
+    "Recall@100": 1.0
+  },
+  "calibration_calls": 1000,
+  "reembed_calls": 520,
+  "domain": "legal",
+  "max_docs": null,
+  "probe_retention": {
+    "top1": 0.5142857142857142,
+    "top10": 0.9464285714285714,
+    "n_probes": 43,
+    "per_domain": {
+      "general": {
+        "top1": 0.4,
+        "top10": 1.0,
+        "n": 10
+      },
+      "legal": {
+        "top1": 1.0,
+        "top10": 1.0,
+        "n": 9
+      },
+      "medical": {
+        "top1": 0.3,
+        "top10": 1.0,
+        "n": 10
+      },
+      "code": {
+        "top1": 0.35714285714285715,
+        "top10": 0.7857142857142857,
+        "n": 14
+      }
+    },
+    "probe_embed_s": 0.0
+  },
+  "query_legacy": {
+    "nDCG@10": 0.2222222222222222,
+    "Recall@10": 0.2222222222222222,
+    "Recall@100": 0.7777777777777778,
+    "n_eval": 9
+  },
+  "query_legacy_retention": {
+    "nDCG@10": 0.2707512999367252,
+    "Recall@10": 0.25,
+    "Recall@100": 0.7777777777777778
+  },
+  "config_hash": "405c58f5a5f8"
+}
