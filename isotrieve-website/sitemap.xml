@@ -1,33 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://krish1925.github.io/AECP/</loc>
+    <loc>https://krish1925.github.io/Isotrieve/</loc>
     <lastmod>2026-07-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://krish1925.github.io/AECP/protocol.html</loc>
+    <loc>https://krish1925.github.io/Isotrieve/protocol.html</loc>
     <lastmod>2026-07-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://krish1925.github.io/AECP/integrations.html</loc>
+    <loc>https://krish1925.github.io/Isotrieve/integrations.html</loc>
     <lastmod>2026-07-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://krish1925.github.io/AECP/performance.html</loc>
+    <loc>https://krish1925.github.io/Isotrieve/performance.html</loc>
     <lastmod>2026-07-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://krish1925.github.io/AECP/docs.html</loc>
+    <loc>https://krish1925.github.io/Isotrieve/docs.html</loc>
     <lastmod>2026-07-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://krish1925.github.io/Isotrieve/npm.html</loc>
+    <lastmod>2026-07-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://krish1925.github.io/Isotrieve/why-gate.html</loc>
+    <lastmod>2026-07-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
   </url>
 </urlset>
