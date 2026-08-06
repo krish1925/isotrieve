@@ -33,11 +33,15 @@ console = Console()
 # Register additional commands
 from isotrieve.cli_doctor import register_doctor_command
 from isotrieve.cli_gate import register_gate_command
+from isotrieve.cli_manifest import register_manifest_command
 from isotrieve.cli_report import register_report_command
+from isotrieve.cli_verify import register_verify_command
 
 register_gate_command(app)
 register_doctor_command(app)
 register_report_command(app)
+register_manifest_command(app)
+register_verify_command(app)
 
 
 def _print_json(data: object) -> None:

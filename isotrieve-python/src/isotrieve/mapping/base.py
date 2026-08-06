@@ -117,6 +117,16 @@ class Mapping(ABC):
             raise RuntimeError("Mapping is not fitted")
         return self._d_tgt
 
+    @property
+    def has_inverse(self) -> bool:
+        """Whether ``inverse_transform`` is available (analytic inverse)."""
+        return self._W_inv is not None
+
+    @property
+    def meta(self) -> dict[str, Any]:
+        """Metadata attached via :meth:`set_meta` (model ids, corpus id, …)."""
+        return self._meta
+
     def validation_report(self) -> ValidationReport:
         if self._validation_report is None:
             raise RuntimeError("No validation report; call fit() first")

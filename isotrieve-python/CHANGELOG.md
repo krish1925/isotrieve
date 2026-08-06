@@ -23,6 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/when-reembedding-is-impossible.md`
 - Wrapper telemetry (opt-in, local-only JSONL)
 - `isotrieve report --from-wrapper` command
+- First-class manifest lifecycle CLI: `isotrieve manifest list|show`, `isotrieve rollback` (with `--dry-run`), and `isotrieve resume` (closes #24)
+- `isotrieve verify` post-migration drift & gate revalidation against the recorded gate result (closes #23)
+- `MigrationManifest` extended backward-compatibly with `id`, `mapping_path`, `transform_invertible`, `rollback_strategy`, `gate_result`, and store specs for resume/rollback (closes #23, #24)
+- `Mapping.has_inverse` / `Mapping.meta` accessors so manifests can record invertibility and model ids
+- `docs/migration-lifecycle.md` with a Mermaid state diagram
 
 ### Changed
 - README restructured: problem → wrapper quickstart → gate → migration → adapters → claims → prior art
@@ -31,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLAIMS linter: warn on stale `verified` dates (>180 days) and cross-check docs numbers against CLAIMS.md (closes #14; linter stays internal/informational)
 - Qdrant adapter test suite to Chroma parity: 10k seed → kill mid-run → resume, rollback via target drop, scroll batch-boundary edge cases (closes #17)
 - **pgvector adapter** (`isotrieve.adapters.pgvector.PgvectorAdapter`): transactional in-place migration via shadow-column (`embedding_isotrieve_new`) + atomic column swap, idempotent resume, drop-column rollback, HNSW/IVFFlat index-rebuild guidance in `docs/pgvector.md` (closes #22)
+- `NumpyFileStore.write_vectors` now appends to existing vectors so multi-batch migrations and `resume` accumulate correctly instead of clobbering earlier batches
 
 ## [0.3.0] - 2026-07-25
 
