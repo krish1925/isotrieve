@@ -76,7 +76,7 @@ Isotrieve separates the transform (store-agnostic) from the adapter layer (store
 | Pinecone | ✅ `PineconeAdapter.query()` | ✅ `PineconeAdapter.migrate()` | ✅ |
 | LangChain | ✅ `IsotrieveEmbeddings` | — | — |
 | LlamaIndex | — | ✅ `migrate_llamaindex_store()` | ✅ |
-| pgvector | planned | planned | — |
+| pgvector | ✅ `PgvectorAdapter.query()` | ✅ `PgvectorAdapter.migrate()` (shadow-column swap) | ✅ |
 | Weaviate | hook only | — | — |
 | FAISS | example only | — | — |
 

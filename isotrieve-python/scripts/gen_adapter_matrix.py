@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from isotrieve.adapters.base import VectorStoreAdapter  # noqa: E402
 from isotrieve.adapters.chroma import IsotrieveChromaFunction  # noqa: E402
+from isotrieve.adapters.pgvector import PgvectorAdapter  # noqa: E402
 from isotrieve.adapters.pinecone import PineconeAdapter  # noqa: E402
 from isotrieve.adapters.qdrant import QdrantAdapter  # noqa: E402
 
@@ -35,6 +36,7 @@ CAPS = [
 ADAPTERS = [
     ("VectorStoreAdapter (base)", VectorStoreAdapter, "Base"),
     ("QdrantAdapter", QdrantAdapter, "Query"),
+    ("PgvectorAdapter", PgvectorAdapter, "Query"),
     ("PineconeAdapter", PineconeAdapter, "Query"),
     ("IsotrieveChromaFunction", IsotrieveChromaFunction, "Serve"),
 ]
