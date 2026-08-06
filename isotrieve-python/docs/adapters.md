@@ -7,5 +7,6 @@ Automatically generated from adapter class attributes by
 |---|---|---|---|---|---|---|---|
 | `VectorStoreAdapter (base)` | Base | Yes | Yes | — | — | `none` | — |
 | `QdrantAdapter` | Query | Yes | Yes | — | Yes | `snapshot` | Yes |
+| `PgvectorAdapter` | Query | Yes | Yes | — | Yes | `shadow` | Yes |
 | `PineconeAdapter` | Query | Yes | Yes | — | — | `shadow` | — |
 | `IsotrieveChromaFunction` | Serve | Yes | — | — | — | `none` | Yes |
