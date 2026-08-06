@@ -13,6 +13,10 @@ build/
 .venv/
 venv/
 env/
+.agent-venv/
+
+# Agent loop scaffolding
+agent/
 
 # Testing
 .pytest_cache/
