@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `MigrationManifest` extended backward-compatibly with `id`, `mapping_path`, `transform_invertible`, `rollback_strategy`, `gate_result`, and store specs for resume/rollback (closes #23, #24)
 - `Mapping.has_inverse` / `Mapping.meta` accessors so manifests can record invertibility and model ids
 - `docs/migration-lifecycle.md` with a Mermaid state diagram
+- Domain-matrix benchmark (issue #37): dataset→domain routing (scifact/nfcorpus=medical, fiqa=general) plus offline synthetic `code`/`legal` corpora; `probe_retention` (same-index identifier top-1/top-10) in every run result
+- `benchmarks/domain_probes.py` — deterministic, offline identifier-probe definitions (ICD-10 codes, case citations, file paths, error codes, UUIDs, dates, version strings)
+- Gate report `domain_regime` field (general/legal/medical/code) inferred from sampled corpus text via `isotrieve.quality.domain.infer_domain`; `isotrieve gate --corpus-texts` wires it in
+- `isotrieve doctor` now infers the store's domain regime and suggests the most relevant published domain benchmark
 
 ### Changed
 - README restructured: problem → wrapper quickstart → gate → migration → adapters → claims → prior art

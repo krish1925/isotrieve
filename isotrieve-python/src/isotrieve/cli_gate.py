@@ -69,6 +69,12 @@ def register_gate_command(app: typer.Typer) -> None:
         seed_sensitivity_seed: int = typer.Option(
             0, "--seed-sensitivity-seed", help="Base seed for --seed-sensitivity runs"
         ),
+        corpus_texts: Path | None = typer.Option(
+            None,
+            "--corpus-texts",
+            help="Optional file with one corpus text per line; used to infer the "
+            "domain regime (general/legal/medical/code) reported in the gate output",
+        ),
     ) -> None:
         """Evaluate a mapping against sample data and report retention.
 
@@ -207,8 +213,22 @@ def register_gate_command(app: typer.Typer) -> None:
         gate = QualityGate()
         report = None
         if mapping is not None:
+            sample_texts = None
+            if corpus_texts is not None:
+                if not corpus_texts.exists():
+                    console.print(
+                        f"[red]Corpus texts file not found: {corpus_texts}[/red]"
+                    )
+                    raise typer.Exit(1)
+                sample_texts = [
+                    line.strip()
+                    for line in corpus_texts.read_text(encoding="utf-8").splitlines()
+                    if line.strip()
+                ]
             try:
-                report = gate.evaluate(mapping, X_sample, Y_sample)
+                report = gate.evaluate(
+                    mapping, X_sample, Y_sample, corpus_texts=sample_texts
+                )
             except ValueError as exc:
                 msg = str(exc)
                 if "NaN" in msg or "Inf" in msg:
@@ -373,6 +393,7 @@ def _output_md(
                 table.add_row(metric, f"{mid:.3f}", f"[{lower:.3f}, {upper:.3f}]")
 
         table.add_row("Verdict", f"[bold]{report.verdict.value}[/bold]", "")
+        table.add_row("Domain regime", report.domain_regime, "")
 
         lines.append(_table_to_text(table))
 

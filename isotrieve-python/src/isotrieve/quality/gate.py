@@ -11,6 +11,7 @@ from typing import Any, Literal, cast
 import numpy as np
 
 from isotrieve.mapping.base import Mapping
+from isotrieve.quality.domain import infer_domain
 from isotrieve.quality.metrics import (
     holdout_rank_correlation,
     pairwise_cosine_stats,
@@ -65,6 +66,7 @@ class GateReport:
     thresholds_used: dict[str, Any] = field(default_factory=dict)
     margin_compression: float | None = None
     score_recal_recommendation: str | None = None
+    domain_regime: str = "general"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -88,6 +90,7 @@ class GateReport:
             "thresholds_used": self.thresholds_used,
             "margin_compression": self.margin_compression,
             "score_recal_recommendation": self.score_recal_recommendation,
+            "domain_regime": self.domain_regime,
         }
 
 
@@ -192,10 +195,13 @@ class QualityGate:
         Y_sample: np.ndarray,
         *,
         holdout_top1: float | None = None,
+        corpus_texts: list[str] | None = None,
     ) -> GateReport:
         """Run gate on paired source/target embeddings of the same texts.
 
         ``X_sample`` / ``Y_sample`` must not overlap the calibration fit set.
+        ``corpus_texts`` is an optional sample of the corpus text used to infer
+        the domain regime (general/legal/medical/code) via a keyword heuristic.
         """
         mapped = mapping.transform(X_sample)
         cos = pairwise_cosine_stats(mapped, Y_sample)
@@ -269,6 +275,7 @@ class QualityGate:
             },
             margin_compression=mc,
             score_recal_recommendation=self._score_recal_recommendation(mc),
+            domain_regime=infer_domain(corpus_texts) if corpus_texts else "general",
         )
 
     def seed_sensitivity(

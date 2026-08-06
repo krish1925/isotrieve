@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import typer
 from rich.console import Console
 from rich.table import Table
+
+from isotrieve.quality.domain import infer_domain
 
 console = Console()
 
@@ -57,6 +60,11 @@ def register_doctor_command(app: typer.Typer) -> None:
                 "Run 'isotrieve gate' with calibration data to evaluate migration.[/yellow]"
             )
 
+        # Domain-regime guidance (issue #37)
+        domain = str(info.get("domain_regime") or "general")
+        guidance = _domain_guidance(domain)
+        console.print(guidance)
+
         # Print scenario-calibrated expectations
         console.print(SCENARIO_GUIDANCE)
 
@@ -87,6 +95,12 @@ def _inspect_store(
     else:
         console.print(f"[yellow]Unknown store type: {store_type}[/yellow]")
 
+    # Infer the domain regime from sampled collection text (issue #37).
+    raw_texts = cast(list[str], info.pop("sample_texts", []))
+    sample_texts = [t for t in raw_texts if isinstance(t, str)]
+    info["n_sampled_texts"] = len(sample_texts)
+    info["domain_regime"] = infer_domain(sample_texts)
+
     return info
 
 
@@ -98,15 +112,25 @@ def _inspect_chroma(url: str | None, collection: str | None) -> dict[str, object
         client = chromadb.Client() if not url else chromadb.HttpClient(host=url)
         col = client.get_collection(collection or "default")
         count = col.count()
-        sample = col.get(limit=1, include=["embeddings", "metadatas"])
+        sample = col.get(limit=20, include=["embeddings", "metadatas", "documents"])
         dim = len(sample["embeddings"][0]) if sample.get("embeddings") else None
         has_isotrieve = False
-        if sample.get("metadatas") and sample["metadatas"]:
-            has_isotrieve = "isotrieve_mapping_id" in sample["metadatas"][0]
+        sample_texts: list[str] = []
+        if sample.get("documents"):
+            sample_texts.extend(d for d in sample["documents"] if d)
+        if sample.get("metadatas"):
+            for meta in sample["metadatas"]:
+                if isinstance(meta, dict):
+                    for v in meta.values():
+                        if isinstance(v, str) and v not in sample_texts:
+                            sample_texts.append(v)
+            if sample["metadatas"] and "isotrieve_mapping_id" in sample["metadatas"][0]:
+                has_isotrieve = True
         return {
             "vector_count": count,
             "dimension": dim,
             "has_isotrieve_metadata": has_isotrieve,
+            "sample_texts": sample_texts[:20],
         }
     except Exception as e:
         return {"vector_count": f"error: {e}", "dimension": None}
@@ -142,11 +166,21 @@ def _inspect_numpy(path: str | None) -> dict[str, object]:
 
         store = NumpyFileStore(Path(path))
         count = store.count()
-        # Peek at first batch for dimension
-        for batch in store.iter_vectors(batch_size=1):
-            dim = batch[0].vector.shape[0] if batch else None
-            return {"vector_count": count, "dimension": dim}
-        return {"vector_count": count, "dimension": None}
+        dim = None
+        sample_texts: list[str] = []
+        for batch in store.iter_vectors(batch_size=64):
+            for rec in batch:
+                if dim is None:
+                    dim = rec.vector.shape[0]
+                if rec.text and len(sample_texts) < 20:
+                    sample_texts.append(rec.text)
+            if dim is not None and len(sample_texts) >= 20:
+                break
+        return {
+            "vector_count": count,
+            "dimension": dim,
+            "sample_texts": sample_texts,
+        }
     except Exception as e:
         return {"vector_count": f"error: {e}", "dimension": None}
 
@@ -161,6 +195,24 @@ def _suggest_playbook(info: dict[str, object]) -> str | None:
     if "voyage-2" in model:
         return "voyage-2 → voyage-3 (docs/playbooks/voyage-2-to-v3.md)"
     return None
+
+
+# Published domain-matrix benchmarks (issue #37) keyed by domain regime.
+DOMAIN_BENCHMARKS: dict[str, str] = {
+    "general": "FiQA (BEIR) — `--dataset fiqa`",
+    "medical": "SciFact (BEIR) — `--dataset scifact`",
+    "code": "offline code probe corpus — `--dataset code`",
+    "legal": "offline legal probe corpus — `--dataset legal`",
+}
+
+
+def _domain_guidance(domain: str) -> str:
+    """Print which published domain benchmarks are most relevant."""
+    bench = DOMAIN_BENCHMARKS.get(domain, DOMAIN_BENCHMARKS["general"])
+    return (
+        f"[bold]Domain regime:[/bold] {domain}. Most relevant published domain "
+        f"benchmark: {bench}. See benchmarks/results/ for per-domain retention."
+    )
 
 
 # Scenario-calibrated retention expectations (from benchmarks).
