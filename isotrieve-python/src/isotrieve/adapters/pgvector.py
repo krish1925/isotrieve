@@ -48,6 +48,25 @@ def _require_psycopg() -> Any:
         ) from None
 
 
+def _parse_vector(value: Any) -> np.ndarray:
+    """Coerce a pgvector column value into a float array.
+
+    With ``pgvector.psycopg.register_vector`` (the ``pgvector`` package)
+    columns come back as ``pgvector.vector.Vector`` objects (expose
+    ``.to_numpy()``); without registration psycopg returns the text form
+    ``[a,b,c,...]``. Both are handled here.
+    """
+    if isinstance(value, str):
+        inner = value.strip().strip("[]")
+        if not inner:
+            return np.empty(0, dtype=np.float64)
+        return np.array([float(x) for x in inner.split(",")], dtype=np.float64)
+    to_numpy = getattr(value, "to_numpy", None)
+    if callable(to_numpy):
+        return np.asarray(to_numpy(), dtype=np.float64)
+    return np.asarray(value, dtype=np.float64)
+
+
 class PgvectorAdapter(VectorStoreAdapter):
     """pgvector vector store adapter with shadow-column atomic-swap migration.
 
@@ -116,7 +135,14 @@ class PgvectorAdapter(VectorStoreAdapter):
 
     def _connect(self) -> Any:
         """Open a new psycopg connection (context manager commits/rolls back)."""
-        return self._psycopg.connect(**self._connect_kwargs)
+        conn = self._psycopg.connect(**self._connect_kwargs)
+        try:
+            from pgvector.psycopg import register_vector
+
+            register_vector(conn)
+        except Exception:
+            pass
+        return conn
 
     def _has_payload_column(self) -> bool:
         """Return True if a JSONB ``payload`` column exists on the table."""
@@ -131,7 +157,7 @@ class PgvectorAdapter(VectorStoreAdapter):
     def _ensure_shadow_column(self, dim: int) -> None:
         """Add the shadow column if missing. Idempotent."""
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute("CREATE EXTENSION IF NOT EXISTS vector ")
+            cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
             cur.execute(
                 f"ALTER TABLE {self._table} "
                 f"ADD COLUMN IF NOT EXISTS {self._shadow} vector({dim})"
@@ -155,7 +181,7 @@ class PgvectorAdapter(VectorStoreAdapter):
             row = cur.fetchone()
             if not row or row[0] is None:
                 return None
-            return len(np.asarray(row[0], dtype=np.float64).ravel())
+            return len(_parse_vector(row[0]).ravel())
 
     def _read_batch(
         self, offset: int, limit: int, include_payload: bool
@@ -173,7 +199,7 @@ class PgvectorAdapter(VectorStoreAdapter):
             rows = cur.fetchall()
         out: list[tuple[Any, np.ndarray, dict[str, Any] | None]] = []
         for row in rows:
-            vec = np.asarray(row[1], dtype=np.float64).reshape(1, -1)
+            vec = _parse_vector(row[1]).reshape(1, -1)
             payload = row[2] if include_payload else None
             out.append((row[0], vec, payload))
         return out
@@ -210,7 +236,7 @@ class PgvectorAdapter(VectorStoreAdapter):
                     f"FROM {self._table} "
                     f"ORDER BY {self._vector_column} <=> %s ASC "
                     f"LIMIT {int(k)}",
-                    (vec.tolist(), vec.tolist()),
+                    (vec, vec),
                 )
                 results.append(
                     [

@@ -529,10 +529,14 @@ class TestPgvectorDocker:
         report = adapter.migrate(batch_size=7)
         assert report.rows_processed == 20
 
-        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
-            cur.execute("SELECT embedding FROM items_ci LIMIT 1")
-            row = cur.fetchone()
-            assert row is not None and len(row[0]) == D_TGT
+        with psycopg.connect(dsn) as conn:
+            from pgvector.psycopg import register_vector
+
+            register_vector(conn)
+            with conn.cursor() as cur:
+                cur.execute("SELECT embedding FROM items_ci LIMIT 1")
+                row = cur.fetchone()
+                assert row is not None and row[0].dimensions() == D_TGT
 
         migrated = self._adapter(m, dsn, mode="migrated")
         query = np.random.default_rng(7).normal(size=(2, D_TGT))
