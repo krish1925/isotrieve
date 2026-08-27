@@ -50,7 +50,7 @@ program
 
             // 2. Isotrieve Vector Handoff Simulation
             const isotrieveSpinner = ora('Executing Isotrieve Vector Handoff...').start();
-            const startAecp = performance.now();
+            const startIsotrieve = performance.now();
 
             // Agent A encodes once
             const outputA = await extractorA(query, { pooling: 'mean', normalize: true });
@@ -60,8 +60,8 @@ program
             // Here we simulate the timing of a matrix multiplication
             await new Promise(r => setTimeout(r, 1));
 
-            const endAecp = performance.now();
-            isotrieveSpinner.succeed(chalk.green(`Isotrieve Handoff: Took ${(endAecp - startAecp).toFixed(2)}ms (Matrix Mult)`));
+            const endIsotrieve = performance.now();
+            isotrieveSpinner.succeed(chalk.green(`Isotrieve Handoff: Took ${(endIsotrieve - startIsotrieve).toFixed(2)}ms (Matrix Mult)`));
 
             // 3. Results Table
             const table = new Table({
@@ -70,7 +70,7 @@ program
             });
 
             table.push(
-                ['Latency', chalk.red(`${(endText - startText).toFixed(2)}ms`), chalk.green(`${(endAecp - startAecp).toFixed(2)}ms`)],
+                ['Latency', chalk.red(`${(endText - startText).toFixed(2)}ms`), chalk.green(`${(endIsotrieve - startIsotrieve).toFixed(2)}ms`)],
                 ['Privacy', chalk.red('Text Exposed'), chalk.green('Vectors Only')],
                 ['Cost', chalk.red('$$$ (Re-encode)'), chalk.green('FREE')]
             );

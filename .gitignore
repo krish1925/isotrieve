@@ -68,5 +68,4 @@ benchmarks/.embed_cache/
 
 # Scratch files at repo root
 *.ipynb_checkpoints/
-aecp-python/aecp_training_loss.png
 cleanup/

@@ -67,7 +67,7 @@ Isotrieve/
 ├── spec/                 # Protocol specification (RFC-001)
 ├── docs/                 # Technical overview, protocol spec
 ├── .github/              # CI workflows, issue templates, gate action
-└── AGENTS.md             # Development contract for AI agents
+└── SKILLS.md             # Contributor & workflow guide (operating manual)
 ```
 
 **Which package is current?**
