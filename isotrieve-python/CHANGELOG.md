@@ -8,8 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- LlamaIndex query-time wrapper (`isotrieve.wrappers.llamaindex`)
-- OpenAI client shim (`isotrieve.wrappers.openai_shim`)
+- LlamaIndex query-time wrapper (`isotrieve.wrappers.llamaindex`)- OpenAI client shim (`isotrieve.wrappers.openai_shim`)
 - Shared test fakes (`tests/fakes.py`)
 - Deprecation playbooks (`docs/playbooks/`)
 - `isotrieve doctor` CLI command
@@ -41,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Qdrant adapter test suite to Chroma parity: 10k seed → kill mid-run → resume, rollback via target drop, scroll batch-boundary edge cases (closes #17)
 - **pgvector adapter** (`isotrieve.adapters.pgvector.PgvectorAdapter`): transactional in-place migration via shadow-column (`embedding_isotrieve_new`) + atomic column swap, idempotent resume, drop-column rollback, HNSW/IVFFlat index-rebuild guidance in `docs/pgvector.md` (closes #22)
 - `NumpyFileStore.write_vectors` now appends to existing vectors so multi-batch migrations and `resume` accumulate correctly instead of clobbering earlier batches
+- Removed the last `AECP` naming remnants from the v0.2.1 rename: LICENSE copyright lines in both packages, `isotrieve-npm/packages/aecp-demo-cli/` → `isotrieve-demo-cli/` (directory now matches `package-lock.json`, which already resolved `packages/isotrieve-demo-cli`), demo-cli internal variable names, stale `aecp-python/` `.gitignore` entry, and the root README project tree now points at `SKILLS.md` instead of the nonexistent `AGENTS.md` (closes #82)
+
+### Fixed
+- Notebook Colab badge URLs pointed at the pre-rename repo `krish1925/AECP` — now `krish1925/isotrieve` (closes #82)
 
 ## [0.3.0] - 2026-07-25
 
