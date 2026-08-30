@@ -67,7 +67,7 @@ Required checks (`lint`, `typecheck`, `test (3.10)`, `test (3.11)`, `test (3.12)
 ### Docs & changelog
 - Update `isotrieve-python/CHANGELOG.md` (or the website changelog page) in the **same PR** as the code change — not deferred to release time.
 - If the change affects the public API surface, docs pages under `isotrieve-website/` (docs, playground, protocol, performance, integrations, npm) need a matching update in the same PR or a linked follow-up issue.
-- README/homepage claims (currently: "~87–91% retrieval retention, BEIR-benchmarked") only change alongside a CLAIMS.md artifact update — never edit the number without the backing evidence.
+- README/homepage claims (currently: "~86–92% retrieval retention across published BEIR configs") only change alongside a CLAIMS.md artifact update — never edit the number without the backing evidence.
 
 ---
 

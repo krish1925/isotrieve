@@ -1,9 +1,9 @@
 # Isotrieve — Embedding migration without re-embedding
 
 [![PyPI](https://img.shields.io/pypi/v/isotrieve)](https://pypi.org/project/isotrieve/)
-[![CI](https://github.com/krish1925/Isotrieve/actions/workflows/ci.yml/badge.svg)](https://github.com/krish1925/Isotrieve/actions/workflows/ci.yml)
+[![CI](https://github.com/krish1925/isotrieve/actions/workflows/ci.yml/badge.svg)](https://github.com/krish1925/isotrieve/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](isotrieve-python/LICENSE)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](isotrieve-python/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](isotrieve-python/)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://krish1925.github.io/Isotrieve/)
 
 Open-source toolkit to switch embedding models **without re-embedding your corpus**.
@@ -26,14 +26,6 @@ retention doesn't clear your threshold, the gate fails and nothing ships.
 
 ```mermaid
 flowchart LR
-    A[Calibration sample<br/><i>small subset of corpus</i>] --> B1[Embed with<br/>old model]
-    A --> B2[Embed with<br/>new model]
-    B1 --> C[Fit transform<br/><i>Procrustes / ridge / residual</i>]
-    B2 --> C
-    C --> D[Apply transform to<br/>full stored vector set]
-    D --> E{Retrieval gate<br/>Recall@k, MRR vs.<br/>held-out queries}
-    E -- "≥ threshold" --> F[✅ Commit migration<br/>vectors updated in place]
-    E -- "below threshold" --> G[⛔ Abort<br/>report gap + fallback]
 
     classDef stage fill:#1f2937,stroke:#4b5563,color:#f9fafb;
     classDef gate fill:#78350f,stroke:#d97706,color:#fef3c7;
@@ -99,15 +91,9 @@ flowchart TB
         Calib[Calibration + fit]
         Xform[Transform]
         Gate[Retrieval gate]
-        Calib --> Xform --> Gate
     end
 
-    Core --> Chroma[(ChromaDB<br/>supported)]
-    Core --> PGV[(pgvector<br/>supported)]
-    Core --> LC[LangChain<br/>IsotrieveEmbeddings<br/>query-time wrapper]
-    Core --> LI[(LlamaIndex<br/>in progress)]
-    Core -.-> QD[(Qdrant<br/>hook-only)]
-    Core -.-> PC[(Pinecone<br/>hook-only)]
+    Core -.-> PC[(Pinecone<br/>supported, not CI-tested)]
     Core -.-> WV[(Weaviate<br/>hook-only)]
     Core -.-> FA[FAISS<br/>notebook example only]
 
@@ -116,24 +102,24 @@ flowchart TB
     classDef partial fill:#78350f,stroke:#d97706,color:#fef3c7;
     classDef planned fill:#374151,stroke:#6b7280,color:#e5e7eb,stroke-dasharray: 4 3;
     class Calib,Xform,Gate core;
-    class Chroma,PGV,LC ready;
-    class LI partial;
-    class QD,PC,WV,FA planned;
+    class Chroma,QD,PGV,LC,LI ready;
+    class PC partial;
+    class WV,FA planned;
 ```
 
 Solid arrows mean an in-place migration path exists today; dashed arrows mean
 only a hook or example is available. See the status table for detail:
 
-| Store | Status |
-|---|---|
-| ChromaDB | Supported |
-| pgvector | Supported |
-| LangChain (`IsotrieveEmbeddings`) | Supported (query-time wrapper, store-agnostic) |
-| LlamaIndex | In progress |
-| Qdrant | Hook-only |
-| Pinecone | Hook-only |
-| Weaviate | Hook-only |
-| FAISS | Notebook example only (no persistence layer to migrate against) |
+| Store | Status | CI-tested |
+|---|---|---|
+| ChromaDB | Supported (serve mode + in-place migration) | ✅ |
+| Qdrant | Supported (query + in-place migration + resume) | ✅ |
+| pgvector | Supported (query + transactional in-place migration) | ✅ |
+| LlamaIndex | Supported (query-time wrapper + storage-context migration) | ✅ |
+| LangChain (`IsotrieveEmbeddings`) | Supported (query-time wrapper, store-agnostic) | ✅ |
+| Pinecone | Supported (query + offline migration via shadow namespace) | — (needs API key) |
+| Weaviate | Hook-only | — |
+| FAISS | Notebook example only (no persistence layer to migrate against) | — |
 
 ## On claims and benchmarks
 
