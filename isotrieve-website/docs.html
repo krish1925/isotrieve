@@ -73,13 +73,13 @@
                     <div class="docs-row docs-row--solo">
                         <div class="docs-prose">
                             <h1>Isotrieve Documentation</h1>
-                            <p class="lead">Migrate a vector database to a new embedding model without re-embedding. Fits a linear map from ~2K calibration texts; 87–91% retrieval retention on BEIR.</p>
+                            <p class="lead">Migrate a vector database to a new embedding model without re-embedding. Fits a linear map from ~2K calibration texts; 86–92% retrieval retention on BEIR.</p>
                             <h2>What is Isotrieve?</h2>
                             <p>Different embedding models produce vectors in incompatible geometric spaces. Even when two models output the same dimensionality, their axes mean different things — raw cross-space nDCG@10 is typically <strong>0.0</strong>.</p>
                             <p>Isotrieve fits a ridge regression from paired calibration texts: embed the same ~2K documents with both models, learn a linear map <code>W</code>, then either transform stored vectors offline or map new-model queries into the legacy space at serve time. You keep the index you already paid for and still move to a better model.</p>
                             <h2>Key Features</h2>
                             <ul>
-                                <li><strong>87–91% retrieval retention</strong> on BEIR SciFact vs full re-embedding</li>
+                                <li><strong>86–92% retrieval retention</strong> on BEIR SciFact vs full re-embedding</li>
                                 <li><strong>Score recalibration</strong> — isotonic regression so thresholds stay meaningful</li>
                                 <li><strong>Confidence flags</strong> — per-query high / medium / low from score margins</li>
                                 <li><strong>ChromaDB + LangChain + Qdrant adapters</strong> for drop-in use</li>

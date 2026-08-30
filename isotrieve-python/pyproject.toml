@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "isotrieve"
-version = "0.3.0"
-description = "Migrate a vector database to a new embedding model without re-embedding the corpus. Fits a linear map from ~2K calibration texts; 87-91% retrieval retention measured on BEIR."
+version = "0.4.0"
+description = "Migrate a vector database to a new embedding model without re-embedding the corpus. Fits a linear map from ~2K calibration texts; 86-92% retrieval retention across published BEIR configs (see CLAIMS.md)."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
@@ -82,6 +82,8 @@ dev = [
     "mypy>=1.8",
     "Pillow>=9.0",
     "sentence-transformers>=2.2",
+    "hypothesis>=6.100",
+    "ir-datasets>=0.4",
 ]
 all = [
     "isotrieve[sentence-transformers,openai,voyage,cohere,gemini,qdrant,pgvector,chroma,langchain,parquet,mlp,dev]",

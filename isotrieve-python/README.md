@@ -6,7 +6,7 @@ Switch embedding models without re-embedding your corpus — and know, before yo
 
 [![PyPI](https://img.shields.io/pypi/v/isotrieve)](https://pypi.org/project/isotrieve/)
 [![CI](https://github.com/krish1925/isotrieve/actions/workflows/ci.yml/badge.svg)](https://github.com/krish1925/isotrieve/actions/workflows/ci.yml)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/krish1925/isotrieve/blob/main/isotrieve-python/LICENSE)
 [![Python](https://img.shields.io/pypi/pyversions/isotrieve)](https://pypi.org/project/isotrieve/)
 
 ```bash
@@ -63,22 +63,24 @@ isotrieve gate \
 
 Wire that gate into CI and an embedding upgrade becomes a pull request instead of a project.
 
-Full walkthroughs live in [`notebooks/`](notebooks/) — six self-contained demos, Colab-ready, including cross-architecture dimension changes and drift recalibration.
+Full walkthroughs live in [`notebooks/`](https://github.com/krish1925/isotrieve/tree/main/isotrieve-python/notebooks) — six self-contained demos, Colab-ready, including cross-architecture dimension changes and drift recalibration.
 
 ## Vector store support
 
 Isotrieve separates the transform (store-agnostic) from the adapter layer (store-specific), so one learned mapping applies to whatever you're actually running.
 
-| Store | Query | Migrate in place | Dry run |
-|---|---|---|---|
-| ChromaDB | ✅ `IsotrieveChromaFunction` | ✅ `migrate_collection()` | ✅ |
-| Qdrant | ✅ `QdrantAdapter.query()` | ✅ `QdrantAdapter.migrate()` | ✅ |
-| Pinecone | ✅ `PineconeAdapter.query()` | ✅ `PineconeAdapter.migrate()` | ✅ |
-| LangChain | ✅ `IsotrieveEmbeddings` | — | — |
-| LlamaIndex | — | ✅ `migrate_llamaindex_store()` | ✅ |
-| pgvector | ✅ `PgvectorAdapter.query()` | ✅ `PgvectorAdapter.migrate()` (shadow-column swap) | ✅ |
-| Weaviate | hook only | — | — |
-| FAISS | example only | — | — |
+| Store | Query | Migrate in place | Dry run | CI-tested |
+|---|---|---|---|---|
+| ChromaDB | ✅ `IsotrieveChromaFunction` | ✅ `migrate_collection()` | ✅ | ✅ |
+| Qdrant | ✅ `QdrantAdapter.query()` | ✅ `QdrantAdapter.migrate()` | ✅ | ✅ |
+| pgvector | ✅ `PgvectorAdapter.query()` | ✅ `PgvectorAdapter.migrate()` (shadow-column swap) | ✅ | ✅ |
+| LlamaIndex | ✅ `isotrieve.wrappers.llamaindex` | ✅ `migrate_llamaindex_store()` | ✅ | ✅ |
+| Pinecone | ✅ `PineconeAdapter.query()` | ✅ `PineconeAdapter.migrate()` (shadow namespace) | ✅ | — (needs API key) |
+| LangChain | ✅ `IsotrieveEmbeddings` | — | — | ✅ |
+| Weaviate | hook only | — | — | — |
+| FAISS | example only | — | — | — |
+
+Capability flags are generated from the adapter classes themselves — see [`docs/adapters.md`](https://github.com/krish1925/isotrieve/blob/main/isotrieve-python/docs/adapters.md).
 
 ## How this differs from embedding adapter libraries
 
@@ -95,7 +97,7 @@ If you want to query an existing index with a different model today, use an adap
 
 ## Claims and benchmarks
 
-Every quantitative claim in this repo links to a committed artifact under `benchmarks/results/` and is listed in [`CLAIMS.md`](isotrieve-python/CLAIMS.md). CI enforces it — a claim without a resolvable artifact fails the build.
+Every quantitative claim in this repo links to a committed artifact under `benchmarks/results/` and is listed in [`CLAIMS.md`](https://github.com/krish1925/isotrieve/blob/main/isotrieve-python/CLAIMS.md). Our claims linter validates the artifact links in CI (currently warn-only; legacy artifacts predate full config declarations).
 
 Retention numbers are corpus- and model-pair specific. Yours will differ from ours. That's what the gate is for.
 
@@ -164,6 +166,10 @@ Same dimension ≠ same space. e5 models require "query: "/"passage: " prefixes;
 | `isotrieve inspect` | Show mapping metadata and validation report |
 | `isotrieve report` | Render migration report as markdown |
 | `isotrieve doctor` | Check environment and dependencies |
+| `isotrieve manifest` | List/show migration manifests |
+| `isotrieve rollback` | Roll back a migration (with `--dry-run`) |
+| `isotrieve resume` | Resume an interrupted migration |
+| `isotrieve verify` | Post-migration drift & gate revalidation |
 | `isotrieve version` | Show version |
 
 ## Prior art
@@ -186,8 +192,8 @@ isotrieve/
 
 Actively developed, pre-1.0. APIs may change between minor versions until 1.0. Beta-marked adapters are functional but not yet load-tested.
 
-Issues and PRs welcome — see [CONTRIBUTING.md](isotrieve-python/CONTRIBUTING.md).
+Issues and PRs welcome — see [CONTRIBUTING.md](https://github.com/krish1925/isotrieve/blob/main/isotrieve-python/CONTRIBUTING.md).
 
 ## License
 
-Apache-2.0. See [LICENSE](isotrieve-python/LICENSE).
+Apache-2.0. See [LICENSE](https://github.com/krish1925/isotrieve/blob/main/isotrieve-python/LICENSE).

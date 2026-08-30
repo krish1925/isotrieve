@@ -2,7 +2,7 @@
 
 > **Pre-1.0 / Beta** — TypeScript port of [isotrieve](https://pypi.org/project/isotrieve/). The Python package is the mature, benchmark-validated implementation.
 
-Embedding migration without re-embedding. Learn a linear mapping between source and target embedding spaces from a small calibration sample (~2K texts), then transform stored vectors in-place or map queries on-the-fly. 87–91% retrieval retention on BEIR.
+Embedding migration without re-embedding. Learn a linear mapping between source and target embedding spaces from a small calibration sample (~2K texts), then transform stored vectors in-place or map queries on-the-fly. 86–92% retrieval retention on BEIR.
 
 ## Packages
 
