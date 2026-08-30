@@ -2,7 +2,26 @@
 
 from __future__ import annotations
 
-from typing import Any
+# Map each benchmark dataset name to its domain regime. BEIR-backed where a
+# suitable public corpus exists; ``code`` and ``legal`` use the offline
+# identifier-probe corpora in domain_probes.py (issue #37).
+DOMAIN_OF_DATASET: dict[str, str] = {
+    "scifact": "medical",
+    "nfcorpus": "medical",
+    "fiqa": "general",
+    "code": "code",
+    "legal": "legal",
+}
+
+# Datasets backed by a built-in synthetic probe corpus (no network).
+_PROBE_DATASETS: frozenset[str] = frozenset({"code", "legal"})
+
+
+def domain_of(name: str) -> str:
+    """Return the domain regime associated with a benchmark dataset name."""
+    if name not in DOMAIN_OF_DATASET:
+        raise ValueError(f"Unknown dataset {name!r}; choose from {sorted(DOMAIN_OF_DATASET)}")
+    return DOMAIN_OF_DATASET[name]
 
 
 def load_beir_dataset(
@@ -10,12 +29,17 @@ def load_beir_dataset(
     *,
     max_docs: int | None = None,
 ) -> tuple[list[dict[str, str]], list[dict[str, str]], dict[str, set[str]], str]:
-    """Load a BEIR dataset via ir_datasets.
+    """Load a benchmark dataset.
 
     Returns ``(docs, queries, qrels, dataset_id)``.
     Raises if qrels are unavailable — claimable runs must never fall back to
     self-retrieval.
     """
+    if name in _PROBE_DATASETS:
+        from domain_probes import build_probe_corpus
+
+        return build_probe_corpus(name)
+
     import ir_datasets
 
     specs = {

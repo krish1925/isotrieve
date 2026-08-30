@@ -1,9 +1,9 @@
 # Isotrieve — Embedding migration without re-embedding
 
 [![PyPI](https://img.shields.io/pypi/v/isotrieve)](https://pypi.org/project/isotrieve/)
-[![CI](https://github.com/krish1925/Isotrieve/actions/workflows/ci.yml/badge.svg)](https://github.com/krish1925/Isotrieve/actions/workflows/ci.yml)
+[![CI](https://github.com/krish1925/isotrieve/actions/workflows/ci.yml/badge.svg)](https://github.com/krish1925/isotrieve/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](isotrieve-python/LICENSE)
-[![Python](https://img.shields.io/badge/python-3.9%2B-blue)](isotrieve-python/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](isotrieve-python/)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://krish1925.github.io/Isotrieve/)
 
 Open-source toolkit to switch embedding models **without re-embedding your corpus**.
@@ -60,17 +60,20 @@ flowchart LR
 
 ```
 Isotrieve/
-├── isotrieve-python/          # Maintained Python package (PyPI: isotrieve)
-├── isotrieve-npm/             # Historical NPM protocol package (experimental)
+├── isotrieve-python/          # Python package (PyPI: isotrieve) — mature, benchmark-validated
+├── isotrieve-npm/             # TypeScript packages (npm: @isotrieve/core) — beta, under active development
 ├── isotrieve-website/         # GitHub Pages site
 ├── benchmarks/           # Benchmark harness and results
 ├── spec/                 # Protocol specification (RFC-001)
 ├── docs/                 # Technical overview, protocol spec
 ├── .github/              # CI workflows, issue templates, gate action
-└── AGENTS.md             # Development contract for AI agents
+└── SKILLS.md             # Contributor & workflow guide (operating manual)
 ```
 
-**Which package is current?** `isotrieve` on PyPI is the actively maintained, benchmark-validated package. The NPM package (`isotrieve-npm/`) is historical/experimental.
+**Which package is current?**
+
+- **Python (`pip install isotrieve`)** — Mature, benchmark-validated, CLI included. Use this for production migrations today.
+- **TypeScript (`@isotrieve/core`)** — Beta port of the mapping, gate, and migration logic. The `.isotrieve` binary format is cross-compatible with Python. No CLI yet, no store adapters beyond in-memory reference. Under active development; see `isotrieve-npm/README.md` for status. Do not depend on it in production until the production readiness plan is closed.
 
 ## Package
 
@@ -96,15 +99,14 @@ flowchart TB
         Calib[Calibration + fit]
         Xform[Transform]
         Gate[Retrieval gate]
-        Calib --> Xform --> Gate
     end
 
     Core --> Chroma[(ChromaDB<br/>supported)]
+    Core --> QD[(Qdrant<br/>supported)]
     Core --> PGV[(pgvector<br/>supported)]
     Core --> LC[LangChain<br/>IsotrieveEmbeddings<br/>query-time wrapper]
-    Core --> LI[(LlamaIndex<br/>in progress)]
-    Core -.-> QD[(Qdrant<br/>hook-only)]
-    Core -.-> PC[(Pinecone<br/>hook-only)]
+    Core --> LI[(LlamaIndex<br/>supported)]
+    Core -.-> PC[(Pinecone<br/>supported, not CI-tested)]
     Core -.-> WV[(Weaviate<br/>hook-only)]
     Core -.-> FA[FAISS<br/>notebook example only]
 
@@ -113,24 +115,24 @@ flowchart TB
     classDef partial fill:#78350f,stroke:#d97706,color:#fef3c7;
     classDef planned fill:#374151,stroke:#6b7280,color:#e5e7eb,stroke-dasharray: 4 3;
     class Calib,Xform,Gate core;
-    class Chroma,PGV,LC ready;
-    class LI partial;
-    class QD,PC,WV,FA planned;
+    class Chroma,QD,PGV,LC,LI ready;
+    class PC partial;
+    class WV,FA planned;
 ```
 
 Solid arrows mean an in-place migration path exists today; dashed arrows mean
 only a hook or example is available. See the status table for detail:
 
-| Store | Status |
-|---|---|
-| ChromaDB | Supported |
-| pgvector | Supported |
-| LangChain (`IsotrieveEmbeddings`) | Supported (query-time wrapper, store-agnostic) |
-| LlamaIndex | In progress |
-| Qdrant | Hook-only |
-| Pinecone | Hook-only |
-| Weaviate | Hook-only |
-| FAISS | Notebook example only (no persistence layer to migrate against) |
+| Store | Status | CI-tested |
+|---|---|---|
+| ChromaDB | Supported (serve mode + in-place migration) | ✅ |
+| Qdrant | Supported (query + in-place migration + resume) | ✅ |
+| pgvector | Supported (query + transactional in-place migration) | ✅ |
+| LlamaIndex | Supported (query-time wrapper + storage-context migration) | ✅ |
+| LangChain (`IsotrieveEmbeddings`) | Supported (query-time wrapper, store-agnostic) | ✅ |
+| Pinecone | Supported (query + offline migration via shadow namespace) | — (needs API key) |
+| Weaviate | Hook-only | — |
+| FAISS | Notebook example only (no persistence layer to migrate against) | — |
 
 ## On claims and benchmarks
 

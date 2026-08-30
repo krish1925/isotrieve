@@ -4,22 +4,37 @@ document.addEventListener('DOMContentLoaded', function() {
     var sections = document.querySelectorAll('.ds');
     var links = document.querySelectorAll('.docs-side a');
 
-    // Active nav on scroll
-    function updateNav() {
-        var pos = window.scrollY + 80;
-        var cur = '';
-        sections.forEach(function(s) { if (pos >= s.offsetTop) cur = s.id; });
-        links.forEach(function(l) { l.classList.toggle('on', l.getAttribute('href') === '#' + cur); });
+    function navOffset() {
+        var h = getComputedStyle(document.documentElement).getPropertyValue('--nav-h').trim();
+        var px = h.endsWith('rem') ? parseFloat(h) * 16 : parseFloat(h);
+        return (px || 56) + 8;
     }
-    window.addEventListener('scroll', updateNav);
+
+    function docTop(el) {
+        return el.getBoundingClientRect().top + window.scrollY;
+    }
+
+    // Active nav on scroll — keyed off section ids (unchanged)
+    function updateNav() {
+        var pos = window.scrollY + navOffset() + 24;
+        var cur = '';
+        sections.forEach(function(s) {
+            if (s.id && pos >= docTop(s)) cur = s.id;
+        });
+        links.forEach(function(l) {
+            l.classList.toggle('on', l.getAttribute('href') === '#' + cur);
+        });
+    }
+    window.addEventListener('scroll', updateNav, { passive: true });
     updateNav();
 
     // Sidebar smooth scroll
     links.forEach(function(l) {
         l.addEventListener('click', function(e) {
             e.preventDefault();
-            var t = document.getElementById(this.getAttribute('href').substring(1));
-            if (t) window.scrollTo({ top: t.offsetTop - 56, behavior: 'smooth' });
+            var id = this.getAttribute('href').substring(1);
+            var t = document.getElementById(id);
+            if (t) window.scrollTo({ top: docTop(t) - navOffset(), behavior: 'smooth' });
         });
     });
 
@@ -35,9 +50,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Heading anchors
-    document.querySelectorAll('.ds h2, .ds h3').forEach(function(h) {
+    // Heading anchors (section titles in .docs-head; overview still uses .docs-prose)
+    document.querySelectorAll('.docs-head h2, .docs-head h3, .docs-prose h2, .docs-prose h3').forEach(function(h) {
         if (!h.id) h.id = h.textContent.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        if (h.querySelector('.ha')) return;
         var a = document.createElement('a');
         a.className = 'ha';
         a.href = '#' + h.id;

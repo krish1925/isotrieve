@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="13" time="1.553" timestamp="2026-08-29T23:35:13.678765-07:00" hostname="Krishs-MacBook-Pro.local"><testcase classname="tests.test_property_invariants" name="test_p4_04_inverse_negative_control" time="0.006" /><testcase classname="tests.test_property_invariants" name="test_p4_01_l2_norm_post_transform" time="0.185" /><testcase classname="tests.test_property_invariants" name="test_p4_02_procrustes_orthogonality" time="0.087" /><testcase classname="tests.test_property_invariants" name="test_p4_03_ridge_beats_random_w_on_calibration" time="0.182" /><testcase classname="tests.test_property_invariants" name="test_p4_05_determinism_byte_identical" time="0.007" /><testcase classname="tests.test_property_invariants" name="test_p4_06_crc_exhaustive_single_bit" time="0.113" /><testcase classname="tests.test_property_invariants" name="test_p4_02_procrustes_negative_control" time="0.000" /><testcase classname="tests.test_property_invariants" name="test_p4_07_batch_of_one" time="0.152" /><testcase classname="tests.test_property_invariants" name="test_p4_06_crc_negative_control_untampered" time="0.010" /><testcase classname="tests.test_property_invariants" name="test_p4_07_inf_input_typed_error" time="0.006" /><testcase classname="tests.test_property_invariants" name="test_p4_04_inverse_roundtrip" time="0.174"><failure message="AssertionError: median direction roundtrip cos 0.955074201743576&#10;assert 0.955074201743576 &gt;= 0.99&#10; +  where 0.955074201743576 = float(np.float64(0.955074201743576))&#10; +    where np.float64(0.955074201743576) = &lt;function median at 0x102ff64f0&gt;(array([0.79309926, 0.80430198, 0.93388877, 0.89552449, 0.99123633,\n       0.93584145, 0.8680601 , 0.9947491 , 0.445748...53, 0.73260785, 0.9099377 , 0.96692751, 0.9613709 ,\n       0.93514461, 0.98410947, 0.99392947, 0.9921225 , 0.87841733]))&#10; +      where &lt;function median at 0x102ff64f0&gt; = np.median&#10;Failing test case: test_p4_04_inverse_roundtrip(&#10;    d_src=7,&#10;    d_tgt=6,&#10;)&#10;Explanation:&#10;    These lines were always and only run by failing test cases:&#10;        /Users/kpatel/Desktop/agent-communication/isotrieve-python/tests/test_property_invariants.py:111&#10;        /Users/kpatel/Desktop/agent-communication/isotrieve-python/tests/test_property_invariants.py:112&#10;        /Users/kpatel/Desktop/agent-communication/.agent-venv/lib/python3.13/site-packages/numpy/_core/arrayprint.py:1021&#10;        /Users/kpatel/Desktop/agent-communication/.agent-venv/lib/python3.13/site-packages/numpy/_core/arrayprint.py:1022&#10;        /Users/kpatel/Desktop/agent-communication/.agent-venv/lib/python3.13/site-packages/numpy/_core/arrayprint.py:1027&#10;        (and 2 more with settings.verbosity &gt;= verbose)&#10;&#10;You can reproduce this test case by temporarily adding @reproduce_failure('6.167.0', b'AEEHQQY=') as a decorator on your test function">@HYP
+&gt;   @given(d_src=st.integers(6, 16), d_tgt=st.integers(6, 16))
+                   ^^^
+
+tests/test_property_invariants.py:102: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+d_src = 7, d_tgt = 6
+
+    @HYP
+    @given(d_src=st.integers(6, 16), d_tgt=st.integers(6, 16))
+    def test_p4_04_inverse_roundtrip(d_src: int, d_tgt: int) -&gt; None:
+        # transform() L2-normalizes by design (scale intentionally discarded), so
+        # the round-trip invariant is direction preservation, not vector identity.
+        m, X, _ = _fit_ridge(d_src, d_tgt, n=140)
+        Z = m.transform(X)
+        X_back = m.inverse_transform(Z)
+        cos = np.sum(l2_normalize(X_back) * l2_normalize(X), axis=1)
+&gt;       assert float(np.median(cos)) &gt;= 0.99, (
+            f"median direction roundtrip cos {float(np.median(cos))}"
+        )
+E       AssertionError: median direction roundtrip cos 0.955074201743576
+E       assert 0.955074201743576 &gt;= 0.99
+E        +  where 0.955074201743576 = float(np.float64(0.955074201743576))
+E        +    where np.float64(0.955074201743576) = &lt;function median at 0x102ff64f0&gt;(array([0.79309926, 0.80430198, 0.93388877, 0.89552449, 0.99123633,\n       0.93584145, 0.8680601 , 0.9947491 , 0.445748...53, 0.73260785, 0.9099377 , 0.96692751, 0.9613709 ,\n       0.93514461, 0.98410947, 0.99392947, 0.9921225 , 0.87841733]))
+E        +      where &lt;function median at 0x102ff64f0&gt; = np.median
+E       Failing test case: test_p4_04_inverse_roundtrip(
+E           d_src=7,
+E           d_tgt=6,
+E       )
+E       Explanation:
+E           These lines were always and only run by failing test cases:
+E               /Users/kpatel/Desktop/agent-communication/isotrieve-python/tests/test_property_invariants.py:111
+E               /Users/kpatel/Desktop/agent-communication/isotrieve-python/tests/test_property_invariants.py:112
+E               /Users/kpatel/Desktop/agent-communication/.agent-venv/lib/python3.13/site-packages/numpy/_core/arrayprint.py:1021
+E               /Users/kpatel/Desktop/agent-communication/.agent-venv/lib/python3.13/site-packages/numpy/_core/arrayprint.py:1022
+E               /Users/kpatel/Desktop/agent-communication/.agent-venv/lib/python3.13/site-packages/numpy/_core/arrayprint.py:1027
+E               (and 2 more with settings.verbosity &gt;= verbose)
+E       
+E       You can reproduce this test case by temporarily adding @reproduce_failure('6.167.0', b'AEEHQQY=') as a decorator on your test function
+
+tests/test_property_invariants.py:110: AssertionError</failure></testcase><testcase classname="tests.test_property_invariants" name="test_p4_01_l2_norm_negative_control" time="0.000" /><testcase classname="tests.test_property_invariants" name="test_p4_07_nan_input_typed_error" time="0.003" /></testsuite></testsuites>

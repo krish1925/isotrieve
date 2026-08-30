@@ -4,19 +4,37 @@ from __future__ import annotations
 
 import json
 import struct
+import zlib
 from abc import ABC, abstractmethod
 from collections.abc import Iterator, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
-# .isotrieve binary format: magic + header_len + utf-8 JSON header + float64 matrix payload
+# .isotrieve binary format v2
+# Layout: magic(4) + header_len(4) + crc32(4) + padded_json(N) + payload(...)
 _ISOTRIEVE_MAGIC = b"ISTR"
-_ISOTRIEVE_FORMAT_VERSION = 1
+_ISOTRIEVE_FORMAT_VERSION = 2
 _HEADER_LEN_STRUCT = struct.Struct("<I")
+_CRC_STRUCT = struct.Struct("<I")
+_FIXED_HEADER_SIZE = 4 + 4 + 4  # magic + header_len + crc32
+_MAX_HEADER_LEN = 1 << 20  # 1 MB
+
+
+def _pad_to_8(data: bytes) -> bytes:
+    """Pad data to the next 8-byte boundary with trailing spaces."""
+    remainder = len(data) % 8
+    if remainder == 0:
+        return data
+    return data + b"\x20" * (8 - remainder)
+
+
+def _crc32(data: bytes) -> int:
+    """Compute CRC32 (IEEE 802.3 polynomial), matching the TS implementation."""
+    return zlib.crc32(data) & 0xFFFFFFFF
 
 
 @dataclass
@@ -48,7 +66,7 @@ def l2_normalize(vectors: np.ndarray, eps: float = 1e-12) -> np.ndarray:
         return vectors / norm
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     norms = np.maximum(norms, eps)
-    return vectors / norms
+    return np.asarray(vectors / norms)
 
 
 def _check_finite(name: str, arr: np.ndarray) -> None:
@@ -99,6 +117,16 @@ class Mapping(ABC):
             raise RuntimeError("Mapping is not fitted")
         return self._d_tgt
 
+    @property
+    def has_inverse(self) -> bool:
+        """Whether ``inverse_transform`` is available (analytic inverse)."""
+        return self._W_inv is not None
+
+    @property
+    def meta(self) -> dict[str, Any]:
+        """Metadata attached via :meth:`set_meta` (model ids, corpus id, …)."""
+        return self._meta
+
     def validation_report(self) -> ValidationReport:
         if self._validation_report is None:
             raise RuntimeError("No validation report; call fit() first")
@@ -128,7 +156,7 @@ class Mapping(ABC):
             yield self.transform(batch)
 
     def save(self, path: str | Path) -> None:
-        """Persist mapping to a single ``.isotrieve`` file."""
+        """Persist mapping to a single ``.isotrieve`` file (v2 format)."""
         if not self._fitted or self._W is None:
             raise RuntimeError("Cannot save an unfitted mapping")
 
@@ -169,6 +197,8 @@ class Mapping(ABC):
             header["score_recal_v1"] = self._recalibrator.save_dict()
 
         header_bytes = json.dumps(header, separators=(",", ":")).encode("utf-8")
+        padded_header = _pad_to_8(header_bytes)
+
         payload = self._W.astype(np.float64, copy=False).tobytes(order="C")
         if self._W_inv is not None:
             payload += self._W_inv.astype(np.float64, copy=False).tobytes(order="C")
@@ -178,10 +208,20 @@ class Mapping(ABC):
         if hasattr(self, "_mean_Y") and self._mean_Y is not None:
             payload += self._mean_Y.astype(np.float64, copy=False).tobytes(order="C")
 
+        # CRC32 covers everything except itself: magic + headerLen + paddedJSON + payload
+        crc_input = (
+            _ISOTRIEVE_MAGIC
+            + _HEADER_LEN_STRUCT.pack(len(header_bytes))
+            + padded_header
+            + payload
+        )
+        checksum = _crc32(crc_input)
+
         with path.open("wb") as f:
             f.write(_ISOTRIEVE_MAGIC)
             f.write(_HEADER_LEN_STRUCT.pack(len(header_bytes)))
-            f.write(header_bytes)
+            f.write(_CRC_STRUCT.pack(checksum))
+            f.write(padded_header)
             f.write(payload)
 
     @classmethod
@@ -243,7 +283,7 @@ class Mapping(ABC):
         _check_finite("V", V)
         if bias:
             V = _augment_bias(V)
-        out = V @ matrix
+        out = np.asarray(V @ matrix)
         if normalize:
             out = l2_normalize(out)
         return out.ravel() if single else out
@@ -264,7 +304,7 @@ class Mapping(ABC):
         """
         if self._recalibrator is None or not self._recalibrator.is_fitted:
             return np.asarray(scores, dtype=np.float64)
-        return self._recalibrator.transform(scores)
+        return np.asarray(self._recalibrator.transform(scores))
 
 
 def _pkg_version() -> str:
@@ -276,16 +316,67 @@ def _pkg_version() -> str:
         return "0.0.0"
 
 
+def _parse_header_from_buffer(raw: bytes) -> dict[str, Any]:
+    """Parse and validate header from a raw file buffer.
+
+    Handles both v1 (no CRC, no padding) and v2 (CRC + padded) formats.
+    """
+    if len(raw) < 8:
+        raise ValueError("Not an .isotrieve file: too short")
+    if raw[:4] != _ISOTRIEVE_MAGIC:
+        raise ValueError("Not an .isotrieve file (bad magic)")
+
+    (header_len,) = _HEADER_LEN_STRUCT.unpack(raw[4:8])
+
+    if header_len > _MAX_HEADER_LEN:
+        raise ValueError(
+            f"Invalid .isotrieve file: header length {header_len} exceeds {_MAX_HEADER_LEN} byte limit"
+        )
+
+    # Peek at the header JSON to get format_version.
+    # v2 layout: magic(4) + header_len(4) + crc32(4) + JSON; v1: magic(4) + header_len(4) + JSON.
+    header_offset = 8
+    try:
+        header_obj = json.loads(
+            raw[_FIXED_HEADER_SIZE : _FIXED_HEADER_SIZE + header_len].decode("utf-8")
+        )
+        fmt_ver = header_obj.get("format_version", 1)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        fmt_ver = 1
+
+    if fmt_ver >= 2:
+        header_offset = _FIXED_HEADER_SIZE
+        # v2: validate CRC32
+        if len(raw) < _FIXED_HEADER_SIZE + header_len:
+            raise ValueError("Not an .isotrieve file: truncated")
+        stored_crc = _CRC_STRUCT.unpack(raw[8:12])[0]
+        crc_input = raw[:8] + raw[_FIXED_HEADER_SIZE:]
+        computed_crc = _crc32(crc_input)
+        if stored_crc != computed_crc:
+            raise ValueError(
+                f"Invalid .isotrieve file: CRC32 mismatch "
+                f"(stored=0x{stored_crc:08x}, computed=0x{computed_crc:08x})"
+            )
+
+    header = json.loads(raw[header_offset : header_offset + header_len].decode("utf-8"))
+    return cast(dict[str, Any], header)
+
+
+def _find_payload_start(raw: bytes, header_len: int, fmt_ver: int) -> int:
+    """Find where the payload starts, skipping padding after the JSON header."""
+    if fmt_ver >= 2:
+        # v2: fixed header (magic + header_len + crc32) + JSON padded to 8 bytes.
+        padded_header_len = ((header_len + 7) // 8) * 8
+        return _FIXED_HEADER_SIZE + padded_header_len
+    # v1: no CRC, no padding.
+    return 8 + header_len
+
+
 def read_isotrieve_header(path: str | Path) -> dict[str, Any]:
     """Read and return the JSON header of a ``.isotrieve`` file without loading matrices."""
     path = Path(path)
-    with path.open("rb") as f:
-        magic = f.read(4)
-        if magic != _ISOTRIEVE_MAGIC:
-            raise ValueError(f"Not an .isotrieve file (bad magic): {path}")
-        (header_len,) = _HEADER_LEN_STRUCT.unpack(f.read(4))
-        header = json.loads(f.read(header_len).decode("utf-8"))
-    return header
+    raw = path.read_bytes()
+    return _parse_header_from_buffer(raw)
 
 
 def load_isotrieve_payload(
@@ -293,13 +384,13 @@ def load_isotrieve_payload(
 ) -> tuple[dict[str, Any], np.ndarray, np.ndarray | None, dict[str, np.ndarray]]:
     """Load header, forward matrix, and optional inverse matrix from ``.isotrieve``."""
     path = Path(path)
-    with path.open("rb") as f:
-        magic = f.read(4)
-        if magic != _ISOTRIEVE_MAGIC:
-            raise ValueError(f"Not an .isotrieve file (bad magic): {path}")
-        (header_len,) = _HEADER_LEN_STRUCT.unpack(f.read(4))
-        header = json.loads(f.read(header_len).decode("utf-8"))
-        rest = f.read()
+    raw = path.read_bytes()
+    header = _parse_header_from_buffer(raw)
+    fmt_ver = header.get("format_version", 1)
+
+    (file_header_len,) = _HEADER_LEN_STRUCT.unpack(raw[4:8])
+    payload_start = _find_payload_start(raw, file_header_len, fmt_ver)
+    rest = raw[payload_start:]
 
     shape = tuple(header["matrix_shape"])
     n_fwd = int(np.prod(shape))

@@ -12,6 +12,7 @@ from __future__ import annotations
 import glob as globmod
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 CLAIMS_PATH = Path("isotrieve-python/CLAIMS.md")
@@ -163,6 +164,55 @@ def check_retired_claims(readme_text: str) -> list[str]:
     return errors
 
 
+def check_stale_dates(rows: list[dict[str, str]], max_days: int = 180) -> list[str]:
+    """Warn when a claim's ``verified`` date is older than ``max_days``."""
+    warnings: list[str] = []
+    today = datetime.now().date()
+    for i, row in enumerate(rows, 1):
+        raw = row.get("verified", "").strip().strip("`")
+        m = re.search(r"(\d{4})-(\d{2})-(\d{2})", raw)
+        if not m:
+            continue
+        try:
+            verified = datetime(int(m.group(1)), int(m.group(2)), int(m.group(3))).date()
+        except ValueError:
+            continue
+        age = (today - verified).days
+        if age > max_days:
+            warnings.append(
+                f"Claim {i} verified {raw} is {age} days old "
+                f"(>{max_days}); re-verify or back the claim with a fresh artifact"
+            )
+    return warnings
+
+
+def check_number_drift(
+    claims_text: str, *doc_paths: Path, claim_re: str = r"0\.\d{2,3}"
+) -> list[str]:
+    """Cross-check numbers in docs/README against CLAIMS.md.
+
+    Finds percentage-like numbers in the given docs and warns when a
+    matching number does not also appear within a CLAIMS.md row.
+    """
+    warnings: list[str] = []
+    claim_numbers = set(re.findall(claim_re, claims_text))
+    for doc in doc_paths:
+        if not doc.exists():
+            continue
+        text = doc.read_text(encoding="utf-8", errors="ignore")
+        # Only look at retention/fidelity/recall contexts to reduce noise.
+        for line in text.splitlines():
+            if not re.search(r"retention|recall|fidelity|top-\d+|accurate|%", line, re.I):
+                continue
+            for num in re.findall(claim_re, line):
+                if num not in claim_numbers:
+                    warnings.append(
+                        f"Number {num} in {doc} ('{line.strip()[:80]}') "
+                        f"not present in CLAIMS.md; update CLAIMS.md or the doc"
+                    )
+    return warnings
+
+
 def main() -> int:
     if not CLAIMS_PATH.exists():
         print(f"ERROR: {CLAIMS_PATH} not found")
@@ -209,6 +259,16 @@ def main() -> int:
     if readme_path.exists():
         retired = check_retired_claims(readme_path.read_text())
         errors.extend(retired)
+
+    # Stale verified-date + number drift are informational (maintainer/agent-only).
+    warnings.extend(check_stale_dates(rows))
+    warnings.extend(
+        check_number_drift(
+            text,
+            Path("isotrieve-python/README.md"),
+            Path("isotrieve-python/CLAIMS.md"),
+        )
+    )
 
     # Report
     print()

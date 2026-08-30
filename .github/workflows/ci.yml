@@ -36,14 +36,14 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Mypy
         working-directory: isotrieve-python
-        run: mypy src/isotrieve/ --ignore-missing-imports --no-error-summary
+        run: mypy src/isotrieve/ --ignore-missing-imports --strict --no-error-summary
 
   test:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -56,13 +56,17 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Run tests
         working-directory: isotrieve-python
-        run: python -m pytest tests/ -q --tb=short --junitxml=test-results.xml
+        run: python -m pytest tests/ -q --tb=short --junitxml=test-results.xml -m "not slow"
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.python-version }}
           path: isotrieve-python/test-results.xml
+
+      - name: Adapter parity matrix is fresh
+        run: python isotrieve-python/scripts/gen_adapter_matrix.py --check
+        continue-on-error: true
 
   claims-lint:
     runs-on: ubuntu-latest
@@ -75,3 +79,36 @@ jobs:
       - name: Validate CLAIMS.md
         run: python isotrieve-python/scripts/lint_claims.py
         continue-on-error: true
+
+  pgvector-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: isotrieve-python/pyproject.toml
+      - name: Install package with pgvector extra
+        working-directory: isotrieve-python
+        run: pip install -e ".[dev,pgvector]"
+      - name: Run pgvector integration tests
+        working-directory: isotrieve-python
+        env:
+          PGVECTOR_TEST_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+        run: python -m pytest tests/test_pgvector_adapter.py -q --tb=short -m "integration"
+

@@ -1,0 +1,52 @@
+{
+  "type": "isotonic",
+  "feature": "top1_retention",
+  "scope": "local_model_pairs_only",
+  "scope_note": "Trained on open-source model pairs (MiniLM→bge, bge→e5, etc.). Not validated on API model pairs (ada-002, te3-large). API pair performance may differ.",
+  "X_thresholds": [
+    0.859375,
+    0.86,
+    0.8625,
+    0.92,
+    0.94,
+    0.95,
+    0.96,
+    0.98,
+    0.9817708333333334,
+    1.0
+  ],
+  "y_thresholds": [
+    0.6825700258094971,
+    0.6825700258094971,
+    0.6949693525920806,
+    0.6949693525920806,
+    0.7343601166779182,
+    0.7343601166779182,
+    0.7775196784869877,
+    0.7775196784869877,
+    0.8378163152124257,
+    0.8378163152124257
+  ],
+  "lipo": {
+    "n_pairs": 4,
+    "n_runs": 48,
+    "mae": 0.04425568365115393,
+    "rmse": 0.059221393868465894,
+    "interval_half_width_80": 0.07063306491771548,
+    "mean_residual": -0.002189032791842224,
+    "std_residual": 0.05918092283126556,
+    "residuals_by_pair": {
+      "lowrank::unknown::0\u21920": 0.03671359178496018,
+      "mlp::unknown::0\u21920": 0.056535956170693465,
+      "ridge::unknown::0\u21920": 0.040541591999356516,
+      "unknown::unknown::0\u21920": 0.03913523864341225
+    }
+  },
+  "training_pairs": [
+    "lowrank::unknown::0\u21920",
+    "mlp::unknown::0\u21920",
+    "ridge::unknown::0\u21920",
+    "unknown::unknown::0\u21920"
+  ],
+  "n_training_runs": 48
+}

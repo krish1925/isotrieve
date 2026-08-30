@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Isotrieve Benchmarks - Retrieval Retention on BEIR</title>
-    <meta name="description" content="Isotrieve benchmark results: 87-91% retrieval retention on BEIR datasets. Ridge, LowRank, and MLP adapter comparisons with quality gate thresholds.">
+    <meta name="description" content="Isotrieve benchmark results: 86-92% retrieval retention on BEIR datasets. Ridge, LowRank, and MLP adapter comparisons with quality gate thresholds.">
     <meta property="og:title" content="Isotrieve Benchmarks - Retrieval Retention on BEIR">
-    <meta property="og:description" content="87-91% retrieval retention on BEIR. Ridge, LowRank, MLP adapter comparisons with quality gate thresholds.">
+    <meta property="og:description" content="86-92% retrieval retention on BEIR. Ridge, LowRank, MLP adapter comparisons with quality gate thresholds.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://krish1925.github.io/Isotrieve/performance.html">
     <link rel="canonical" href="https://krish1925.github.io/Isotrieve/performance.html">
@@ -22,6 +22,8 @@
                 <li><a href="integrations.html">Integrations</a></li>
                 <li><a href="performance.html" class="on">Benchmarks</a></li>
                 <li><a href="docs.html">Docs</a></li>
+                <li><a href="why-gate.html">Why a Gate</a></li>
+                <li><a href="npm.html">NPM</a></li>
             </ul>
             <div class="nav-right">
                 <a href="https://github.com/krish1925/Isotrieve" class="nav-gh" target="_blank">GitHub</a>
@@ -40,7 +42,7 @@
     <section class="section">
         <div class="wrap">
 
-            <div class="grid4" style="margin-bottom:1.5rem">
+            <div class="grid4" style="margin-bottom:var(--s5)">
                 <div class="card accent"><div class="big">0.908</div><div class="label">Retention (same-dim)</div><div class="detail">bge &rarr; e5, SciFact, K=2000</div></div>
                 <div class="card accent"><div class="big">0.866</div><div class="label">Retention (rectangular)</div><div class="detail">MiniLM &rarr; bge, K=4000</div></div>
                 <div class="card"><div class="big">0.0</div><div class="label">Floor (raw cross-space)</div><div class="detail">Different models &ne; same space</div></div>

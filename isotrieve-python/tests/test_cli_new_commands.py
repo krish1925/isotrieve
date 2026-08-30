@@ -82,6 +82,101 @@ class TestGateCommand:
         )
         assert result.exit_code in (0, 1)
 
+    def test_gate_seed_sensitivity(self, tmp_path):
+        """--seed-sensitivity refits on subsamples and emits per-seed JSON."""
+        m = make_mapping(d_src=8, d_tgt=12, k=200)
+        save_mapping(m, tmp_path)
+
+        rng = np.random.default_rng(99)
+        X = rng.normal(size=(60, 8))
+        W = rng.normal(size=(8, 12))
+        Y = X @ W
+        np.save(tmp_path / "X.npy", X)
+        np.save(tmp_path / "Y.npy", Y)
+
+        result = runner.invoke(
+            app,
+            [
+                "gate",
+                "--mapping",
+                str(tmp_path / "map.isotrieve"),
+                "--source-vectors",
+                str(tmp_path / "X.npy"),
+                "--target-vectors",
+                str(tmp_path / "Y.npy"),
+                "--seed-sensitivity",
+                "--seed-sensitivity-runs",
+                "3",
+                "--seed-sensitivity-threshold",
+                "1.0",
+                "--format",
+                "json",
+            ],
+        )
+        assert result.exit_code in (0, 1)
+        data = json.loads(result.output)
+        ss = data["seed_sensitivity"]
+        assert ss["runs"] == 3
+        assert len(ss["per_seed_retention"]) == 3
+        assert ss["unstable"] is False
+        assert "mean_retention" in ss
+
+    def test_gate_seed_sensitivity_requires_paired_vectors(self, tmp_path):
+        """--seed-sensitivity refuses queries/corpus mode (no paired calib)."""
+        m = make_mapping(d_src=8, d_tgt=12, k=200)
+        save_mapping(m, tmp_path)
+
+        rng = np.random.default_rng(99)
+        np.save(tmp_path / "queries.npy", rng.normal(size=(50, 8)))
+        np.save(tmp_path / "corpus.npy", rng.normal(size=(50, 12)))
+
+        result = runner.invoke(
+            app,
+            [
+                "gate",
+                "--mapping",
+                str(tmp_path / "map.isotrieve"),
+                "--queries",
+                str(tmp_path / "queries.npy"),
+                "--corpus",
+                str(tmp_path / "corpus.npy"),
+                "--seed-sensitivity",
+                "--format",
+                "json",
+            ],
+        )
+        assert result.exit_code == 2
+
+    def test_gate_seed_sensitivity_without_mapping(self, tmp_path):
+        """--seed-sensitivity runs standalone without a mapping."""
+        rng = np.random.default_rng(7)
+        X = rng.normal(size=(60, 8))
+        W = rng.normal(size=(8, 12))
+        Y = X @ W
+        np.save(tmp_path / "X.npy", X)
+        np.save(tmp_path / "Y.npy", Y)
+
+        result = runner.invoke(
+            app,
+            [
+                "gate",
+                "--source-vectors",
+                str(tmp_path / "X.npy"),
+                "--target-vectors",
+                str(tmp_path / "Y.npy"),
+                "--seed-sensitivity",
+                "--seed-sensitivity-runs",
+                "3",
+                "--seed-sensitivity-threshold",
+                "1.0",
+                "--format",
+                "json",
+            ],
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert "seed_sensitivity" in data
+
 
 class TestCalibrateQueriesOnly:
     def test_queries_only_success(self, tmp_path):

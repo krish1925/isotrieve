@@ -5,141 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2026-02-04
+## [Unreleased]
+
+## [0.2.0] - 2026-08-30
+
+### Added
+- Jest test suite for `@isotrieve/demo-cli` (6 tests): results-table rendering extracted into a pure `buildResultsTable()` helper in `src/results.ts`; `npm test` at the monorepo root now passes for every workspace (previously failed: demo-cli had no test script)
+
+### Fixed
+- `npm install` failed for the whole monorepo: `@isotrieve/core` ranges in `adapters-cohere`, `adapters-huggingface`, `adapters-openai`, `adapters-voyage`, and `demo-cli` were `^1.0.0`, which can resolve neither to the local workspace (core is 0.1.0 after the version reset) nor to the registry (package never published). All workspace deps on core now use `*`
+- demo-cli README described Isotrieve as "Agent Embedding Communication Protocol" (pre-rename expansion) — now uses the embedding-migration framing; package description/keywords updated to match
+- Directory `packages/aecp-demo-cli` → `packages/isotrieve-demo-cli` and LICENSE attribution `AECP Contributors` → `Isotrieve Contributors` (landed in #83; pinned by Python-side naming regression tests)
+
+### Known issues
+
+- #85 — `.isotrieve` files written by this package are rejected by the strict Python reader (header key casing) — TS→PY handoff broken until fixed
+
+## [0.1.0] - 2026-07-28
 
 ### Added
 
+#### Binary format v2
+- **8-byte header padding**: JSON header padded to 8-byte boundary for zero-copy Float64Array views
+- **CRC32 checksum**: CRC32 over entire file (excluding checksum field) for corruption detection
+- **Strict reader**: unknown header keys throw, missing required keys throw (prevents silent empty matrices)
+- **Header length cap**: headerLen validated against 1MB ceiling before allocation (DoS mitigation)
+- **Payload size assertion**: rows × cols × 8 must equal remaining bytes exactly (catches truncation at format layer)
+- **Endianness assertion**: module-init check that platform is LE (documented as format requirement)
+- **Prototype pollution fix**: normalizeHeaderKeys uses Object.create(null) to prevent __proto__ injection
+
 #### Core Package (@isotrieve/core)
-- Initial release of Isotrieve protocol implementation
-- `Isotrieve` class for agent communication
-- Linear transfer matrix computation using least squares
-- Quality monitoring and validation
-- Automatic recalibration detection
-- Default vocabulary (150+ curated terms)
-- Extended vocabulary generation (up to 10k+ items)
-- TypeScript type definitions
-- Comprehensive API documentation
+- **Mapping types**: RidgeMapping, OrthogonalProcrustesMapping, ProcrustesDiagMapping, LowRankAffineMapping, ExternalMapping
+- **Binary format**: `.isotrieve` file read/write, cross-compatible with Python's isotrieve v2 format
+- **Quality gate**: `QualityGate` with isotonic regression model (gate_model_v1.json shared with Python)
+- **Score recalibration**: `ScoreRecalibrator` with PAVA isotonic regression
+- **Calibration planning**: `planCalibration`, `recommendK`
+- **Reranking**: `ConfidenceScorer`, `confidenceSummary`
+- **Migration**: `migrateStore` with batch processing, manifest, resumability
+- **Serve**: `QueryAdapter`, `cslsScores`, `mergeResults`
+- **Math**: SVD (one-sided Jacobi with m<n transpose fix), ridge regression with GCV alpha, matrix operations, cosine similarity, L2 normalization
+- **Tests**: 268 tests across 8 suites (linalg, normalize/metrics, errors, mappings, quality, correctness, cross-compat, stress)
 
-#### Adapters
-- **@isotrieve/adapters-openai**: OpenAI embeddings support
-  - text-embedding-3-small (1536D)
-  - text-embedding-3-large (3072D)
-  - text-embedding-ada-002 (1536D)
-
-- **@isotrieve/adapters-voyage**: Voyage AI embeddings support
-  - voyage-2 (1024D)
-  - voyage-large-2 (1536D)
-  - voyage-code-2 (1536D)
-
-- **@isotrieve/adapters-cohere**: Cohere embeddings support
-  - embed-english-v3.0 (1024D)
-  - embed-multilingual-v3.0 (1024D)
-  - embed-english-light-v3.0 (384D)
-  - embed-multilingual-light-v3.0 (384D)
-
-- **@isotrieve/adapters-huggingface**: Local inference support
-  - Xenova/all-MiniLM-L6-v2 (384D)
-  - Xenova/all-mpnet-base-v2 (768D)
-  - Xenova/bge-small-en-v1.5 (384D)
-  - Xenova/bge-base-en-v1.5 (768D)
-
-#### Examples
-- Basic transfer example
-- Multi-agent chat example
-- Custom adapter example
-
-#### Documentation
-- Getting started guide
-- Complete API reference
-- Protocol specification v1.0
-- Contributing guidelines
-
-### Features
-
-- **2x Better Semantic Preservation**: Validated 97% fidelity vs 43% text baseline
-- **Provider-Agnostic**: Works with any embedding API
-- **Production-Ready**: Validated on 300k vocabulary
-- **Lightweight**: < 1ms transfer latency
-- **Type-Safe**: Full TypeScript support
-- **Zero Dependencies**: Core package has no external dependencies
-
-### Performance
-
-- Calibration: 2-5 seconds for 1000 items
-- Transfer: < 1ms per embedding
-- Memory: O(D²) for transfer matrix
-- Quality: 0.80-0.97 cosine similarity
-
-### Validated On
-
-- 300k training vocabulary
-- 30k validation vocabulary
-- 10k test corpus
-- Multiple embedding model pairs
-- Cross-dimensional transfers (384D ↔ 768D, 1536D ↔ 3072D)
-
-## [Unreleased]
-
-### Planned
-
-- Batch transfer optimization
-- Matrix compression (quantization)
-- Incremental calibration
-- Multi-hop transfer (A → B → C)
-- Neural transfer functions
-- WebAssembly acceleration
-- Browser support improvements
-- Additional adapters (Anthropic, Azure, AWS)
-
----
-
-## Version Support
-
-| Version | Status | Support Until |
-|---------|--------|---------------|
-| 1.0.x   | Active | TBD           |
-
-## Migration Guides
-
-### From Python Implementation
-
-The NPM package maintains API compatibility with the Python proof-of-concept:
-
-**Python:**
-```python
-from protocol import ProtocolHandler
-
-agent = ProtocolHandler("agent_a", embedder, "model", 384)
-transfer_matrix = agent.calibrate(partner, train_vocab, val_vocab)
-transfer = agent.transfer_to("agent_b", text)
-```
-
-**TypeScript:**
-```typescript
-import { Isotrieve } from '@isotrieve/core';
-
-const agent = new Isotrieve({ embedder });
-const result = await agent.calibrateWith(partner, { vocabularySize: 1000 });
-const transfer = await agent.transferTo(partner, embedding);
-```
-
-## Breaking Changes
-
-None (initial release)
-
-## Security
-
-- No known vulnerabilities
-- Dependencies regularly updated
-- Security audits planned for v1.1
-
-## Credits
-
-Based on research validating Agent Embedding Communication Protocol (Isotrieve):
-- Original Python implementation: [protocol.py](../protocol.py)
-- Research summary: [ENHANCED_SUMMARY.md](../ENHANCED_SUMMARY.md)
-- Protocol specification: [protocol_spec.md](../protocol_spec.md)
-
-## License
-
-MIT License - See [LICENSE](LICENSE) file for details
+### Notes
+- This is the first release of the new embedding-migration architecture for TypeScript
+- The old protocol code (`Isotrieve`, `IsotrieveNegotiator`, `protocol.ts`, `negotiation.ts`) has been removed from `@isotrieve/core`
+- Adapter packages (`adapters-openai`, `adapters-voyage`, `adapters-cohere`, `adapters-huggingface`) still reference the old API and will be updated in a future release
+- This package is pre-1.0. APIs may change between minor versions.
+- v2 format is not backward-compatible with v1 readers; v1 files can still be loaded

@@ -13,6 +13,10 @@ build/
 .venv/
 venv/
 env/
+.agent-venv/
+
+# Agent loop scaffolding
+agent/
 
 # Testing
 .pytest_cache/
@@ -64,5 +68,4 @@ benchmarks/.embed_cache/
 
 # Scratch files at repo root
 *.ipynb_checkpoints/
-aecp-python/aecp_training_loss.png
 cleanup/

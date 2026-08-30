@@ -49,6 +49,32 @@ def register_gate_command(app: typer.Typer) -> None:
             1000, "--bootstrap-resamples", help="Number of bootstrap resamples"
         ),
         seed: int = typer.Option(0, "--seed"),
+        seed_sensitivity: bool = typer.Option(
+            False,
+            "--seed-sensitivity",
+            help="Refit the transform on subsamples and report retention stability "
+            "across seeds (requires paired --source-vectors/--target-vectors)",
+        ),
+        seed_sensitivity_runs: int = typer.Option(
+            5,
+            "--seed-sensitivity-runs",
+            min=2,
+            help="Number of refit-and-holdout runs for --seed-sensitivity",
+        ),
+        seed_sensitivity_threshold: float = typer.Option(
+            0.05,
+            "--seed-sensitivity-threshold",
+            help="WARN when seed-sensitivity std exceeds this threshold",
+        ),
+        seed_sensitivity_seed: int = typer.Option(
+            0, "--seed-sensitivity-seed", help="Base seed for --seed-sensitivity runs"
+        ),
+        corpus_texts: Path | None = typer.Option(
+            None,
+            "--corpus-texts",
+            help="Optional file with one corpus text per line; used to infer the "
+            "domain regime (general/legal/medical/code) reported in the gate output",
+        ),
     ) -> None:
         """Evaluate a mapping against sample data and report retention.
 
@@ -94,11 +120,12 @@ def register_gate_command(app: typer.Typer) -> None:
             mapping = ExternalMapping(fn)
 
         else:
-            console.print(
-                "[red]Provide --mapping (for .isotrieve files) or "
-                "--mapping-external (for external callables).[/red]"
-            )
-            raise typer.Exit(2)
+            if not seed_sensitivity:
+                console.print(
+                    "[red]Provide --mapping (for .isotrieve files) or "
+                    "--mapping-external (for external callables).[/red]"
+                )
+                raise typer.Exit(2)
 
         # Resolve gate inputs
         if source_vectors is not None and target_vectors is not None:
@@ -125,6 +152,13 @@ def register_gate_command(app: typer.Typer) -> None:
                 )
                 raise typer.Exit(1) from exc
         elif queries is not None and corpus is not None:
+            if seed_sensitivity:
+                console.print(
+                    "[red]--seed-sensitivity requires paired "
+                    "--source-vectors/--target-vectors (queries/corpus mode "
+                    "has no paired calibration vectors to refit on).[/red]"
+                )
+                raise typer.Exit(2)
             if not queries.exists():
                 console.print(f"[red]Queries file not found: {queries}[/red]")
                 raise typer.Exit(1)
@@ -161,10 +195,12 @@ def register_gate_command(app: typer.Typer) -> None:
             console.print("[red]Vector file is empty — need at least one vector.[/red]")
             raise typer.Exit(1)
         # d_src may be None for ExternalMapping (inferred on first transform)
-        try:
-            expected_src_dim = mapping.d_src
-        except RuntimeError:
-            expected_src_dim = None
+        expected_src_dim = None
+        if mapping is not None:
+            try:
+                expected_src_dim = mapping.d_src
+            except RuntimeError:
+                expected_src_dim = None
         if expected_src_dim is not None and X_sample.shape[1] != expected_src_dim:
             console.print(
                 f"[red]Source vector dim mismatch: expected {expected_src_dim} "
@@ -173,54 +209,96 @@ def register_gate_command(app: typer.Typer) -> None:
             )
             raise typer.Exit(1)
 
-        # Run gate
+        # Run gate (point estimate) when a mapping was provided
         gate = QualityGate()
-        try:
-            report = gate.evaluate(mapping, X_sample, Y_sample)
-        except ValueError as exc:
-            msg = str(exc)
-            if "NaN" in msg or "Inf" in msg:
-                console.print(
-                    "[red]Vectors contain NaN or Inf values.[/red]\n"
-                    "  Check your source/target vector files for corrupt data."
+        report = None
+        if mapping is not None:
+            sample_texts = None
+            if corpus_texts is not None:
+                if not corpus_texts.exists():
+                    console.print(
+                        f"[red]Corpus texts file not found: {corpus_texts}[/red]"
+                    )
+                    raise typer.Exit(1)
+                sample_texts = [
+                    line.strip()
+                    for line in corpus_texts.read_text(encoding="utf-8").splitlines()
+                    if line.strip()
+                ]
+            try:
+                report = gate.evaluate(
+                    mapping, X_sample, Y_sample, corpus_texts=sample_texts
                 )
-            elif "Dimension" in msg or "dim" in msg.lower():
-                console.print(f"[red]{msg}[/red]")
-            else:
+            except ValueError as exc:
+                msg = str(exc)
+                if "NaN" in msg or "Inf" in msg:
+                    console.print(
+                        "[red]Vectors contain NaN or Inf values.[/red]\n"
+                        "  Check your source/target vector files for corrupt data."
+                    )
+                elif "Dimension" in msg or "dim" in msg.lower():
+                    console.print(f"[red]{msg}[/red]")
+                else:
+                    console.print(f"[red]Gate evaluation failed: {exc}[/red]")
+                raise typer.Exit(1) from exc
+            except Exception as exc:
                 console.print(f"[red]Gate evaluation failed: {exc}[/red]")
-            raise typer.Exit(1) from exc
-        except Exception as exc:
-            console.print(f"[red]Gate evaluation failed: {exc}[/red]")
-            raise typer.Exit(1) from exc
+                raise typer.Exit(1) from exc
 
         # Bootstrap confidence intervals on retention metrics
-        try:
-            ci = _bootstrap_retention_ci(
-                mapping,
-                X_sample,
-                Y_sample,
-                n_resamples=bootstrap_resamples,
-                seed=seed,
-            )
-        except Exception as exc:
-            console.print(
-                f"[yellow]Warning: bootstrap CI failed ({exc}). "
-                f"Showing point estimates only.[/yellow]"
-            )
-            ci = {}
+        ci: dict[str, tuple[float, float]] = {}
+        if report is not None:
+            try:
+                ci = _bootstrap_retention_ci(
+                    mapping,
+                    X_sample,
+                    Y_sample,
+                    n_resamples=bootstrap_resamples,
+                    seed=seed,
+                )
+            except Exception as exc:
+                console.print(
+                    f"[yellow]Warning: bootstrap CI failed ({exc}). "
+                    f"Showing point estimates only.[/yellow]"
+                )
+                ci = {}
+
+        # Seed sensitivity: refit on subsamples and measure retention stability
+        ss_report = None
+        if seed_sensitivity:
+            try:
+                ss_report = gate.seed_sensitivity(
+                    X_sample,
+                    Y_sample,
+                    runs=seed_sensitivity_runs,
+                    threshold=seed_sensitivity_threshold,
+                    seed=seed_sensitivity_seed,
+                )
+            except ValueError as exc:
+                console.print(f"[red]Seed-sensitivity failed: {exc}[/red]")
+                raise typer.Exit(1) from exc
 
         # Format output
         if output_format == "json":
-            _output_json(report, ci, output_file)
+            _output_json(report, ci, ss_report, output_file)
         elif output_format == "html":
-            _output_html(report, ci, output_file)
+            _output_html(report, ci, ss_report, output_file)
         else:
-            _output_md(report, ci, output_file)
+            _output_md(report, ci, ss_report, output_file)
 
-        # Exit code
-        if report.verdict.value == "PASS":
-            raise typer.Exit(0)
-        raise typer.Exit(1)
+        # Exit code: PASS=0, WARN/FAIL=1, seed instability=1
+        exit_code = 0
+        if report is not None and report.verdict.value != "PASS":
+            exit_code = 1
+        if ss_report is not None and ss_report.unstable:
+            console.print(
+                f"[yellow]WARN: seed-sensitivity std "
+                f"{ss_report.std_retention:.3f} >= threshold "
+                f"{ss_report.threshold:.3f} — gate result may be an artifact "
+                f"of one calibration split.[/yellow]"
+            )
+            exit_code = 1
+        raise typer.Exit(exit_code)
 
 
 def _bootstrap_retention_ci(
@@ -264,11 +342,21 @@ def _bootstrap_retention_ci(
     }
 
 
-def _output_json(report: Any, ci: dict, output_file: Path | None) -> None:
-    data = report.to_dict()
+def _output_json(
+    report: Any,
+    ci: dict[str, Any],
+    ss_report: Any | None,
+    output_file: Path | None,
+) -> None:
+    if report is None:
+        data: dict[str, Any] = {}
+    else:
+        data = report.to_dict()
     data["confidence_intervals"] = {
         k: {"lower": v[0], "upper": v[1]} for k, v in ci.items()
     }
+    if ss_report is not None:
+        data["seed_sensitivity"] = ss_report.to_dict()
     text = json.dumps(data, indent=2, default=str)
     if output_file:
         output_file.write_text(text, encoding="utf-8")
@@ -277,37 +365,66 @@ def _output_json(report: Any, ci: dict, output_file: Path | None) -> None:
         console.print_json(text)
 
 
-def _output_md(report: Any, ci: dict, output_file: Path | None) -> None:
-    table = Table(title=f"Gate: {report.verdict.value}")
-    table.add_column("Metric")
-    table.add_column("Value", justify="right")
-    table.add_column("90% CI", justify="right")
+def _output_md(
+    report: Any, ci: dict[str, Any], ss_report: Any | None, output_file: Path | None
+) -> None:
+    lines: list[str] = []
+    if report is not None:
+        table = Table(title=f"Gate: {report.verdict.value}")
+        table.add_column("Metric")
+        table.add_column("Value", justify="right")
+        table.add_column("90% CI", justify="right")
 
-    table.add_row(
-        "Predicted retention",
-        f"{report.predicted_retention:.3f}",
-        f"[{report.prediction_interval[0]:.3f}, {report.prediction_interval[1]:.3f}]",
-    )
+        table.add_row(
+            "Predicted retention",
+            f"{report.predicted_retention:.3f}",
+            f"[{report.prediction_interval[0]:.3f}, {report.prediction_interval[1]:.3f}]",
+        )
 
-    for metric, key in [
-        ("Recall@1", "recall_at_1"),
-        ("Recall@5", "recall_at_5"),
-        ("Recall@10", "recall_at_10"),
-        ("MRR", "mrr"),
-    ]:
-        if key in ci:
-            lower, upper = ci[key]
-            mid = (lower + upper) / 2
-            table.add_row(metric, f"{mid:.3f}", f"[{lower:.3f}, {upper:.3f}]")
+        for metric, key in [
+            ("Recall@1", "recall_at_1"),
+            ("Recall@5", "recall_at_5"),
+            ("Recall@10", "recall_at_10"),
+            ("MRR", "mrr"),
+        ]:
+            if key in ci:
+                lower, upper = ci[key]
+                mid = (lower + upper) / 2
+                table.add_row(metric, f"{mid:.3f}", f"[{lower:.3f}, {upper:.3f}]")
 
-    table.add_row("Verdict", f"[bold]{report.verdict.value}[/bold]", "")
+        table.add_row("Verdict", f"[bold]{report.verdict.value}[/bold]", "")
+        table.add_row("Domain regime", report.domain_regime, "")
 
-    text_content = _table_to_text(table)
+        lines.append(_table_to_text(table))
+
+    if ss_report is not None:
+        ss_table = Table(title=f"Seed sensitivity ({ss_report.runs} refit runs)")
+        ss_table.add_column("Metric")
+        ss_table.add_column("Value", justify="right")
+        ss_table.add_row(
+            "Retention mean ± std",
+            f"{ss_report.mean_retention:.3f} ± {ss_report.std_retention:.3f}",
+        )
+        ss_table.add_row(
+            "Range",
+            f"[{ss_report.min_retention:.3f}, {ss_report.max_retention:.3f}]",
+        )
+        ss_table.add_row(
+            "Per-seed", ", ".join(f"{v:.3f}" for v in ss_report.per_seed_retention)
+        )
+        ss_table.add_row(
+            "Stability",
+            "[red]UNSTABLE[/red]" if ss_report.unstable else "[green]STABLE[/green]",
+        )
+        lines.append(_table_to_text(ss_table))
+
+    text_content = "\n".join(lines).strip()
     if output_file:
         output_file.write_text(text_content, encoding="utf-8")
         console.print(f"Written to {output_file}")
     else:
-        console.print(table)
+        for line in lines:
+            console.print(line)
 
 
 def _table_to_text(table: Table) -> str:
@@ -320,10 +437,12 @@ def _table_to_text(table: Table) -> str:
     return buf.getvalue()
 
 
-def _output_html(report: Any, ci: dict, output_file: Path | None) -> None:
+def _output_html(
+    report: Any, ci: dict[str, Any], ss_report: Any | None, output_file: Path | None
+) -> None:
     from isotrieve.reporting.html_report import generate_gate_html
 
-    html = generate_gate_html(report, ci)
+    html = generate_gate_html(report, ci, ss_report)
     if output_file:
         output_file.write_text(html, encoding="utf-8")
         console.print(f"Written to {output_file}")

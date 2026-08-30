@@ -1,6 +1,10 @@
 # @isotrieve/core
 
-Core implementation of the Agent Embedding Communication Protocol (Isotrieve).
+> **Pre-1.0 / Beta** — This TypeScript port of [isotrieve](https://pypi.org/project/isotrieve/) is under active development. The Python package is the mature, benchmark-validated implementation. Until Phases 0–4 of the production readiness plan are closed, treat this as a preview.
+
+Embedding migration without re-embedding. Learn a linear mapping between source and target embedding spaces from a small calibration sample, then transform stored vectors in place — and gate the migration on measured retrieval retention before you commit.
+
+This is the TypeScript port of the Python [`isotrieve`](https://pypi.org/project/isotrieve/) package. The `.isotrieve` binary format is cross-compatible between both runtimes.
 
 ## Installation
 
@@ -8,73 +12,112 @@ Core implementation of the Agent Embedding Communication Protocol (Isotrieve).
 npm install @isotrieve/core
 ```
 
-## Quick Start
+Requires Node.js >= 18.
+
+## Quick start
 
 ```typescript
-import { Isotrieve } from '@isotrieve/core';
+import {
+  RidgeMapping,
+  QualityGate,
+  trainTestSplit,
+} from '@isotrieve/core';
 
-// Create custom embedding provider
-const myEmbedder = {
-  async embed(text: string): Promise<number[]> {
-    // Your embedding logic
-    return [0.1, 0.2, 0.3, ...];
-  },
-  async embedBatch(texts: string[]): Promise<number[][]> {
-    return Promise.all(texts.map(t => this.embed(t)));
-  },
-  getDimensions(): number {
-    return 384;
-  },
-  getModelId(): string {
-    return 'my-model';
-  }
-};
+// Calibration pairs: vectors embedded with the old model (X) and new model (Y)
+const { X, Y } = trainTestSplit(sourceVectors, targetVectors, { testSize: 0.2, seed: 42 });
 
-const agent = new Isotrieve({ embedder: myEmbedder });
+// Fit a ridge mapping (supports cross-dimension: 384 → 1536 works)
+const mapping = new RidgeMapping({ alpha: 1.0 });
+mapping.fit(X_train, Y_train);
+
+// Validate on held-out pairs
+const validation = mapping.validate(X_test, Y_test);
+console.log(`Holdout cosine mean: ${validation.holdoutCosineMean.toFixed(3)}`);
+
+// Save the mapping (cross-compatible with Python's isotrieve format)
+mapping.save('migration.isotrieve');
+
+// Gate the migration before committing
+const gate = new QualityGate();
+const report = gate.evaluate(mapping, X_test, Y_test, { holdoutTop1: validation.top1Retention });
+console.log(report.verdict); // 'PASS' | 'WARN' | 'FAIL'
 ```
 
-## API
+## Mapping types
 
-### `new Isotrieve(config)`
+| Type | Use case | Inverse | Cross-dim |
+|------|----------|---------|-----------|
+| `RidgeMapping` | Default. Noise-robust, unequal dims. | No | Yes |
+| `OrthogonalProcrustesMapping` | Similar spaces, square dims. | Yes | No |
+| `ProcrustesDiagMapping` | Axis-aligned transform. | Yes | No |
+| `LowRankAffineMapping` | Limited calibration data. | No | Yes |
+| `ExternalMapping` | Wraps a user-provided function. | No | Any |
 
-Create a new Isotrieve agent.
+## Quality gate
 
-**Config:**
-- `embedder: EmbeddingProvider` - Embedding provider implementation
-- `agentId?: string` - Optional agent ID (auto-generated if not provided)
-- `minQualityThreshold?: number` - Minimum quality threshold (default: 0.75)
-- `maxBatchSize?: number` - Maximum batch size (default: 1000)
+```typescript
+import { QualityGate } from '@isotrieve/core';
 
-### `calibrateWith(otherAgent, config?)`
+const gate = new QualityGate();
+const report = gate.evaluate(mapping, X_test, Y_test, { holdoutTop1: 0.95 });
 
-Calibrate with another agent to enable semantic transfer.
+report.verdict;              // 'PASS' | 'WARN' | 'FAIL'
+report.predictedRetention;   // isotonic regression prediction from gate model v1
+report.predictionInterval;   // [lower, upper] 80% CI
+report.marginCompression;    // compressed ↔ 1.0
+```
 
-**Returns:** `Promise<CalibrationResult>`
+The gate model (`gate_model_v1.json`) is shared with the Python package and produces identical verdicts on the same inputs.
 
-### `embed(text)`
+## Score recalibration
 
-Generate embedding for text.
+```typescript
+import { ScoreRecalibrator } from '@isotrieve/core';
 
-**Returns:** `Promise<number[]>`
+const recal = new ScoreRecalibrator();
+recal.fit(mappedScores, ceilingScores);  // PAVA isotonic regression
+const adjusted = recal.transform(newScores);
+```
 
-### `transferTo(targetAgent, embedding)`
+## Migration
 
-Transfer embedding to another agent's space.
+```typescript
+import { migrateStore } from '@isotrieve/core';
 
-**Returns:** `Promise<SemanticTransfer>`
+const manifest = await migrateStore({
+  source: sourceVectorStore,
+  target: targetVectorStore,
+  mapping,
+  batchSize: 1000,
+  onBatchComplete: (batch) => console.log(`Migrated batch ${batch.batchNum}`),
+});
+```
 
-### `findSimilar(queryEmbedding, knowledgeBase, topK?)`
+## Binary format
 
-Find similar embeddings in a knowledge base.
+`.isotrieve` files are cross-compatible with Python's `isotrieve` package. Format:
 
-**Returns:** `Promise<Array<{index: number, similarity: number}>>`
+- Magic bytes: `ISTR` (4 bytes)
+- Header length: uint32 LE
+- Header: JSON (format version, mapping type, dimensions, validation report, etc.)
+- Payload: Float64 matrices in row-major order
 
-### `getQualityScore(targetAgentId)`
+## Which package should I use?
 
-Get quality score for connection with another agent.
+| | Python (`isotrieve`) | TypeScript (`@isotrieve/core`) |
+|---|---|---|
+| Status | Stable, benchmark-validated | Beta, under active development |
+| CLI | Full (`isotrieve calibrate/gate/migrate/...`) | Library only (no CLI yet) |
+| Store adapters | ChromaDB, Qdrant, Pinecone, LlamaIndex | In-memory reference store (more planned) |
+| Benchmarks | Committed results in `benchmarks/results/` | Not yet benchmarked independently |
+| Binary format | v1 | v1 (cross-compatible) |
 
-**Returns:** `number | null`
+Use the Python package for production migrations today. Use this package if you need a TypeScript library for programmatic mapping, gating, or format interop.
+
+## Status
+
+Pre-1.0. APIs may change between minor versions. See the root [README.md](../../README.md) for the full production readiness plan.
 
 ## License
 
-MIT
+Apache-2.0. See [LICENSE](../../isotrieve-python/LICENSE).

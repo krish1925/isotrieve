@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="19" time="339.040" timestamp="2026-08-29T23:35:13.678750-07:00" hostname="Krishs-MacBook-Pro.local"><testcase classname="tests.test_bias_audit.TestP501LeakageDisjointness" name="test_calibration_overlap_with_qrels_reported" time="0.129" /><testcase classname="tests.test_bias_audit.TestP505BootstrapCoverage" name="test_ci_coverage_of_true_retention[0.5]" time="171.655"><failure message="AssertionError: r=0.5 coverage 0.000 outside [0.75,0.85]&#10;assert 0.75 &lt;= 0.0">self = &lt;test_bias_audit.TestP505BootstrapCoverage object at 0x1154c4cd0&gt;
+r = 0.5
+
+    @pytest.mark.parametrize("r", [0.5, 0.7, 0.9])
+    def test_ci_coverage_of_true_retention(self, r: float) -&gt; None:
+        from isotrieve.cli_gate import _bootstrap_retention_ci  # noqa: PLC0415
+    
+        n, universes, resamples = 200, 400, 200
+        Y = np.eye(n)
+        rng_master = np.random.default_rng(SEED)
+    
+        class _Stub:
+            def __init__(self, mask: np.ndarray) -&gt; None:
+                self._M = Y[mask] if False else None  # placeholder, set below
+                rows = []
+                for i in range(n):
+                    rows.append(Y[i] if mask[i] else Y[(i + 1) % n])
+                self._M = np.array(rows)
+    
+            def transform(self, X: np.ndarray) -&gt; np.ndarray:  # noqa: ARG002
+                return self._M
+    
+        covered = 0
+        for _ in range(universes):
+            mask = rng_master.random(n) &lt; r
+            stub = _Stub(mask)
+            X = np.zeros((n, 1))
+            ci = _bootstrap_retention_ci(stub, X, Y, n_resamples=resamples, seed=SEED)
+            lo, hi = ci["recall_at_1"]
+            if lo &lt;= r &lt;= hi:
+                covered += 1
+        coverage = covered / universes
+        mc_stderr = float(np.sqrt(coverage * (1 - coverage) / universes))
+        print(f"P5-05 r={r}: coverage={coverage:.4f} ± {mc_stderr:.4f} (nominal 80%)")
+&gt;       assert 0.75 &lt;= coverage &lt;= 0.85, (
+            f"r={r} coverage {coverage:.3f} outside [0.75,0.85]"
+        )
+E       AssertionError: r=0.5 coverage 0.000 outside [0.75,0.85]
+E       assert 0.75 &lt;= 0.0
+
+tests/test_bias_audit.py:236: AssertionError</failure></testcase><testcase classname="tests.test_bias_audit.TestP502GateLopoRevalidation" name="test_lopo_fold_exclusion_in_source" time="0.000" /><testcase classname="tests.test_bias_audit.TestP501LeakageDisjointness" name="test_source_calibration_sampling_uses_docs_only" time="0.003" /><testcase classname="tests.test_bias_audit.TestP503AlphaIsolation" name="test_alpha_reported_across_five_subsets" time="0.016" /><testcase classname="tests.test_bias_audit.TestP505BootstrapCoverage" name="test_ci_coverage_of_true_retention[0.9]" time="171.240"><failure message="AssertionError: r=0.9 coverage 0.000 outside [0.75,0.85]&#10;assert 0.75 &lt;= 0.0">self = &lt;test_bias_audit.TestP505BootstrapCoverage object at 0x116f29220&gt;
+r = 0.9
+
+    @pytest.mark.parametrize("r", [0.5, 0.7, 0.9])
+    def test_ci_coverage_of_true_retention(self, r: float) -&gt; None:
+        from isotrieve.cli_gate import _bootstrap_retention_ci  # noqa: PLC0415
+    
+        n, universes, resamples = 200, 400, 200
+        Y = np.eye(n)
+        rng_master = np.random.default_rng(SEED)
+    
+        class _Stub:
+            def __init__(self, mask: np.ndarray) -&gt; None:
+                self._M = Y[mask] if False else None  # placeholder, set below
+                rows = []
+                for i in range(n):
+                    rows.append(Y[i] if mask[i] else Y[(i + 1) % n])
+                self._M = np.array(rows)
+    
+            def transform(self, X: np.ndarray) -&gt; np.ndarray:  # noqa: ARG002
+                return self._M
+    
+        covered = 0
+        for _ in range(universes):
+            mask = rng_master.random(n) &lt; r
+            stub = _Stub(mask)
+            X = np.zeros((n, 1))
+            ci = _bootstrap_retention_ci(stub, X, Y, n_resamples=resamples, seed=SEED)
+            lo, hi = ci["recall_at_1"]
+            if lo &lt;= r &lt;= hi:
+                covered += 1
+        coverage = covered / universes
+        mc_stderr = float(np.sqrt(coverage * (1 - coverage) / universes))
+        print(f"P5-05 r={r}: coverage={coverage:.4f} ± {mc_stderr:.4f} (nominal 80%)")
+&gt;       assert 0.75 &lt;= coverage &lt;= 0.85, (
+            f"r={r} coverage {coverage:.3f} outside [0.75,0.85]"
+        )
+E       AssertionError: r=0.9 coverage 0.000 outside [0.75,0.85]
+E       assert 0.75 &lt;= 0.0
+
+tests/test_bias_audit.py:236: AssertionError</failure></testcase><testcase classname="tests.test_bias_audit.TestP503AlphaIsolation" name="test_solver_never_sees_eval_rows" time="0.019" /><testcase classname="tests.test_bias_audit.TestP501LeakageDisjointness" name="test_sampling_deterministic_per_seed" time="0.002" /><testcase classname="tests.test_bias_audit.TestP507MarginCompression" name="test_compression_detected_and_penalized[0.4]" time="0.002" /><testcase classname="tests.test_bias_audit.TestP507MarginCompression" name="test_bug8_regression_non_degenerate_normalized" time="0.001" /><testcase classname="tests.test_bias_audit.TestP508to11StaticAudits" name="test_p5_08_all_artifacts_declare_protocol" time="0.003"><failure message="AssertionError: undeclared-config artifacts: ['beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k1000__seed0__7671d810e251.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k1000__seed1__85b0224d973f.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k1000__seed2__ea793932c84d.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k2000__seed0__b94fb68eec95.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k2000__seed1__aa33a89e725b.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k2000__seed2__8feb8b4fb435.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k500__seed0__a014c1f5be50.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k500__seed1__00894dcf353e.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k500__seed2__b85b02bf82bf.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__mlp__k1000__seed0__dcdfa86453ab.json: missing protocol']&#10;assert not ['beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k1000__s...formers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k2000__seed2__8feb8b4fb435.json: missing protocol', ...]">self = &lt;test_bias_audit.TestP508to11StaticAudits object at 0x113fa9450&gt;
+
+    def test_p5_08_all_artifacts_declare_protocol(self) -&gt; None:
+        import json  # noqa: PLC0415
+    
+        arts = sorted((BENCH / "results").glob("*.json"))
+        assert len(arts) &gt;= 60, f"unexpected artifact count {len(arts)}"
+        missing = []
+        for a in arts:
+            try:
+                d = json.loads(a.read_text())
+            except Exception:
+                missing.append(f"{a.name}: unparseable")
+                continue
+            for field in ("protocol", "config_hash", "commit"):
+                if field not in d:
+                    missing.append(f"{a.name}: missing {field}")
+&gt;       assert not missing, f"undeclared-config artifacts: {missing[:10]}"
+E       AssertionError: undeclared-config artifacts: ['beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k1000__seed0__7671d810e251.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k1000__seed1__85b0224d973f.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k1000__seed2__ea793932c84d.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k2000__seed0__b94fb68eec95.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k2000__seed1__aa33a89e725b.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k2000__seed2__8feb8b4fb435.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k500__seed0__a014c1f5be50.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k500__seed1__00894dcf353e.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k500__seed2__b85b02bf82bf.json: missing protocol', 'beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__mlp__k1000__seed0__dcdfa86453ab.json: missing protocol']
+E       assert not ['beir_scifact_test_ir_datasets__sentence-transformers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k1000__s...formers_all-MiniLM-L6-v2__to__BAAI_bge-large-en-v1.5__lowrank__k2000__seed2__8feb8b4fb435.json: missing protocol', ...]
+
+tests/test_bias_audit.py:320: AssertionError</failure></testcase><testcase classname="tests.test_bias_audit.TestP504RecalibratorSplit" name="test_holdout_excluded_from_fit_support" time="0.005" /><testcase classname="tests.test_bias_audit.TestP508to11StaticAudits" name="test_p5_10_no_eval_peeking_in_fit_loops" time="0.001" /><testcase classname="tests.test_bias_audit.TestP507MarginCompression" name="test_compression_detected_and_penalized[0.2]" time="0.002" /><testcase classname="tests.test_bias_audit.TestP508to11StaticAudits" name="test_p5_11_probe_purity_same_index" time="0.000" /><testcase classname="tests.test_bias_audit.TestP508to11StaticAudits" name="test_p5_09_truncation_fairness_same_arms" time="0.002" /><testcase classname="tests.test_bias_audit.TestP502GateLopoRevalidation" name="test_lopo_mae_within_budget" time="0.011" /><testcase classname="tests.test_bias_audit.TestP506SeedSensitivityHonesty" name="test_deterministic_and_internally_consistent" time="0.045" /><testcase classname="tests.test_bias_audit.TestP505BootstrapCoverage" name="test_ci_coverage_of_true_retention[0.7]" time="166.043"><failure message="AssertionError: r=0.7 coverage 0.000 outside [0.75,0.85]&#10;assert 0.75 &lt;= 0.0">self = &lt;test_bias_audit.TestP505BootstrapCoverage object at 0x1154c4e10&gt;
+r = 0.7
+
+    @pytest.mark.parametrize("r", [0.5, 0.7, 0.9])
+    def test_ci_coverage_of_true_retention(self, r: float) -&gt; None:
+        from isotrieve.cli_gate import _bootstrap_retention_ci  # noqa: PLC0415
+    
+        n, universes, resamples = 200, 400, 200
+        Y = np.eye(n)
+        rng_master = np.random.default_rng(SEED)
+    
+        class _Stub:
+            def __init__(self, mask: np.ndarray) -&gt; None:
+                self._M = Y[mask] if False else None  # placeholder, set below
+                rows = []
+                for i in range(n):
+                    rows.append(Y[i] if mask[i] else Y[(i + 1) % n])
+                self._M = np.array(rows)
+    
+            def transform(self, X: np.ndarray) -&gt; np.ndarray:  # noqa: ARG002
+                return self._M
+    
+        covered = 0
+        for _ in range(universes):
+            mask = rng_master.random(n) &lt; r
+            stub = _Stub(mask)
+            X = np.zeros((n, 1))
+            ci = _bootstrap_retention_ci(stub, X, Y, n_resamples=resamples, seed=SEED)
+            lo, hi = ci["recall_at_1"]
+            if lo &lt;= r &lt;= hi:
+                covered += 1
+        coverage = covered / universes
+        mc_stderr = float(np.sqrt(coverage * (1 - coverage) / universes))
+        print(f"P5-05 r={r}: coverage={coverage:.4f} ± {mc_stderr:.4f} (nominal 80%)")
+&gt;       assert 0.75 &lt;= coverage &lt;= 0.85, (
+            f"r={r} coverage {coverage:.3f} outside [0.75,0.85]"
+        )
+E       AssertionError: r=0.7 coverage 0.000 outside [0.75,0.85]
+E       assert 0.75 &lt;= 0.0
+
+tests/test_bias_audit.py:236: AssertionError</failure></testcase></testsuite></testsuites>

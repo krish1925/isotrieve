@@ -54,6 +54,11 @@ class ExternalMapping(Mapping):
         self._fitted = True
         self._meta["source"] = "external"
 
+    @property
+    def has_inverse(self) -> bool:
+        """Invertible when an ``inverse_fn`` was provided at construction."""
+        return self._inverse_fn is not None
+
     def fit(self, X: np.ndarray, Y: np.ndarray) -> ExternalMapping:
         """No-op: external mappings are pre-trained.
 

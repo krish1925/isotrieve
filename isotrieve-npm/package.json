@@ -1,8 +1,8 @@
 {
   "name": "isotrieve-monorepo",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
-  "description": "Agent Embedding Communication Protocol - Production-ready NPM package",
+  "description": "Embedding migration without re-embedding — TypeScript packages",
   "workspaces": [
     "packages/*"
   ],

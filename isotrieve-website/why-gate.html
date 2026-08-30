@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why a Gate - Migrate an Embedding Model Without Re-embedding</title>
+    <meta name="description" content="Why Isotrieve ships a quality gate, not just a mapping library. Migration risk is validating retention, not computing a transform. Adapter library vs in-place migration, and whether your embedding model migration from re-embedding is safe to ship.">
+    <meta property="og:title" content="Why a Gate - Migrate an Embedding Model Without Re-embedding">
+    <meta property="og:description" content="Migration risk is validating retention, not computing a mapping. When to use an adapter library vs Isotrieve, and why the gate decides.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://krish1925.github.io/Isotrieve/why-gate.html">
+    <link rel="canonical" href="https://krish1925.github.io/Isotrieve/why-gate.html">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/docs.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="index.html" class="brand"><span class="brand-dot"></span>Isotrieve</a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="protocol.html">How It Works</a></li>
+                <li><a href="integrations.html">Integrations</a></li>
+                <li><a href="performance.html">Benchmarks</a></li>
+                <li><a href="docs.html">Docs</a></li>
+                <li><a href="why-gate.html" class="on">Why a Gate</a></li>
+                <li><a href="npm.html">NPM</a></li>
+            </ul>
+            <div class="nav-right">
+                <a href="https://github.com/krish1925/Isotrieve" class="nav-gh" target="_blank">GitHub</a>
+                <button class="theme-btn" id="themeToggle" title="Toggle theme">&#9681;</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="docs-layout">
+        <aside class="docs-side">
+            <div class="inner">
+                <div class="search"><input type="text" placeholder="Search docs..." id="docsSearch"></div>
+                <nav>
+                    <div class="sgroup"><div class="sgroup-t">The Problem</div>
+                        <a href="#why" class="on">Why a gate</a>
+                    </div>
+                    <div class="sgroup"><div class="sgroup-t">Positioning</div>
+                        <a href="#when">Adapter library vs Isotrive</a>
+                        <a href="#byot">Bring your own transform</a>
+                    </div>
+                    <div class="sgroup"><div class="sgroup-t">Shipping a Migration</div>
+                        <a href="#lifecycle">The gate lifecycle</a>
+                        <a href="#not">When NOT to Use</a>
+                    </div>
+                </nav>
+            </div>
+        </aside>
+
+        <main class="docs-main">
+            <div class="docs-body">
+
+                <section id="why" class="ds">
+                    <div class="docs-row docs-row--solo">
+                        <div class="docs-prose">
+                            <h1>Why a gate</h1>
+                            <p class="lead">The problem was never the transform. Every embedding migration has two parts: computing a mapping between two embedding spaces, and deciding whether that mapping is good enough to ship. The first is a solved regression problem. The second is the part that decides whether your migration from re-embedding actually holds up — and it is the part most tooling skips.</p>
+                            <p>Computing a mapping between two embedding spaces is easy. Embed the same ~2K calibration texts with both models, fit a ridge regression, and you have a transform. On BEIR SciFact, Isotrieve's default ridge mapping retains <strong>86–92%</strong> of retrieval quality versus full re-embedding. Any library can fit that matrix.</p>
+                            <p>The risk is not in the matrix — it is in <em>retention</em>: whether the mapped vectors still retrieve the right neighbors on <em>your</em> corpus, <em>your</em> queries, <em>your</em> tolerance for silent degradation. That is a validation problem, and no transform, however clever, answers it for you.</p>
+                            <h2>Failure modes a transform can't see</h2>
+                            <p>These are exactly the failures that are invisible at fit time but show up in production. A mapping library reports a fitted loss; none of these show up in that number.</p>
+                            <ul>
+                                <li><strong>Hubness</strong> — mapped vectors can crowd around dense regions, so a handful of documents become near-neighbors to almost every query. The map fits a global regression; it cannot see per-vector crowding.</li>
+                                <li><strong>Seed sensitivity</strong> — different calibration seeds preserve different neighborhoods. One seed can look clean and another degrades, so a single fitted run is not evidence of quality.</li>
+                                <li><strong>Domain mismatch</strong> — pretrained adapters are fit on general data. On your distribution, the same transform can silently lose relevance with no error raised.</li>
+                            </ul>
+                            <p>Isotrieve is Migration CI: it measures retention on held-out source/target samples and returns a verdict — <span class="badge ok">PASS</span>, <span class="badge warn">WARN</span>, or <span class="badge no">FAIL</span> — so you decide to ship based on data, not hope. If you are planning to migrate an embedding model, this is the part that turns the project from a gamble into a reviewed change.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="when" class="ds">
+                    <header class="docs-head">
+                        <h2>Adapter library vs Isotrive</h2>
+                        <p>Honestly: adapter libraries are good at what they do. They translate between embedding spaces using pretrained adapters for popular model pairs. They solve a different problem.</p>
+                    </header>
+                    <div class="docs-row docs-row--solo">
+                        <div class="docs-prose">
+                            <table>
+                                <thead><tr><th></th><th>Adapter libraries</th><th>Isotrive</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Mapping source</td><td>Pretrained on general data</td><td>Fit on <strong>your</strong> corpus</td></tr>
+                                    <tr><td>Where vectors live</td><td>Translated at query time</td><td>Migrated <strong>in place</strong>, in your store</td></tr>
+                                    <tr><td>Failure mode</td><td>You find out in production</td><td>Gate fails the build</td></tr>
+                                    <tr><td>Domain corpora</td><td>General-purpose fit</td><td>Calibrated to your distribution</td></tr>
+                                </tbody>
+                            </table>
+                            <p>Use an adapter library when you want to query an existing index with a different model <em>today</em> — a small store, a short-lived experiment, an A/B test, or a prototype that may never go to production. Query-time translation is the right tool when the work is transient.</p>
+                            <p>Use Isotrive when the migration is <em>permanent</em>: you want to move the index itself into the new space, in place, and be able to prove it did not degrade. That is the gap the gate fills — adapter libraries hand you a transform and wish you luck; Isotrive tells you whether to ship it.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="byot" class="ds">
+                    <header class="docs-head">
+                        <h2>Bring your own transform</h2>
+                        <p>"Bring your own transform — the gate decides." You are not locked into an Isotrive-fitted map. If you already have a transform from another tool, the gate still works on it.</p>
+                    </header>
+                    <div class="docs-row docs-row--solo">
+                        <div class="docs-prose">
+                            <p><code>ExternalMapping</code> wraps any callable <code>(np.ndarray) -&gt; np.ndarray</code> — including pretrained adapters from libraries like <a href="https://github.com/PotentiallyARobot/EmbeddingAdapters" target="_blank">EmbeddingAdapters</a> — so you can gate a transform you never fitted yourself. Isotrieve's value is the verdict, not the matrix.</p>
+                            <p>We are equally honest about where the technique comes from. Isotrieve builds directly on prior work:</p>
+                            <ul>
+                                <li><a href="https://arxiv.org/abs/2505.12540" target="_blank">vec2vec</a> (arXiv:2505.12540) — embedding-space translation via linear maps</li>
+                                <li>mini-vec2vec — the lightweight, practical follow-up</li>
+                                <li>Drift-Adapter — validates Procrustes and MLP-style approaches</li>
+                                <li>Platonic Representation Hypothesis — the theoretical framing that makes shared embedding geometry plausible</li>
+                            </ul>
+                            <p>Our contribution is engineering — library, CLI, quality gate, adapters, and benchmarks — not algorithmic novelty. If you are citing the underlying technique, cite that work; if you are citing the tool, cite this repo.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="lifecycle" class="ds">
+                    <header class="docs-head">
+                        <h2>The gate lifecycle</h2>
+                        <p>Fit the mapping, gate it, migrate, and keep the old store until the verdict says it is safe. The gate is a checkpoint, not a feature bolted on at the end.</p>
+                    </header>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <h3>1. Calibrate</h3>
+                            <p>Embed the same ~2K in-domain texts with the source and target models, fit a ridge map, and save a <code>.isotrieve</code> artifact. See the <a href="docs.html#quickstart">Quick Start</a>.</p>
+                            <h3>2. Gate</h3>
+                            <p>Run the quality gate on held-out samples. The verdict is driven by a model trained across benchmark runs, not a hand-tuned threshold. See the <a href="docs.html#gate">Quality Gate</a> docs.</p>
+                            <table>
+                                <thead><tr><th>Verdict</th><th>Predicted Retention</th><th>Action</th></tr></thead>
+                                <tbody>
+                                    <tr><td><span class="badge ok">PASS</span></td><td>&ge; 0.75</td><td>Safe to migrate</td></tr>
+                                    <tr><td><span class="badge warn">WARN</span></td><td>0.55 – 0.75</td><td>Proceed with monitoring</td></tr>
+                                    <tr><td><span class="badge no">FAIL</span></td><td>&lt; 0.55</td><td>Do not ship; fix calibration or re-embed</td></tr>
+                                </tbody>
+                            </table>
+                            <h3>3. Migrate</h3>
+                            <p>Transform the store in place with a migration that tracks progress in a manifest, so you can resume or roll back. The TypeScript <code>migrateStore</code> shows the lifecycle contract; the Python <code>migrate_store</code> is the production path.</p>
+                        </div>
+                        <div class="docs-code">
+<pre><code>import { migrateStore } from '@isotrieve/core';
+
+const manifest = migrateStore(sourceStore, targetStore, mapping, {
+  batchSize: 1024,               // vectors per batch
+  manifestPath: './manifest.json',
+  resume: true,                  // skip already-migrated batches
+  onBatchComplete: (b) => {
+    console.log(`Batch ${b.batchNum}: ${b.rowsProcessed} vectors`);
+  },
+});
+
+console.log(manifest.rowsTotal, manifest.rowsMigrated);</code></pre>
+                        </div>
+                    </div>
+                    <div class="docs-row">
+                        <div class="docs-prose">
+                            <h3>4. Verify</h3>
+                            <p>Keep the old store until spot-checks and the gate pass on the new collection. A manifest makes rollback a replay, not a rebuild. See the <a href="npm.html#migrate">migration docs</a> for the full manifest contract.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="not" class="ds">
+                    <header class="docs-head">
+                        <h2>When NOT to Use Isotrive</h2>
+                    </header>
+                    <div class="docs-row docs-row--solo">
+                        <div class="docs-prose">
+                            <p>Isotrive is a cost/quality tradeoff, not a free lunch. Skip it (or re-embed instead) when:</p>
+                            <ul>
+                                <li><strong>Maximum quality matters more than cost</strong> — full re-embedding still wins on nDCG when the budget allows</li>
+                                <li><strong>K &lt; 2000</strong> — with fewer calibration pairs the gate usually lands in <span class="badge warn">WARN</span>; gather more in-domain pairs first</li>
+                                <li><strong>Calibration domain mismatches the corpus</strong> — out-of-domain pairs learn the wrong map, and no gate can fix a map learned on the wrong data</li>
+                                <li><strong>The gate returns <span class="badge no">FAIL</span></strong> — that is the answer, not an obstacle. Fix the calibration or re-embed.</li>
+                            </ul>
+                            <p>Full details, including the <a href="docs.html#not-use">When NOT to Use</a> section of the main docs and the <a href="docs.html#anti">anti-patterns</a>, cover the rest of the edge cases.</p>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <footer class="footer"><div class="wrap"><p>&copy; 2026 Isotrieve. Apache-2.0 License.</p></div></footer>
+    <script src="js/main.js"></script>
+    <script src="js/docs.js"></script>
+</body>
+</html>
