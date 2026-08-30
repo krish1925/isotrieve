@@ -66,13 +66,13 @@ class TestP501LeakageDisjointness:
 
         try:
             ds = ir_datasets.load("beir/scifact/test")
-        except Exception as exc:  # noqa: BLE001 - CI egress to BEIR host is refused
+            qrels_docs: set[str] = set()
+            for q in ds.qrels_iter():
+                if int(q.relevance) > 0:
+                    qrels_docs.add(q.doc_id)
+            docs, _queries, harness_qrels, _name = rb.load_scifact(200)
+        except Exception as exc:  # noqa: BLE001 - CI egress to the BEIR host is refused
             pytest.skip(f"BEIR dataset unavailable in this environment: {exc}")
-        qrels_docs: set[str] = set()
-        for q in ds.qrels_iter():
-            if int(q.relevance) > 0:
-                qrels_docs.add(q.doc_id)
-        docs, _queries, harness_qrels, _name = rb.load_scifact(200)
         doc_ids = [d["id"] for d in docs]
         qrels_docs.update(d for s in harness_qrels.values() for d in s)
         rng = np.random.default_rng(0)
