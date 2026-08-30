@@ -83,7 +83,7 @@ dev = [
     "Pillow>=9.0",
     "sentence-transformers>=2.2",
     "hypothesis>=6.100",
-    "ir-datasets>=2.0",
+    "ir-datasets>=0.4",
 ]
 all = [
     "isotrieve[sentence-transformers,openai,voyage,cohere,gemini,qdrant,pgvector,chroma,langchain,parquet,mlp,dev]",
