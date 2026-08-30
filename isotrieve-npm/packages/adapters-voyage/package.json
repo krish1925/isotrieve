@@ -12,14 +12,14 @@
   "keywords": ["isotrieve", "voyage", "embeddings"],
   "license": "MIT",
   "dependencies": {
-    "@isotrieve/core": "^1.0.0"
+    "@isotrieve/core": "*"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "typescript": "^5.3.3"
   },
   "peerDependencies": {
-    "@isotrieve/core": "^1.0.0"
+    "@isotrieve/core": "*"
   },
   "files": ["dist", "README.md"]
 }

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Jest test suite for `@isotrieve/demo-cli` (6 tests): results-table rendering extracted into a pure `buildResultsTable()` helper in `src/results.ts`; `npm test` at the monorepo root now passes for every workspace (previously failed: demo-cli had no test script)
+
+### Fixed
+- `npm install` failed for the whole monorepo: `@isotrieve/core` ranges in `adapters-cohere`, `adapters-huggingface`, `adapters-openai`, `adapters-voyage`, and `demo-cli` were `^1.0.0`, which can resolve neither to the local workspace (core is 0.1.0 after the version reset) nor to the registry (package never published). All workspace deps on core now use `*`
+- demo-cli README described Isotrieve as "Agent Embedding Communication Protocol" (pre-rename expansion) — now uses the embedding-migration framing; package description/keywords updated to match
+- Directory `packages/aecp-demo-cli` → `packages/isotrieve-demo-cli` and LICENSE attribution `AECP Contributors` → `Isotrieve Contributors` (landed in #83; pinned by Python-side naming regression tests)
+
 ## [0.1.0] - 2026-07-28
 
 ### Added

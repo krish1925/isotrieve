@@ -8,7 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- LlamaIndex query-time wrapper (`isotrieve.wrappers.llamaindex`)- OpenAI client shim (`isotrieve.wrappers.openai_shim`)
+- Cross-package naming-convention regression tests (`tests/test_naming_conventions.py`, 13 tests): pin the v0.2.1 `AECP → Isotrieve` rename across both packages — LICENSE attribution, no pre-rename name in live source/docs/packaging metadata (Python src, notebooks, npm package src/README/package.json, website), notebook Colab URLs, npm directory/lockfile layout, and resolvable `@isotrieve/core` workspace ranges
+- Jest test suite for `@isotrieve/demo-cli` (6 tests) with the results table extracted into a pure `buildResultsTable()` helper — `npm test` at the monorepo root previously failed because the package had no test script
+- LlamaIndex query-time wrapper (`isotrieve.wrappers.llamaindex`)
+- OpenAI client shim (`isotrieve.wrappers.openai_shim`)
 - Shared test fakes (`tests/fakes.py`)
 - Deprecation playbooks (`docs/playbooks/`)
 - `isotrieve doctor` CLI command
@@ -41,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **pgvector adapter** (`isotrieve.adapters.pgvector.PgvectorAdapter`): transactional in-place migration via shadow-column (`embedding_isotrieve_new`) + atomic column swap, idempotent resume, drop-column rollback, HNSW/IVFFlat index-rebuild guidance in `docs/pgvector.md` (closes #22)
 - `NumpyFileStore.write_vectors` now appends to existing vectors so multi-batch migrations and `resume` accumulate correctly instead of clobbering earlier batches
 - Removed the last `AECP` naming remnants from the v0.2.1 rename: LICENSE copyright lines in both packages, `isotrieve-npm/packages/aecp-demo-cli/` → `isotrieve-demo-cli/` (directory now matches `package-lock.json`, which already resolved `packages/isotrieve-demo-cli`), demo-cli internal variable names, stale `aecp-python/` `.gitignore` entry, and the root README project tree now points at `SKILLS.md` instead of the nonexistent `AGENTS.md` (closes #82)
+- npm workspace: `@isotrieve/core` dependency ranges in all consumer packages (`adapters-*`, `demo-cli`) changed `^1.0.0` → `*`; core was version-reset to 0.1.0 (DECISIONS.md) and never published, so `^1.0.0` could resolve neither to the workspace nor the registry — `npm install` failed for the whole monorepo
+- `@isotrieve/demo-cli`: description/keywords updated from the old "agent communication" framing to embedding migration; README no longer expands Isotrieve as "Agent Embedding Communication Protocol"
 
 ### Fixed
 - Notebook Colab badge URLs pointed at the pre-rename repo `krish1925/AECP` — now `krish1925/isotrieve` (closes #82)

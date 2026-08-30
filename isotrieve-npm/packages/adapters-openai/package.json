@@ -18,7 +18,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@isotrieve/core": "^1.0.0",
+    "@isotrieve/core": "*",
     "openai": "^4.28.0"
   },
   "devDependencies": {
@@ -26,7 +26,7 @@
     "typescript": "^5.3.3"
   },
   "peerDependencies": {
-    "@isotrieve/core": "^1.0.0"
+    "@isotrieve/core": "*"
   },
   "files": [
     "dist",

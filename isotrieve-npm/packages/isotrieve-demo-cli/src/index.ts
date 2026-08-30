@@ -2,7 +2,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
-import Table from 'cli-table3';
+import { buildResultsTable } from './results';
 // @ts-ignore
 import { pipeline, env } from '@xenova/transformers';
 
@@ -14,7 +14,7 @@ const program = new Command();
 
 program
     .name('isotrieve-demo')
-    .description('Zero-friction demo of Isotrieve Agent Communication')
+    .description('Zero-friction demo of Isotrieve embedding-space transfer')
     .version('1.0.0');
 
 program
@@ -64,16 +64,7 @@ program
             isotrieveSpinner.succeed(chalk.green(`Isotrieve Handoff: Took ${(endIsotrieve - startIsotrieve).toFixed(2)}ms (Matrix Mult)`));
 
             // 3. Results Table
-            const table = new Table({
-                head: ['Metric', 'Text Handoff', 'Isotrieve Vector Handoff'],
-                style: { head: ['cyan'] }
-            });
-
-            table.push(
-                ['Latency', chalk.red(`${(endText - startText).toFixed(2)}ms`), chalk.green(`${(endIsotrieve - startIsotrieve).toFixed(2)}ms`)],
-                ['Privacy', chalk.red('Text Exposed'), chalk.green('Vectors Only')],
-                ['Cost', chalk.red('$$$ (Re-encode)'), chalk.green('FREE')]
-            );
+            const table = buildResultsTable(endText - startText, endIsotrieve - startIsotrieve);
 
             console.log('\n' + table.toString());
             console.log(chalk.gray('\nNote: First run downloads models from HuggingFace. Subsequent runs are instant.\n'));
