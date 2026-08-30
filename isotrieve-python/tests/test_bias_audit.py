@@ -64,7 +64,10 @@ class TestP501LeakageDisjointness:
         ir_datasets = pytest.importorskip("ir_datasets")
         import run_benchmark as rb  # noqa: PLC0415
 
-        ds = ir_datasets.load("beir/scifact/test")
+        try:
+            ds = ir_datasets.load("beir/scifact/test")
+        except Exception as exc:  # noqa: BLE001 - CI egress to BEIR host is refused
+            pytest.skip(f"BEIR dataset unavailable in this environment: {exc}")
         qrels_docs: set[str] = set()
         for q in ds.qrels_iter():
             if int(q.relevance) > 0:
@@ -202,7 +205,10 @@ class TestP504RecalibratorSplit:
 
 # ---------------------------------------------------------------- P5-05
 @pytest.mark.slow
-@pytest.mark.xfail(reason="finding #86: bootstrap CI duplicate-tie bias — becomes XPASS when fixed", strict=False)
+@pytest.mark.xfail(
+    reason="finding #86: bootstrap CI duplicate-tie bias — becomes XPASS when fixed",
+    strict=False,
+)
 class TestP505BootstrapCoverage:
     @pytest.mark.parametrize("r", [0.5, 0.7, 0.9])
     @pytest.mark.xfail(reason="finding #86 — see class marker", strict=False)
@@ -305,7 +311,10 @@ class TestP507MarginCompression:
 
 # ---------------------------------------------------------------- P5-08..11 (static audits)
 class TestP508to11StaticAudits:
-    @pytest.mark.xfail(reason="finding #87: legacy artifacts predate protocol/config_hash — becomes XPASS when fixed", strict=False)
+    @pytest.mark.xfail(
+        reason="finding #87: legacy artifacts predate protocol/config_hash — becomes XPASS when fixed",
+        strict=False,
+    )
     def test_p5_08_all_artifacts_declare_protocol(self) -> None:
         import json  # noqa: PLC0415
 
