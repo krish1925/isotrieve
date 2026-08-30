@@ -1,6 +1,6 @@
 # Isotrieve Zero-Friction Demo
 
-Try the Agent Embedding Communication Protocol (Isotrieve) in 30 seconds. No API keys required.
+Try Isotrieve — embedding migration without re-embedding — in 30 seconds. No API keys required.
 
 ## Features
 
