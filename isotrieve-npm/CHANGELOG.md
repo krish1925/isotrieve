@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-30
+
 ### Added
 - Jest test suite for `@isotrieve/demo-cli` (6 tests): results-table rendering extracted into a pure `buildResultsTable()` helper in `src/results.ts`; `npm test` at the monorepo root now passes for every workspace (previously failed: demo-cli had no test script)
 
@@ -14,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `npm install` failed for the whole monorepo: `@isotrieve/core` ranges in `adapters-cohere`, `adapters-huggingface`, `adapters-openai`, `adapters-voyage`, and `demo-cli` were `^1.0.0`, which can resolve neither to the local workspace (core is 0.1.0 after the version reset) nor to the registry (package never published). All workspace deps on core now use `*`
 - demo-cli README described Isotrieve as "Agent Embedding Communication Protocol" (pre-rename expansion) — now uses the embedding-migration framing; package description/keywords updated to match
 - Directory `packages/aecp-demo-cli` → `packages/isotrieve-demo-cli` and LICENSE attribution `AECP Contributors` → `Isotrieve Contributors` (landed in #83; pinned by Python-side naming regression tests)
+
+### Known issues
+
+- #85 — `.isotrieve` files written by this package are rejected by the strict Python reader (header key casing) — TS→PY handoff broken until fixed
 
 ## [0.1.0] - 2026-07-28
 

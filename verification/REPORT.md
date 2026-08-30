@@ -2,7 +2,7 @@
 
 ## 1. Verdict
 
-**Ship with named caveats.** The benchmark methodology reproduces independently (8/8 committed claim configs, Δ ≤ 0.013), no train/eval leakage was found in the sampling path, packaging is release-clean, and crash/resume is genuinely idempotent. Four real product defects were found and filed (#85 binary format TS→PY broken, #86 gate bootstrap CIs biased low by duplicate ties, #87 legacy artifacts lack declared config, #88 `device="auto"` crashes + margin-compression degenerates for good migrations — the compression penalty fires even on real, healthy migrations at K=2000). None blocks the v0.4.0 release mechanically; #86 and #88 undercut the *fairness* of the gate's PASS/WARN boundaries and should be fixed before the gate's thresholds are trusted in production.
+**Ship with named caveats.** The benchmark methodology reproduces independently (8/8 committed claim configs, Δ ≤ 0.013), no train/eval leakage was found in the sampling path, packaging is release-clean, and crash/resume is genuinely idempotent. Five real product defects were found and filed (#85 binary format TS→PY broken, #86 gate bootstrap CIs biased low by duplicate ties, #87 legacy artifacts lack declared config, #88 `device="auto"` crashes + margin-compression degenerates for good migrations, **#90 batched migration does not stream — peak RSS 6.8× corpus**). None blocks the v0.4.0 release mechanically; #86/#88 undercut the *fairness* of the gate's PASS/WARN boundaries, and #90 makes large-store migrations OOM-prone and must be fixed before anyone points Isotrieve at a production-size store.
 
 ## 2. Environment fingerprint
 
@@ -26,8 +26,18 @@ Models warm from cache: all-MiniLM-L6-v2 (384d), bge-large-en-v1.5 (1024d), e5-l
 | P5 bias audit | 11 items | 9/11 | 2 → #86, #87 | 4 (qrels API, dedent, classmethod, construction) | — |
 | P6 claims repro | 8 configs, 21 runs | **8/8** | 0 | 0 | MLP time-boxed (ran 12 min, OK) |
 | P7 E2E | 9 checks | 7/9 | 1 (04b → #88 evidence) | 5 (fixture/API) | 2 BLOCKED (Docker) |
-| P8 memory | 2 sizes × 2 methods | 0 | 0 | 1 (time parsing) | **BLOCKED (ENOSPC)** |
-| P9 stretch | audits | done | 0 | — | mutation CUT (budget) |
+| P8 memory | 2 sizes × 2 methods + delta isolation | measured | 1 → **#90** | 1 (time parsing) | — |
+| P9 stretch | audits + fuzz | done | 0 | — | mutation CUT (budget) |
+
+### Supplement (post-disk-free continuation, same day)
+
+| Item | Result |
+|---|---|
+| P8 full run (space restored) | **FAIL → #90**: 200k×768 corpus 614 MB → migration peak RSS **4.57 GB** (delta 4.16 GB = 6.8× corpus, 17× the 40% streaming budget); 1M×384 → 7.73 GB. Methods agree <1%. Root cause: `write_vectors` per-batch full reload + float64 upcast + full rewrite |
+| P7-01/02 Docker E2E | still BLOCKED — Docker Desktop daemon refuses to start **even with 126 GB free** (broken install; machine-level, not touched) |
+| Python lanes 3.11/3.12 + 3.10 re-run | **244 passed each**, same 4 intended findings, 0 unexpected; property file 13/13 on every version |
+| P9-02 binary-reader fuzz | **1000 hypothesis examples**: 0 corrupted inputs accepted, no crashes, all failures typed errors — PASS |
+| P9-01 npm audit | informational: moderate advisories in transitive deps (`@aws-sdk/*` via @xenova/transformers) — recorded in artifacts |
 
 ## 4. Findings (severity order)
 

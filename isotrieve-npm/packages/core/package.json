@@ -1,7 +1,7 @@
 {
   "name": "@isotrieve/core",
-  "version": "0.1.0",
-  "description": "Embedding migration without re-embedding — learn a mapping between embedding spaces, transform stored vectors in place, gate on retrieval retention.",
+  "version": "0.2.0",
+  "description": "Embedding migration without re-embedding \u2014 learn a mapping between embedding spaces, transform stored vectors in place, gate on retrieval retention.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -38,7 +38,9 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "testMatch": ["**/__tests__/**/*.test.ts"],
+    "testMatch": [
+      "**/__tests__/**/*.test.ts"
+    ],
     "collectCoverageFrom": [
       "src/**/*.ts",
       "!src/**/*.d.ts",

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-30
+
 ### Added
 - Cross-package naming-convention regression tests (`tests/test_naming_conventions.py`, 13 tests): pin the v0.2.1 `AECP → Isotrieve` rename across both packages — LICENSE attribution, no pre-rename name in live source/docs/packaging metadata (Python src, notebooks, npm package src/README/package.json, website), notebook Colab URLs, npm directory/lockfile layout, and resolvable `@isotrieve/core` workspace ranges
 - Jest test suite for `@isotrieve/demo-cli` (6 tests) with the results table extracted into a pure `buildResultsTable()` helper — `npm test` at the monorepo root previously failed because the package had no test script
@@ -52,6 +54,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Notebook Colab badge URLs pointed at the pre-rename repo `krish1925/AECP` — now `krish1925/isotrieve` (closes #82)
+
+### Known issues (found by the 2026-08-29 local test barrage — filed, fixes pending)
+
+- #85 — `.isotrieve` binary written by `@isotrieve/core` is rejected by the Python reader (header schema mismatch; PY→TS works, TS→PY does not)
+- #86 — Gate bootstrap CIs are biased low (resample duplicate ties break top-k self-match; empirical coverage 0% vs nominal 80%)
+- #87 — Legacy benchmark artifacts predate `protocol`/`config_hash` declaration fields
+- #88 — `ResidualMLPMapping(device="auto")` crashes; `margin_compression` degenerates to ~0 for high-fidelity mappings (spurious WARN, interval [0.34, 1.0])
+- #90 — `migrate_store` does not stream: peak RSS 6.8× corpus (float64 upcast + full target rewrite per batch) — OOM-prone at production scale
+
+Full audit: `verification/REPORT.md` (claims reproduction 8/8, Δ ≤ 0.013).
 
 ## [0.3.0] - 2026-07-25
 
