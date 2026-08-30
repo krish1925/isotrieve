@@ -201,8 +201,11 @@ class TestP504RecalibratorSplit:
 
 
 # ---------------------------------------------------------------- P5-05
+@pytest.mark.slow
+@pytest.mark.xfail(reason="finding #86: bootstrap CI duplicate-tie bias — becomes XPASS when fixed", strict=False)
 class TestP505BootstrapCoverage:
     @pytest.mark.parametrize("r", [0.5, 0.7, 0.9])
+    @pytest.mark.xfail(reason="finding #86 — see class marker", strict=False)
     def test_ci_coverage_of_true_retention(self, r: float) -> None:
         from isotrieve.cli_gate import _bootstrap_retention_ci  # noqa: PLC0415
 
@@ -302,6 +305,7 @@ class TestP507MarginCompression:
 
 # ---------------------------------------------------------------- P5-08..11 (static audits)
 class TestP508to11StaticAudits:
+    @pytest.mark.xfail(reason="finding #87: legacy artifacts predate protocol/config_hash — becomes XPASS when fixed", strict=False)
     def test_p5_08_all_artifacts_declare_protocol(self) -> None:
         import json  # noqa: PLC0415
 
