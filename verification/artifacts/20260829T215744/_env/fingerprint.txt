@@ -1,0 +1,14 @@
+base_sha=51c3538586d4c9d39817268b0afe2875e915f96e
+branch=verify/test-barrage-20260829
+Darwin Krishs-MacBook-Pro.local 24.6.0 Darwin Kernel Version 24.6.0: Wed Jun 10 20:37:47 PDT 2026; root:xnu-11417.140.69.711.17~1/RELEASE_ARM64_T6041 arm64
+ProductName:		macOS
+ProductVersion:		15.7.8
+BuildVersion:		24G809
+25769803776
+12
+uv 0.10.0 (Homebrew 2026-02-05)
+Python 3.14.3 (main, Feb  3 2026, 15:32:20) [Clang 17.0.0 (clang-1700.6.3.2)]
+v24.2.0
+11.3.0
+51c3538586d4c9d39817268b0afe2875e915f96e 2026-08-29 21:57:43 -0700 docs: local test barrage plan (execution handoff)
+docker=ABSENT
