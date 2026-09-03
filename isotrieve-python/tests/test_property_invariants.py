@@ -23,6 +23,8 @@ HYP = settings(max_examples=50, deadline=None, print_blob=True)
 def _fit_ridge(
     d_src: int, d_tgt: int, n: int = 120, seed: int = SEED
 ) -> tuple[RidgeMapping, np.ndarray, np.ndarray]:
+    # keep n >= 10*min(d) so the rank-deficiency warning never fires
+    n = max(n, 10 * min(d_src, d_tgt))
     rng = np.random.default_rng(seed)
     X = rng.normal(size=(n, d_src))
     # Orthonormal basis keeps the fixture well-conditioned so the round-trip
@@ -70,8 +72,9 @@ def test_p4_01_l2_norm_negative_control() -> None:
 
 
 @HYP
-@given(d=st.integers(4, 24), n=st.integers(60, 120))
-def test_p4_02_procrustes_orthogonality(d: int, n: int) -> None:
+@given(d=st.integers(4, 24), n_extra=st.integers(0, 60))
+def test_p4_02_procrustes_orthogonality(d: int, n_extra: int) -> None:
+    n = 10 * d + n_extra  # always above the rank-deficiency floor
     rng = np.random.default_rng(SEED)
     X = l2_normalize(rng.normal(size=(n, d)))
     noise = 0.01 * rng.normal(size=(n, d))
@@ -93,7 +96,7 @@ def test_p4_03_ridge_beats_random_w_on_calibration(d_src: int, d_tgt: int) -> No
     m, X, Y = _fit_ridge(d_src, d_tgt, n=100)
     resid_fit = float(np.mean((m.transform(X) - l2_normalize(Y)) ** 2))
     rng = np.random.default_rng(SEED + 1)
-    W_rand = l2_normalize(rng.normal(size=(100, d_tgt)))
+    W_rand = l2_normalize(rng.normal(size=(len(Y), d_tgt)))
     resid_rand = float(np.mean((W_rand - l2_normalize(Y)) ** 2))
     assert resid_fit < resid_rand
 

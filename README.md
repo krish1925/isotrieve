@@ -26,6 +26,14 @@ retention doesn't clear your threshold, the gate fails and nothing ships.
 
 ```mermaid
 flowchart LR
+    A[Calibration sample<br/><i>small subset of corpus</i>] --> B1[Embed with<br/>old model]
+    A --> B2[Embed with<br/>new model]
+    B1 --> C[Fit transform<br/><i>Procrustes / ridge / residual</i>]
+    B2 --> C
+    C --> D[Apply transform to<br/>full stored vector set]
+    D --> E{Retrieval gate<br/>Recall@k, MRR vs.<br/>held-out queries}
+    E -- "≥ threshold" --> F[✅ Commit migration<br/>vectors updated in place]
+    E -- "below threshold" --> G[⛔ Abort<br/>report gap + fallback]
 
     classDef stage fill:#1f2937,stroke:#4b5563,color:#f9fafb;
     classDef gate fill:#78350f,stroke:#d97706,color:#fef3c7;
@@ -93,6 +101,11 @@ flowchart TB
         Gate[Retrieval gate]
     end
 
+    Core --> Chroma[(ChromaDB<br/>supported)]
+    Core --> QD[(Qdrant<br/>supported)]
+    Core --> PGV[(pgvector<br/>supported)]
+    Core --> LC[LangChain<br/>IsotrieveEmbeddings<br/>query-time wrapper]
+    Core --> LI[(LlamaIndex<br/>supported)]
     Core -.-> PC[(Pinecone<br/>supported, not CI-tested)]
     Core -.-> WV[(Weaviate<br/>hook-only)]
     Core -.-> FA[FAISS<br/>notebook example only]
