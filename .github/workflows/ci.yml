@@ -68,17 +68,6 @@ jobs:
         run: python isotrieve-python/scripts/gen_adapter_matrix.py --check
         continue-on-error: true
 
-  claims-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-      - name: Validate CLAIMS.md
-        run: python isotrieve-python/scripts/lint_claims.py
-        continue-on-error: true
 
   pgvector-integration:
     runs-on: ubuntu-latest

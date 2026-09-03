@@ -1,0 +1,38 @@
+name: Publish npm packages
+
+# Publishes @isotrieve/core (and optionally the demo CLI) to the npm registry.
+# Triggers:
+#   - push a tag `core-v*` (e.g. core-v0.2.0) — mirrors the PyPI release flow
+#   - manual dispatch for re-publishes
+# Requires repo secret NPM_TOKEN (automation granular token with Publish rights
+# for the @isotrieve org/user scope).
+
+on:
+  push:
+    tags:
+      - 'core-v*'
+  workflow_dispatch:
+
+jobs:
+  publish-core:
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org/
+      - name: Install workspaces
+        working-directory: isotrieve-npm
+        run: npm ci
+      - name: Typecheck + test
+        working-directory: isotrieve-npm
+        run: |
+          ./node_modules/.bin/tsc --noEmit -p packages/core/tsconfig.json
+          npm test --workspace @isotrieve/core
+      - name: Publish @isotrieve/core
+        working-directory: isotrieve-npm/packages/core
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
