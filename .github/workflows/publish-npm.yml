@@ -13,6 +13,10 @@ on:
       - 'core-v*'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   publish-core:
     runs-on: ubuntu-latest
